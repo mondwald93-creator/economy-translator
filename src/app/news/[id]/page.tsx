@@ -1,5 +1,30 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  const { data: article } = await supabase
+    .from('news_articles')
+    .select('title, summary')
+    .eq('id', params.id)
+    .single()
+
+  if (!article) return {}
+
+  const description = article.summary
+    ? `${article.summary.slice(0, 120)}...`
+    : undefined
+
+  return {
+    title: article.title,
+    description,
+    openGraph: {
+      title: article.title,
+      description,
+      url: `https://economy-translator.vercel.app/news/${params.id}`,
+    },
+  }
+}
 
 export default async function NewsDetailPage({ params }: { params: { id: string } }) {
   const { data: article } = await supabase
