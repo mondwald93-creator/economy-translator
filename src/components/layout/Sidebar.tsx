@@ -6,11 +6,10 @@ const navItems = [
   { label: '오늘의 브리핑', href: '/', icon: '📰' },
   { label: '링크 분석기', href: '/analyze', icon: '🔍' },
   { label: '경제용어 사전', href: '/dictionary', icon: '📖' },
+  { label: '경제 달력', href: '/calendar', icon: '📅' },
 ]
 
-const comingSoon = [
-  { label: '경제 달력', icon: '📅' },
-]
+const comingSoon: { label: string; icon: string }[] = []
 
 export default function Sidebar() {
   const pathname = usePathname()
@@ -51,20 +50,22 @@ export default function Sidebar() {
           </Link>
         ))}
 
-        <div className="pt-5">
-          <p className="text-[11px] font-semibold text-notion-muted uppercase tracking-widest mb-1 px-3">
-            준비 중
-          </p>
-          {comingSoon.map((item) => (
-            <div
-              key={item.label}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-notion-muted cursor-default select-none"
-            >
-              <span className="text-base leading-none opacity-40">{item.icon}</span>
-              <span className="opacity-40">{item.label}</span>
-            </div>
-          ))}
-        </div>
+        {comingSoon.length > 0 && (
+          <div className="pt-5">
+            <p className="text-[11px] font-semibold text-notion-muted uppercase tracking-widest mb-1 px-3">
+              준비 중
+            </p>
+            {comingSoon.map((item) => (
+              <div
+                key={item.label}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-notion-muted cursor-default select-none"
+              >
+                <span className="text-base leading-none opacity-40">{item.icon}</span>
+                <span className="opacity-40">{item.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </nav>
 
       <div className="px-3 pt-4 border-t border-notion-border">
