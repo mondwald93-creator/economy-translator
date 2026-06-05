@@ -4,7 +4,7 @@ import { KeyIndicator, Top3AnalysisItem, HealthCheckItem, ConnectionItem, Articl
 interface BriefingAIResult {
   headline: string
   summary: string
-  dailyTerm: { term: string; explanation: string }
+  dailyTerm: { term: string; category: string; explanation: string }
   indicatorExplanations: { name: string; easyExplanation: string }[]
   top3Indices: number[]
   healthCheck: HealthCheckItem[]
@@ -36,6 +36,7 @@ ${titleList}
   "summary": "오늘 경제 전체를 초보자 언어로 정리한 3~5문단 요약 글",
   "dailyTerm": {
     "term": "오늘 뉴스에서 가장 중요한 경제 용어 1개",
+    "category": "금리|환율|주식|부동산|무역|경기|소비|통화 중 하나",
     "explanation": "그 용어를 초등학생도 이해할 수 있게 2~3문장으로 설명"
   },
   "indicatorExplanations": [

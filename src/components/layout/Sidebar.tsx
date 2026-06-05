@@ -5,10 +5,10 @@ import { usePathname } from 'next/navigation'
 const navItems = [
   { label: '오늘의 브리핑', href: '/', icon: '📰' },
   { label: '링크 분석기', href: '/analyze', icon: '🔍' },
+  { label: '경제용어 사전', href: '/dictionary', icon: '📖' },
 ]
 
 const comingSoon = [
-  { label: '경제용어 사전', icon: '📖' },
   { label: '경제 달력', icon: '📅' },
 ]
 
