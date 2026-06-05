@@ -1,0 +1,56 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* ─── Base ─── */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f8f9fa;
+  color: #1a1a2e;
+  letter-spacing: -0.01em;
+  line-height: 1.7;
+}
+
+/* ─── Animations ─── */
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+
+.animate-slide-in-up   { animation: slideInUp 0.35s ease-out; }
+.animate-fade-in       { animation: fadeIn 0.3s ease-out; }
+.animate-pulse-soft    { animation: pulse-soft 2s ease-in-out infinite; }
+
+/* ─── Custom Utilities ─── */
+@layer components {
+  /* Progress bar */
+  .progress-bar {
+    @apply h-1.5 rounded-full bg-blue-600 transition-all duration-300;
+  }
+
+  /* Economy status badges */
+  .status-good    { @apply bg-emerald-100 text-emerald-700 border border-emerald-200; }
+  .status-normal  { @apply bg-gray-100 text-gray-600 border border-gray-200; }
+  .status-warning { @apply bg-amber-100 text-amber-700 border border-amber-200; }
+
+  /* Section label style */
+  .section-label {
+    @apply text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1;
+  }
+}
