@@ -7,6 +7,7 @@ const navItems = [
   { label: '링크 분석기', href: '/analyze', icon: '🔍' },
   { label: '경제용어 사전', href: '/dictionary', icon: '📖' },
   { label: '경제 달력', href: '/calendar', icon: '📅' },
+  { label: '북마크', href: '/bookmarks', icon: '🔖' },
 ]
 
 const comingSoon: { label: string; icon: string }[] = []

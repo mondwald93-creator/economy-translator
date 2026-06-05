@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import BookmarkButton from '@/components/BookmarkButton'
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const { data: article } = await supabase
@@ -54,7 +55,10 @@ export default async function NewsDetailPage({ params }: { params: { id: string 
       <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
         <div>
           <p className="text-xs text-blue-500 font-medium mb-2">{article.source}</p>
-          <h1 className="text-lg font-bold text-gray-900 leading-relaxed">{article.title}</h1>
+          <div className="flex items-start gap-3">
+            <h1 className="flex-1 text-lg font-bold text-gray-900 leading-relaxed">{article.title}</h1>
+            <BookmarkButton id={params.id} title={article.title} source={article.source} />
+          </div>
         </div>
         {article.summary && (
           <div className="bg-blue-50 rounded-xl p-4">

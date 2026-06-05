@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import BookmarkButton from '@/components/BookmarkButton'
 
 interface Article {
   id: string | number
@@ -27,12 +28,17 @@ export default function NewsCardList({ articles }: Props) {
       <h2 className="notion-heading">오늘의 헤드라인</h2>
       <div className="space-y-2">
         {articles.map((article) => (
-          <Link key={article.id} href={`/news/${article.id}`}>
-            <div className="notion-card cursor-pointer">
+          <div key={article.id} className="notion-card flex items-start gap-3">
+            <Link href={`/news/${article.id}`} className="flex-1 min-w-0 cursor-pointer">
               <p className="text-[11px] text-brand-500 font-semibold mb-1">{article.source}</p>
               <p className="text-sm font-medium text-notion-text leading-relaxed">{article.title}</p>
-            </div>
-          </Link>
+            </Link>
+            <BookmarkButton
+              id={String(article.id)}
+              title={article.title}
+              source={article.source}
+            />
+          </div>
         ))}
       </div>
     </section>
