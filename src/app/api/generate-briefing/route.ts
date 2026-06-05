@@ -102,6 +102,18 @@ export async function POST() {
     return NextResponse.json({ success: false, error: upsertError.message }, { status: 500 })
   }
 
+  // 오늘의 용어를 경제용어 사전에 자동 저장
+  if (briefingResult.dailyTerm?.term) {
+    await supabase.from('terms').upsert(
+      {
+        term: briefingResult.dailyTerm.term,
+        category: briefingResult.dailyTerm.category ?? '기타',
+        explanation: briefingResult.dailyTerm.explanation,
+      },
+      { onConflict: 'term' }
+    )
+  }
+
   return NextResponse.json({
     success: true,
     date: today,
