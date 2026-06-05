@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { getMarketIndicators } from '@/lib/marketData'
-import { generateMainBriefing, generateArticleSummaries } from '@/lib/generateBriefing'
+import {
+  generateMainBriefing,
+  generateArticleSummaries,
+  generateTop3Analysis,
+  buildTop3AnalysisData,
+} from '@/lib/generateBriefing'
 
 export async function POST() {
   const today = new Date().toISOString().split('T')[0]
 
-  // 오늘 수집된 뉴스 가져오기
   const { data: articles, error: fetchError } = await supabase
     .from('news_articles')
     .select('id, title, summary')
@@ -24,27 +28,33 @@ export async function POST() {
     }, { status: 400 })
   }
 
-  // 시장 지표 수집 + 메인 브리핑 생성 병렬 실행
-  // (generateMainBriefing은 지표 데이터가 필요하므로 지표 먼저)
+  const articleInputs = articles.map(a => ({ id: a.id, title: a.title }))
+
+  // 지표 수집 후 메인 브리핑 생성 (헤드라인 + TOP3 인덱스 + 건강진단 + 연결관계 포함)
   const indicators = await getMarketIndicators()
+  const briefingResult = await generateMainBriefing(articleInputs, indicators)
 
-  const articleTitles = articles.map(a => a.title)
-  const articlesNeedingSummary = articles.filter(a => !a.summary)
+  // TOP3 기사 추출
+  const top3Articles = (briefingResult.top3Indices ?? [0, 1, 2])
+    .filter(i => i < articles.length)
+    .slice(0, 3)
+    .map(i => articleInputs[i])
 
-  // 메인 브리핑과 기사 요약 병렬 생성
-  const [briefingResult, summaries] = await Promise.all([
-    generateMainBriefing(articleTitles, indicators),
-    generateArticleSummaries(articlesNeedingSummary.map(a => ({ id: a.id, title: a.title }))),
+  // 기사 요약 (미완료분) + TOP3 6단계 분석 병렬 실행
+  const articlesNeedingSummary = articles.filter(a => !a.summary).map(a => ({ id: a.id, title: a.title }))
+  const [summaries, top3Analyses] = await Promise.all([
+    generateArticleSummaries(articlesNeedingSummary),
+    generateTop3Analysis(top3Articles),
   ])
 
   // 지표에 AI 설명 합치기
   const fullIndicators = indicators.map(ind => ({
     ...ind,
     easyExplanation:
-      briefingResult.indicatorExplanations.find(e => e.name === ind.name)?.easyExplanation ?? '',
+      briefingResult.indicatorExplanations?.find(e => e.name === ind.name)?.easyExplanation ?? '',
   }))
 
-  // 기사 요약 Supabase에 저장
+  // 기사 간단 요약 저장
   if (summaries.length > 0) {
     await Promise.all(
       summaries.map(s =>
@@ -53,13 +63,37 @@ export async function POST() {
     )
   }
 
-  // 브리핑 Supabase에 저장 (같은 날짜면 덮어쓰기)
+  // TOP3 기사 full_analysis 저장
+  if (top3Analyses.length > 0) {
+    await Promise.all(
+      top3Analyses.map(a =>
+        supabase.from('news_articles').update({
+          full_analysis: {
+            oneline: a.oneline,
+            whatHappened: a.whatHappened,
+            whyHappened: a.whyHappened,
+            myImpact: a.myImpact,
+            outlook: a.outlook,
+            conclusion: a.conclusion,
+          },
+        }).eq('id', a.id)
+      )
+    )
+  }
+
+  // briefings 저장 (새 컬럼 포함)
+  const top3AnalysisData = buildTop3AnalysisData(top3Analyses, articleInputs)
+
   const { error: upsertError } = await supabase.from('briefings').upsert(
     {
       date: today,
       summary: briefingResult.summary,
+      headline: briefingResult.headline,
       daily_term: JSON.stringify(briefingResult.dailyTerm),
       indicators: fullIndicators,
+      top3_analysis: top3AnalysisData,
+      health_check: briefingResult.healthCheck,
+      connections: briefingResult.connections,
     },
     { onConflict: 'date' }
   )
@@ -74,6 +108,8 @@ export async function POST() {
     articlesTotal: articles.length,
     articlesSummarized: summaries.length,
     indicatorsCollected: indicators.length,
+    headline: briefingResult.headline,
+    top3: top3Articles.map(a => a.title),
     dailyTerm: briefingResult.dailyTerm.term,
   })
 }

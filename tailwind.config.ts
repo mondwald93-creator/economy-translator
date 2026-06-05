@@ -20,6 +20,15 @@ const config: Config = {
           neutral: '#6b7280',
           warning: '#f59e0b',
         },
+        notion: {
+          bg: '#ffffff',
+          sidebar: '#f7f7f5',
+          hover: '#efefed',
+          border: '#e9e9e7',
+          text: '#37352f',
+          secondary: '#6b6b6b',
+          muted: '#9b9b9b',
+        },
       },
       typography: {
         DEFAULT: {

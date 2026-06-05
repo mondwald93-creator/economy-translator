@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import '../styles/globals.css'
+import Sidebar from '@/components/layout/Sidebar'
 
 export const metadata: Metadata = {
   title: '경제번역기',
@@ -22,21 +23,33 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-screen bg-gray-50">
-        <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-          <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
-            <h1 className="text-lg font-extrabold text-gray-900">경제번역기</h1>
-            <span className="text-sm text-gray-400">
-              {new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })}
-            </span>
-          </div>
+      <body className="min-h-screen bg-white">
+        {/* 모바일 상단 헤더 */}
+        <header className="lg:hidden sticky top-0 z-10 bg-white border-b border-notion-border px-4 py-3 flex items-center justify-between">
+          <span className="text-sm font-bold text-notion-text">경제번역기</span>
+          <span className="text-xs text-notion-muted">
+            {new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })}
+          </span>
         </header>
-        <main className="max-w-2xl mx-auto px-4 py-6">
-          {children}
-        </main>
-        <footer className="text-center py-8 text-xs text-gray-400">
-          © 경제번역기 · 매일 경제를 쉽게
-        </footer>
+
+        <div className="flex min-h-screen">
+          {/* 데스크탑 사이드바 */}
+          <div className="hidden lg:flex lg:flex-col lg:w-60 lg:fixed lg:inset-y-0">
+            <Sidebar />
+          </div>
+
+          {/* 메인 콘텐츠 */}
+          <div className="flex-1 lg:pl-60 flex flex-col min-h-screen">
+            <main className="flex-1 px-4 py-6 lg:px-12 lg:py-10">
+              <div className="max-w-2xl">
+                {children}
+              </div>
+            </main>
+            <footer className="px-4 lg:px-12 py-6 text-xs text-notion-muted border-t border-notion-border">
+              © 경제번역기 · 매일 경제를 쉽게
+            </footer>
+          </div>
+        </div>
       </body>
     </html>
   )

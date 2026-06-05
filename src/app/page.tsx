@@ -1,9 +1,14 @@
+export const dynamic = 'force-dynamic'
+
 import { supabase } from '@/lib/supabase'
-import DailyBriefing from '@/components/home/DailyBriefing'
+import { KeyIndicator, Top3AnalysisItem, HealthCheckItem, ConnectionItem } from '@/types'
+import HeadlineBanner from '@/components/home/HeadlineBanner'
+import EconomyHealthCheck from '@/components/home/EconomyHealthCheck'
+import Top3NewsSection from '@/components/home/Top3NewsSection'
+import ConnectionDiagram from '@/components/home/ConnectionDiagram'
 import KeyIndicators from '@/components/home/KeyIndicators'
 import NewsCardList from '@/components/home/NewsCardList'
-import DailyTerm from '@/components/home/DailyTerm'
-import { KeyIndicator } from '@/types'
+import EconomyStudy from '@/components/home/EconomyStudy'
 
 export default async function Home() {
   const today = new Date().toISOString().split('T')[0]
@@ -15,15 +20,10 @@ export default async function Home() {
 
   if (!briefing) {
     return (
-      <div className="space-y-6">
-        <section className="bg-blue-600 text-white rounded-2xl p-5">
-          <p className="text-xs font-semibold text-blue-200 uppercase tracking-widest mb-2">
-            오늘의 경제 브리핑
-          </p>
-          <p className="text-lg font-semibold leading-relaxed text-blue-100">
-            오늘 브리핑이 준비 중이에요. 잠시 후 다시 확인해 주세요.
-          </p>
-        </section>
+      <div className="border-l-4 border-gray-200 pl-4 py-1">
+        <p className="text-sm text-notion-muted">
+          오늘 브리핑이 준비 중이에요. 잠시 후 다시 확인해 주세요.
+        </p>
       </div>
     )
   }
@@ -42,11 +42,14 @@ export default async function Home() {
   }
 
   return (
-    <div className="space-y-6">
-      <DailyBriefing summary={briefing.summary} />
+    <div className="space-y-8">
+      <HeadlineBanner headline={briefing.headline ?? null} />
+      <EconomyHealthCheck healthCheck={(briefing.health_check as HealthCheckItem[]) ?? null} />
+      <Top3NewsSection top3Analysis={(briefing.top3_analysis as Top3AnalysisItem[]) ?? null} />
+      <ConnectionDiagram connections={(briefing.connections as ConnectionItem[]) ?? null} />
       <KeyIndicators indicators={indicators} />
       <NewsCardList articles={articles} />
-      <DailyTerm dailyTerm={dailyTerm} />
+      <EconomyStudy dailyTerm={dailyTerm} />
     </div>
   )
 }
