@@ -3,8 +3,29 @@ import '../styles/globals.css'
 import Sidebar from '@/components/layout/Sidebar'
 
 export const metadata: Metadata = {
-  title: '경제번역기',
-  description: '매일 경제 뉴스를 초보자도 이해할 수 있게 쉽게 정리해드려요',
+  metadataBase: new URL('https://economy-translator.vercel.app'),
+  title: {
+    default: '경제번역기 — 매일 경제를 쉽게',
+    template: '%s | 경제번역기',
+  },
+  description: '주식·환율·금리 등 경제를 전혀 몰라도 OK. 매일 한국 경제 뉴스를 초보자 언어로 쉽게 정리해드려요.',
+  keywords: ['경제번역기', '경제 쉽게', '경제 초보', '금리', '환율', '주식', '경제 뉴스', '한국 경제', '경제용어'],
+  openGraph: {
+    type: 'website',
+    locale: 'ko_KR',
+    url: 'https://economy-translator.vercel.app',
+    siteName: '경제번역기',
+    title: '경제번역기 — 매일 경제를 쉽게',
+    description: '주식·환율·금리 등 경제를 전혀 몰라도 OK. 매일 한국 경제 뉴스를 초보자 언어로 쉽게 정리해드려요.',
+  },
+  twitter: {
+    card: 'summary',
+    title: '경제번역기 — 매일 경제를 쉽게',
+    description: '주식·환율·금리 등 경제를 전혀 몰라도 OK. 매일 한국 경제 뉴스를 초보자 언어로.',
+  },
+  alternates: {
+    canonical: 'https://economy-translator.vercel.app',
+  },
 }
 
 export const viewport: Viewport = {
