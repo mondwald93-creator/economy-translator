@@ -37,8 +37,17 @@ function extractSource(url: string): string {
   }
 }
 
+const HTML_ENTITIES: Record<string, string> = {
+  '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"',
+  '&apos;': "'", '&nbsp;': ' ', '&#39;': "'",
+}
+
 function cleanHtml(text: string): string {
-  return text.replace(/<[^>]+>/g, '').replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ').trim()
+  return text
+    .replace(/<[^>]+>/g, '')
+    .replace(/&[a-z#0-9]+;/gi, m => HTML_ENTITIES[m] ?? '')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 function toKSTDateString(date: Date): string {
@@ -159,38 +168,51 @@ export async function collectAndSaveNews(): Promise<{ saved: number; errors: str
     fetchNaverKeywordNews(20),
   ])
 
-  // 전체 합치고 URL 기준 중복 제거
-  const seen = new Set<string>()
+  // 전체 합치고 URL + 제목 앞 20자 기준 중복 제거
+  const seenUrls = new Set<string>()
+  const seenTitles = new Set<string>()
   const allItems = [...rssItems, ...rankingItems, ...keywordItems].filter(item => {
     const url = item.originallink || item.link
-    if (!url || seen.has(url)) return false
-    seen.add(url)
+    const titleKey = cleanHtml(item.title).slice(0, 20)
+    if (!url || !titleKey) return false
+    if (seenUrls.has(url) || seenTitles.has(titleKey)) return false
+    seenUrls.add(url)
+    seenTitles.add(titleKey)
     return true
   })
 
-  for (const item of allItems) {
-    const title = cleanHtml(item.title)
-    const original_url = item.originallink || item.link
-    if (!title || !original_url) continue
+  // DB에 이미 있는 URL 한 번에 조회
+  const allUrls = allItems.map(item => item.originallink || item.link).filter(Boolean)
+  const { data: existingRows } = await supabase
+    .from('news_articles')
+    .select('original_url')
+    .in('original_url', allUrls)
 
-    const { data: existing } = await supabase
-      .from('news_articles')
-      .select('id')
-      .eq('original_url', original_url)
-      .single()
+  const existingUrls = new Set((existingRows ?? []).map(r => r.original_url))
 
-    if (existing) continue
-
-    const { error } = await supabase.from('news_articles').insert({
-      date: toDateString(item.pubDate),
-      title,
-      summary: '',
-      original_url,
-      source: extractSource(original_url),
+  // 신규 기사만 필터링
+  const newItems = allItems
+    .map(item => {
+      const title = cleanHtml(item.title)
+      const original_url = item.originallink || item.link
+      if (!title || !original_url || existingUrls.has(original_url)) return null
+      return {
+        date: toDateString(item.pubDate),
+        title,
+        summary: '',
+        original_url,
+        source: extractSource(original_url),
+      }
     })
+    .filter((item): item is NonNullable<typeof item> => item !== null)
 
+  // 50개씩 나눠서 일괄 삽입
+  const CHUNK = 50
+  for (let i = 0; i < newItems.length; i += CHUNK) {
+    const chunk = newItems.slice(i, i + CHUNK)
+    const { error } = await supabase.from('news_articles').insert(chunk)
     if (error) errors.push(`저장 실패: ${error.message}`)
-    else saved++
+    else saved += chunk.length
   }
 
   return { saved, errors }

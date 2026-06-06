@@ -63,7 +63,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body className="min-h-screen bg-surface text-ink">
-        <TopBar />
+        <TopBar updatedAt={updatedAt} />
         <GNB updatedAt={updatedAt} />
         <main className="max-w-[900px] mx-auto px-6 py-10">
           {children}
