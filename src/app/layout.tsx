@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import '../styles/globals.css'
 import TopBar from '@/components/layout/TopBar'
 import GNB from '@/components/layout/GNB'
+import { supabase } from '@/lib/supabase'
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://economy-translator.vercel.app'),
@@ -34,7 +35,23 @@ export const viewport: Viewport = {
   initialScale: 1,
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const todayKST = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const { data: briefing } = await supabase
+    .from('briefings')
+    .select('created_at')
+    .eq('date', todayKST)
+    .single()
+
+  const updatedAt = briefing?.created_at
+    ? new Date(briefing.created_at).toLocaleTimeString('ko-KR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Asia/Seoul',
+        hour12: false,
+      })
+    : null
+
   return (
     <html lang="ko">
       <head>
@@ -47,7 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen bg-surface text-ink">
         <TopBar />
-        <GNB />
+        <GNB updatedAt={updatedAt} />
         <main className="max-w-[900px] mx-auto px-6 py-10">
           {children}
         </main>
