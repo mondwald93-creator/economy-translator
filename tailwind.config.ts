@@ -9,26 +9,42 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // 디자인 시스템 (에디토리얼)
         brand: {
-          50: '#f0f9ff',
-          500: '#0ea5e9',
-          600: '#0284c7',
+          green: '#22C55E',
+          'green-dark': '#16A34A',
         },
-        economy: {
-          positive: '#22c55e',
-          negative: '#ef4444',
-          neutral: '#6b7280',
-          warning: '#f59e0b',
+        up: '#16A34A',
+        dn: '#DC2626',
+        ink: {
+          DEFAULT: '#111827',
+          muted: '#6B7280',
+          subtle: '#9CA3AF',
         },
+        line: '#F3F4F6',
+        surface: '#F9FAFB',
+        // 기존 컴포넌트 호환 alias (Phase 3/4에서 순차 제거)
         notion: {
           bg: '#ffffff',
-          sidebar: '#f7f7f5',
-          hover: '#efefed',
-          border: '#e9e9e7',
-          text: '#37352f',
-          secondary: '#6b6b6b',
-          muted: '#9b9b9b',
+          sidebar: '#F9FAFB',
+          hover: '#F3F4F6',
+          border: '#F3F4F6',
+          text: '#111827',
+          secondary: '#6B7280',
+          muted: '#9CA3AF',
         },
+        economy: {
+          positive: '#22C55E',
+          negative: '#DC2626',
+          neutral: '#6B7280',
+          warning: '#F59E0B',
+        },
+      },
+      fontFamily: {
+        sans: ['Noto Sans KR', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+      },
+      borderRadius: {
+        card: '14px',
       },
       typography: {
         DEFAULT: {

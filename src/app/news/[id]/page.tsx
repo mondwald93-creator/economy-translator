@@ -37,35 +37,35 @@ export default async function NewsDetailPage({ params }: { params: { id: string 
   if (!article) {
     return (
       <div className="space-y-4">
-        <Link href="/" className="text-sm text-blue-600 hover:underline">
+        <Link href="/" className="text-sm text-brand-green-dark hover:underline">
           ← 홈으로
         </Link>
-        <div className="bg-white rounded-2xl border border-gray-200 p-6">
-          <p className="text-gray-500">기사를 찾을 수 없어요.</p>
+        <div className="editorial-card">
+          <p className="text-ink-muted">기사를 찾을 수 없어요.</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-4">
-      <Link href="/" className="text-sm text-blue-600 hover:underline">
+    <div className="space-y-4 max-w-2xl">
+      <Link href="/" className="text-sm text-brand-green-dark hover:underline">
         ← 홈으로
       </Link>
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+      <div className="editorial-card space-y-4">
         <div>
-          <p className="text-xs text-blue-500 font-medium mb-2">{article.source}</p>
+          <p className="text-xs text-brand-green font-semibold mb-2">{article.source}</p>
           <div className="flex items-start gap-3">
-            <h1 className="flex-1 text-lg font-bold text-gray-900 leading-relaxed">{article.title}</h1>
+            <h1 className="flex-1 text-lg font-bold text-ink leading-relaxed">{article.title}</h1>
             <BookmarkButton id={params.id} title={article.title} source={article.source} />
           </div>
         </div>
         {article.summary && (
-          <div className="bg-blue-50 rounded-xl p-4">
-            <p className="text-xs font-semibold text-blue-400 uppercase tracking-widest mb-2">
+          <div className="bg-[#F0FDF4] rounded-[14px] p-4 border border-[#BBF7D0]">
+            <p className="text-xs font-semibold text-brand-green uppercase tracking-widest mb-2">
               쉬운 설명
             </p>
-            <p className="text-sm text-gray-700 leading-relaxed">{article.summary}</p>
+            <p className="text-sm text-ink-muted leading-relaxed">{article.summary}</p>
           </div>
         )}
         {article.original_url && (
@@ -73,7 +73,7 @@ export default async function NewsDetailPage({ params }: { params: { id: string 
             href={article.original_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block text-sm text-blue-600 hover:underline"
+            className="inline-block text-sm text-brand-green-dark hover:underline"
           >
             원본 기사 보기 →
           </a>

@@ -31,7 +31,6 @@ export default function DictionaryPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('전체')
 
-  // 검색어 디바운스 (300ms)
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300)
     return () => clearTimeout(timer)
@@ -56,23 +55,23 @@ export default function DictionaryPage() {
   return (
     <div className="space-y-6">
       {/* 헤더 */}
-      <div className="border-l-4 border-blue-500 pl-4 py-1">
+      <div className="border-l-4 border-brand-green pl-4 py-1">
         <p className="section-label">사전</p>
-        <h1 className="text-xl font-bold text-notion-text leading-snug">경제용어 사전</h1>
-        <p className="text-sm text-notion-secondary mt-1">
+        <h1 className="text-xl font-bold text-ink leading-snug">경제용어 사전</h1>
+        <p className="text-sm text-ink-muted mt-1">
           어렵게 느껴지는 경제 용어를 쉬운 말로 설명해드려요
         </p>
       </div>
 
       {/* 검색창 */}
       <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-notion-muted text-sm">🔎</span>
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle text-sm">🔎</span>
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="용어 검색 (예: 금리, 환율, 인플레이션...)"
-          className="w-full pl-9 pr-4 py-2.5 text-sm border border-notion-border rounded-lg text-notion-text placeholder:text-notion-muted focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+          className="w-full pl-9 pr-4 py-2.5 text-sm border border-line rounded-[14px] text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green bg-white"
         />
       </div>
 
@@ -84,8 +83,8 @@ export default function DictionaryPage() {
             onClick={() => setSelectedCategory(cat)}
             className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${
               selectedCategory === cat
-                ? 'bg-blue-500 text-white border-blue-500'
-                : 'bg-white text-notion-secondary border-notion-border hover:bg-notion-hover'
+                ? 'bg-[#F0FDF4] text-[#16A34A] border-[#BBF7D0] font-bold'
+                : 'bg-white text-ink-muted border-line hover:bg-surface'
             }`}
           >
             {cat}
@@ -95,7 +94,7 @@ export default function DictionaryPage() {
 
       {/* 결과 카운트 */}
       {!loading && (
-        <p className="text-xs text-notion-muted">
+        <p className="text-xs text-ink-subtle">
           {debouncedSearch || selectedCategory !== '전체'
             ? `검색 결과 ${terms.length}개`
             : `전체 ${terms.length}개`}
@@ -106,10 +105,10 @@ export default function DictionaryPage() {
       {loading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="border border-notion-border rounded-lg p-4 animate-pulse">
-              <div className="h-4 bg-notion-hover rounded w-1/3 mb-2" />
-              <div className="h-3 bg-notion-hover rounded w-full mb-1.5" />
-              <div className="h-3 bg-notion-hover rounded w-4/5" />
+            <div key={i} className="border border-line rounded-[14px] p-4 animate-pulse bg-white">
+              <div className="h-4 bg-surface rounded w-1/3 mb-2" />
+              <div className="h-3 bg-surface rounded w-full mb-1.5" />
+              <div className="h-3 bg-surface rounded w-4/5" />
             </div>
           ))}
         </div>
@@ -117,11 +116,11 @@ export default function DictionaryPage() {
 
       {/* 결과 없음 */}
       {!loading && terms.length === 0 && (
-        <div className="border border-notion-border rounded-lg p-8 text-center">
-          <p className="text-notion-muted text-sm">검색 결과가 없어요</p>
+        <div className="border border-line rounded-[14px] p-8 text-center bg-white">
+          <p className="text-ink-subtle text-sm">검색 결과가 없어요</p>
           <button
             onClick={() => { setSearch(''); setSelectedCategory('전체') }}
-            className="mt-2 text-xs text-blue-500 underline underline-offset-2"
+            className="mt-2 text-xs text-brand-green-dark underline underline-offset-2"
           >
             전체 보기
           </button>
@@ -132,16 +131,16 @@ export default function DictionaryPage() {
       {!loading && terms.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {terms.map((term) => (
-            <div key={term.id} className="border border-notion-border rounded-lg p-4 bg-white hover:bg-notion-hover transition-colors">
+            <div key={term.id} className="border border-line rounded-[14px] p-4 bg-white hover:bg-surface transition-colors">
               <div className="flex items-start justify-between gap-2 mb-2">
-                <p className="text-sm font-bold text-notion-text leading-snug">{term.term}</p>
+                <p className="text-sm font-bold text-ink leading-snug">{term.term}</p>
                 <span className={`flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[term.category] ?? CATEGORY_COLORS['기타']}`}>
                   {term.category}
                 </span>
               </div>
-              <p className="text-xs text-notion-secondary leading-relaxed mb-2">{term.explanation}</p>
+              <p className="text-xs text-ink-muted leading-relaxed mb-2">{term.explanation}</p>
               {term.example && (
-                <p className="text-[11px] text-notion-muted leading-relaxed border-l-2 border-notion-border pl-2">
+                <p className="text-[11px] text-ink-subtle leading-relaxed border-l-2 border-line pl-2">
                   {term.example}
                 </p>
               )}

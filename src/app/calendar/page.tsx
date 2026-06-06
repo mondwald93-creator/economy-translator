@@ -144,10 +144,10 @@ export default function CalendarPage() {
   return (
     <div className="space-y-6">
       {/* 헤더 */}
-      <div className="border-l-4 border-blue-500 pl-4 py-1">
+      <div className="border-l-4 border-brand-green pl-4 py-1">
         <p className="section-label">달력</p>
-        <h1 className="text-xl font-bold text-notion-text leading-snug">경제 달력</h1>
-        <p className="text-sm text-notion-secondary mt-1">
+        <h1 className="text-xl font-bold text-ink leading-snug">경제 달력</h1>
+        <p className="text-sm text-ink-muted mt-1">
           금리 발표일, 물가 지표 등 주요 경제 일정을 미리 확인하세요
         </p>
       </div>
@@ -160,8 +160,8 @@ export default function CalendarPage() {
             onClick={() => { setCountryFilter(c); setSelectedDate(null) }}
             className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${
               countryFilter === c
-                ? 'bg-blue-500 text-white border-blue-500'
-                : 'bg-white text-notion-secondary border-notion-border hover:bg-notion-hover'
+                ? 'bg-[#F0FDF4] text-[#16A34A] border-[#BBF7D0] font-bold'
+                : 'bg-white text-ink-muted border-line hover:bg-surface'
             }`}
           >
             {c === '한국' ? '🇰🇷 한국' : c === '미국' ? '🇺🇸 미국' : '전체'}
@@ -173,27 +173,27 @@ export default function CalendarPage() {
       <div className="flex items-center justify-between">
         <button
           onClick={prevMonth}
-          className="px-3 py-1.5 text-sm rounded-md hover:bg-notion-hover text-notion-secondary transition-colors"
+          className="px-3 py-1.5 text-sm rounded-md hover:bg-surface text-ink-muted transition-colors"
         >
           ← 이전
         </button>
-        <h2 className="text-base font-bold text-notion-text">{year}년 {month + 1}월</h2>
+        <h2 className="text-base font-bold text-ink">{year}년 {month + 1}월</h2>
         <button
           onClick={nextMonth}
-          className="px-3 py-1.5 text-sm rounded-md hover:bg-notion-hover text-notion-secondary transition-colors"
+          className="px-3 py-1.5 text-sm rounded-md hover:bg-surface text-ink-muted transition-colors"
         >
           다음 →
         </button>
       </div>
 
       {/* 달력 그리드 */}
-      <div className="border border-notion-border rounded-lg overflow-hidden">
-        <div className="grid grid-cols-7 bg-notion-hover border-b border-notion-border">
+      <div className="border border-line rounded-[14px] overflow-hidden bg-white">
+        <div className="grid grid-cols-7 bg-surface border-b border-line">
           {WEEKDAYS.map((d, i) => (
             <div
               key={d}
               className={`text-center text-xs font-semibold py-2 ${
-                i === 5 ? 'text-blue-400' : i === 6 ? 'text-red-400' : 'text-notion-secondary'
+                i === 5 ? 'text-brand-green' : i === 6 ? 'text-red-400' : 'text-ink-muted'
               }`}
             >
               {d}
@@ -201,10 +201,10 @@ export default function CalendarPage() {
           ))}
         </div>
 
-        <div className="grid grid-cols-7 divide-x divide-y divide-notion-border">
+        <div className="grid grid-cols-7 divide-x divide-y divide-line">
           {calendarDays.map((day, i) => {
             if (!day) {
-              return <div key={`e-${i}`} className="min-h-[64px] bg-notion-hover/20" />
+              return <div key={`e-${i}`} className="min-h-[64px] bg-surface/50" />
             }
 
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
@@ -218,18 +218,18 @@ export default function CalendarPage() {
                 key={dateStr}
                 onClick={() => events.length > 0 && setSelectedDate(isSelected ? null : dateStr)}
                 className={`min-h-[64px] p-1.5 transition-colors ${
-                  events.length > 0 ? 'cursor-pointer hover:bg-notion-hover' : ''
-                } ${isSelected ? 'bg-blue-50' : ''}`}
+                  events.length > 0 ? 'cursor-pointer hover:bg-surface' : ''
+                } ${isSelected ? 'bg-[#F0FDF4]' : ''}`}
               >
                 <span
                   className={`inline-flex items-center justify-center w-6 h-6 text-xs font-medium rounded-full ${
                     isToday
-                      ? 'bg-blue-500 text-white'
+                      ? 'bg-brand-green text-white'
                       : dow === 6
                       ? 'text-red-400'
                       : dow === 5
-                      ? 'text-blue-400'
-                      : 'text-notion-text'
+                      ? 'text-brand-green'
+                      : 'text-ink'
                   }`}
                 >
                   {day}
@@ -238,13 +238,13 @@ export default function CalendarPage() {
                   {events.slice(0, 2).map((e, ei) => (
                     <div key={ei} className="flex items-center gap-0.5">
                       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${CAT_STYLE[e.category].dot}`} />
-                      <span className="text-[10px] text-notion-secondary truncate leading-tight">
+                      <span className="text-[10px] text-ink-muted truncate leading-tight">
                         {e.title.length > 8 ? e.title.slice(0, 7) + '…' : e.title}
                       </span>
                     </div>
                   ))}
                   {events.length > 2 && (
-                    <span className="text-[10px] text-notion-muted">+{events.length - 2}개 더</span>
+                    <span className="text-[10px] text-ink-subtle">+{events.length - 2}개 더</span>
                   )}
                 </div>
               </div>
@@ -254,7 +254,7 @@ export default function CalendarPage() {
       </div>
 
       {/* 범례 */}
-      <div className="flex flex-wrap gap-4 text-xs text-notion-secondary">
+      <div className="flex flex-wrap gap-4 text-xs text-ink-muted">
         {(Object.entries(CAT_STYLE) as [keyof typeof CAT_STYLE, typeof CAT_STYLE[keyof typeof CAT_STYLE]][]).map(([cat, style]) => (
           <span key={cat} className="flex items-center gap-1.5">
             <span className={`w-2 h-2 rounded-full ${style.dot}`} />
@@ -266,34 +266,34 @@ export default function CalendarPage() {
 
       {/* 선택된 날짜 상세 */}
       {selectedDate && selectedEvents.length > 0 && (
-        <div className="border border-blue-200 rounded-lg p-4 bg-blue-50/50">
+        <div className="border border-[#BBF7D0] rounded-[14px] p-4 bg-[#F0FDF4]">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-bold text-notion-text">
+            <p className="text-sm font-bold text-ink">
               {parseInt(selectedDate.split('-')[1])}월 {parseInt(selectedDate.split('-')[2])}일 일정
             </p>
             <button
               onClick={() => setSelectedDate(null)}
-              className="text-xs text-notion-muted hover:text-notion-secondary"
+              className="text-xs text-ink-subtle hover:text-ink-muted"
             >
               닫기 ✕
             </button>
           </div>
           <div className="space-y-2.5">
             {selectedEvents.map((e, i) => (
-              <div key={i} className="bg-white rounded-lg border border-notion-border p-3">
+              <div key={i} className="bg-white rounded-[14px] border border-line p-3">
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${CAT_STYLE[e.category].badge}`}>
                     {e.category}
                   </span>
-                  <span className="text-[11px] text-notion-muted">
+                  <span className="text-[11px] text-ink-subtle">
                     {e.country === '한국' ? '🇰🇷 한국' : '🇺🇸 미국'}
                   </span>
                   {e.importance === 'high' && (
                     <span className="text-[10px] text-red-500 font-medium">★ 중요</span>
                   )}
                 </div>
-                <p className="text-sm font-semibold text-notion-text">{e.title}</p>
-                <p className="text-xs text-notion-secondary mt-1 leading-relaxed">{e.description}</p>
+                <p className="text-sm font-semibold text-ink">{e.title}</p>
+                <p className="text-xs text-ink-muted mt-1 leading-relaxed">{e.description}</p>
               </div>
             ))}
           </div>
@@ -302,12 +302,12 @@ export default function CalendarPage() {
 
       {/* 이달의 일정 목록 */}
       <div>
-        <p className="text-sm font-bold text-notion-text mb-3">
+        <p className="text-sm font-bold text-ink mb-3">
           {upcomingEvents.length > 0 ? '다가오는 일정' : `${month + 1}월 전체 일정`}
         </p>
         {monthEvents.length === 0 ? (
-          <div className="border border-notion-border rounded-lg p-8 text-center">
-            <p className="text-sm text-notion-muted">이달 일정이 없어요</p>
+          <div className="border border-line rounded-[14px] p-8 text-center bg-white">
+            <p className="text-sm text-ink-subtle">이달 일정이 없어요</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -317,25 +317,25 @@ export default function CalendarPage() {
                 <div
                   key={i}
                   onClick={() => setSelectedDate(e.date)}
-                  className="flex items-start gap-3 p-3 border border-notion-border rounded-lg bg-white hover:bg-notion-hover cursor-pointer transition-colors"
+                  className="flex items-start gap-3 p-3 border border-line rounded-[14px] bg-white hover:bg-surface cursor-pointer transition-colors"
                 >
                   <div className="flex-shrink-0 text-center w-10">
-                    <span className="text-[10px] text-notion-muted block">{parseInt(m)}월</span>
-                    <span className="text-lg font-bold text-notion-text leading-tight">{parseInt(d)}</span>
+                    <span className="text-[10px] text-ink-subtle block">{parseInt(m)}월</span>
+                    <span className="text-lg font-bold text-ink leading-tight">{parseInt(d)}</span>
                   </div>
                   <div className="flex-1 min-w-0 pt-0.5">
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${CAT_STYLE[e.category].badge}`}>
                         {e.category}
                       </span>
-                      <span className="text-[10px] text-notion-muted">
+                      <span className="text-[10px] text-ink-subtle">
                         {e.country === '한국' ? '🇰🇷' : '🇺🇸'}
                       </span>
                       {e.importance === 'high' && (
                         <span className="text-[10px] text-red-500 font-medium">★</span>
                       )}
                     </div>
-                    <p className="text-sm font-medium text-notion-text">{e.title}</p>
+                    <p className="text-sm font-medium text-ink">{e.title}</p>
                   </div>
                 </div>
               )
