@@ -6,7 +6,7 @@ interface BriefingAIResult {
   summary: string
   dailyTerm: { term: string; category: string; explanation: string }
   indicatorExplanations: { name: string; easyExplanation: string }[]
-  top3Indices: number[]
+  top3Ids: string[]
   healthCheck: HealthCheckItem[]
   connections: ConnectionItem[]
 }
@@ -20,9 +20,17 @@ export async function generateMainBriefing(
     ? indicators.map(i => `- ${i.name}: ${i.value} (전일 대비 ${i.change})`).join('\n')
     : '- 지표 데이터를 가져오지 못했습니다'
 
-  const titleList = articles.slice(0, 25).map((a, i) => `${i}. ${a.title}`).join('\n')
+  // 한국 경제 관련 기사 우선 정렬 (외신·미국 뉴스는 뒤로)
+  const foreignKeywords = ['미국', '미 ', '美 ', '美국', '연준', 'Fed ', '중국', '中 ', '일본', '日 ', '유럽', '월가', '나스닥', '다우', 'S&P', '뉴욕증시']
+  const koreanFirst = [...articles].sort((a, b) => {
+    const aForeign = foreignKeywords.some(k => a.title.includes(k)) ? 1 : 0
+    const bForeign = foreignKeywords.some(k => b.title.includes(k)) ? 1 : 0
+    return aForeign - bForeign
+  })
+  const candidateArticles = koreanFirst.slice(0, 30)
+  const titleList = candidateArticles.map((a, i) => `${i}. [ID:${a.id}] ${a.title}`).join('\n')
 
-  const prompt = `오늘의 경제 뉴스를 바탕으로 다음 내용을 JSON으로 생성해주세요.
+  const prompt = `당신은 한국 경제 전문 브리핑 서비스입니다. 오늘의 한국 경제 뉴스를 바탕으로 다음 내용을 JSON으로 생성해주세요.
 
 ## 오늘의 주요 지표
 ${indicatorList}
@@ -32,7 +40,7 @@ ${titleList}
 
 다음 JSON 형식으로만 응답하세요 (다른 텍스트 없이):
 {
-  "headline": "오늘 핵심 사건 한 줄\\n결과·영향 한 줄 (두 줄을 \\n으로 구분, 구어체 ~했어요 형식. 첫 줄은 반드시 18자 이내 짧게. 예: '미 연준이 금리를 또 동결했어요\\n코스피가 반등했고, 환율도 내렸어요')",
+  "headline": "오늘 핵심 사건 한 줄\\n결과·영향 한 줄 (두 줄을 \\n으로 구분, 구어체 ~했어요 형식. 첫 줄은 반드시 18자 이내 짧게. 예: '코스피가 크게 떨어졌어요\\n환율이 오르면서 생활물가 압박이 커졌어요')",
   "summary": "오늘 경제 전체를 초보자 언어로 정리한 3~5문단 요약 글",
   "dailyTerm": {
     "term": "오늘 뉴스에서 가장 중요한 경제 용어 1개",
@@ -44,7 +52,7 @@ ${titleList}
     { "name": "환율(원/달러)", "easyExplanation": "오늘 수치를 바탕으로 초보자에게 1~2문장 설명" },
     { "name": "코스닥", "easyExplanation": "오늘 수치를 바탕으로 초보자에게 1~2문장 설명" }
   ],
-  "top3Indices": [0, 1, 2],
+  "top3Ids": ["기사ID_1", "기사ID_2", "기사ID_3"],
   "healthCheck": [
     { "category": "물가", "status": "warning", "summary": "밥값·전기료 등 생활물가가 계속 오르고 있어요" },
     { "category": "소비", "status": "normal", "summary": "..." },
@@ -60,10 +68,12 @@ ${titleList}
 }
 
 규칙:
+- 이 서비스는 한국 경제 전문입니다. 헤드라인·TOP3·healthCheck 모두 한국 경제 상황을 중심으로 작성하세요
+- 미국·중국 등 해외 뉴스는 한국 경제에 직접 영향을 줄 때만 언급하고, 단독 TOP3로 선정하지 마세요
 - status는 반드시 "good", "normal", "warning" 중 하나
 - healthCheck는 반드시 6개 (물가·소비·수출·고용·부동산·금융 순서)
-- top3Indices는 위 뉴스 목록에서 오늘 가장 중요한 기사 3개의 인덱스 (0-based)
-- connections는 오늘 뉴스에서 가장 핵심적인 경제 흐름 3~5개 (짧은 키워드로)`
+- top3Ids는 위 뉴스 목록에서 [ID:xxxx] 형식의 ID를 그대로 사용해 3개 선정. 미국·중국·일본·유럽 등 해외 경제 뉴스는 절대 TOP3에 넣지 마세요. 한국 기업·증시·부동산·정책·소비·고용 관련 기사를 우선하세요
+- connections는 오늘 한국 경제에서 가장 핵심적인 흐름 3~5개 (짧은 키워드로)`
 
   const res = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
