@@ -23,7 +23,7 @@ export default async function Home() {
       <div className="rounded-card border border-line p-8 text-center">
         <p className="text-2xl mb-3">⏳</p>
         <p className="text-sm font-medium text-ink mb-1">브리핑 준비 중이에요</p>
-        <p className="text-xs text-ink-muted">매일 오전 8시에 업데이트돼요. 잠시 후 다시 확인해 주세요.</p>
+        <p className="text-xs text-ink-muted">매일 오전 9시에 업데이트돼요. 잠시 후 다시 확인해 주세요.</p>
       </div>
     )
   }

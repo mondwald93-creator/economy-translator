@@ -30,7 +30,7 @@ export default function HeadlineBanner({ headline, summary }: Props) {
           {dateStr}
         </span>
         <span className="text-[11px] text-[#9CA3AF] flex items-center gap-1">
-          <span className="text-[13px]">↻</span> 내일 오전 8시에 새 브리핑이 올라와요
+          <span className="text-[13px]">↻</span> 내일 오전 9시에 새 브리핑이 올라와요
         </span>
       </div>
 
@@ -64,7 +64,7 @@ export default function HeadlineBanner({ headline, summary }: Props) {
         style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '10px 16px', fontSize: 13, marginBottom: 32 }}
       >
         <span style={{ fontSize: 16 }}>⏰</span>
-        <span><strong className="font-bold">오늘의 브리핑</strong> — 내일 오전 8시에 새 내용으로 바뀌어요</span>
+        <span><strong className="font-bold">오늘의 브리핑</strong> — 내일 오전 9시에 새 내용으로 바뀌어요</span>
         <span className="ml-auto font-semibold text-[#B45309] text-xs">D-day</span>
       </div>
     </div>

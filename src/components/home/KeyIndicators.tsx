@@ -34,7 +34,7 @@ export default function KeyIndicators({ indicators, healthCheck }: Props) {
   const reason = healthCheck && healthCheck.length > 0 ? getGradeReason(healthCheck) : null
 
   return (
-    <div className="grid grid-cols-[200px_1fr] gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-4">
 
       {/* 왼쪽: 경제 컨디션 카드 */}
       {grade && (
@@ -45,8 +45,8 @@ export default function KeyIndicators({ indicators, healthCheck }: Props) {
         </div>
       )}
 
-      {/* 오른쪽: 지표 그리드 — 카드 수에 맞게 열 수 조정 */}
-      <div className={`grid gap-3 ${indicators.length === 4 ? 'grid-cols-4' : indicators.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+      {/* 오른쪽: 지표 그리드 — 모바일 2열, 데스크탑 카드 수에 맞게 열 수 조정 */}
+      <div className={`grid gap-3 grid-cols-2 ${indicators.length === 4 ? 'sm:grid-cols-4' : indicators.length === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
         {indicators.map((item) => {
           const isUp = item.direction === 'up'
           const isDown = item.direction === 'down'
