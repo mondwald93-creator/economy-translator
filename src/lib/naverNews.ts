@@ -40,32 +40,50 @@ function cleanHtml(text: string): string {
   return text.replace(/<[^>]+>/g, '').replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ').trim()
 }
 
+function toKSTDateString(date: Date): string {
+  return new Date(date.getTime() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
+}
+
 function toDateString(pubDate: string): string {
   const d = new Date(pubDate)
-  return isNaN(d.getTime()) ? new Date().toISOString().split('T')[0] : d.toISOString().split('T')[0]
+  return isNaN(d.getTime()) ? toKSTDateString(new Date()) : toKSTDateString(d)
 }
+
+const SEARCH_KEYWORDS = ['한국 경제', '코스피 코스닥', '환율 금리', '부동산 경제', '물가 소비']
 
 async function fetchNaverEconomyNews(display = 20): Promise<NaverNewsItem[]> {
   const clientId = process.env.NAVER_CLIENT_ID
   const clientSecret = process.env.NAVER_CLIENT_SECRET
   if (!clientId || !clientSecret) throw new Error('NAVER_CLIENT_ID / NAVER_CLIENT_SECRET 환경변수 없음')
 
-  const url = `https://openapi.naver.com/v1/search/news.json?query=${encodeURIComponent('한국 경제')}&display=${display}&sort=date`
-  const res = await fetch(url, {
-    headers: {
-      'X-Naver-Client-Id': clientId,
-      'X-Naver-Client-Secret': clientSecret,
-    },
-    next: { revalidate: 0 },
-  })
+  const results = await Promise.all(
+    SEARCH_KEYWORDS.map(async (keyword) => {
+      const url = `https://openapi.naver.com/v1/search/news.json?query=${encodeURIComponent(keyword)}&display=${display}&sort=date`
+      const res = await fetch(url, {
+        headers: {
+          'X-Naver-Client-Id': clientId,
+          'X-Naver-Client-Secret': clientSecret,
+        },
+        next: { revalidate: 0 },
+      })
+      if (!res.ok) return []
+      const data = await res.json()
+      return (data.items ?? []) as NaverNewsItem[]
+    })
+  )
 
-  if (!res.ok) throw new Error(`네이버 API 호출 실패: ${res.status}`)
-  const data = await res.json()
-  return data.items ?? []
+  // 중복 URL 제거 후 합치기
+  const seen = new Set<string>()
+  return results.flat().filter(item => {
+    const url = item.originallink || item.link
+    if (seen.has(url)) return false
+    seen.add(url)
+    return true
+  })
 }
 
 export async function collectAndSaveNews(): Promise<{ saved: number; errors: string[] }> {
-  const today = new Date().toISOString().split('T')[0]
+  const today = toKSTDateString(new Date())
   const errors: string[] = []
   let saved = 0
 
@@ -114,7 +132,7 @@ export async function collectAndSaveNews(): Promise<{ saved: number; errors: str
 }
 
 export async function getTodayArticles() {
-  const today = new Date().toISOString().split('T')[0]
+  const today = toKSTDateString(new Date())
   const { data, error } = await supabase
     .from('news_articles')
     .select('*')
