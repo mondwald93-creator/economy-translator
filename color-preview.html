@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>경제번역기 — 업그레이드 D 미리보기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif; background: #F9FAFB; }
+
+/* ── 상단 알림바 ── */
+.topbar {
+  background: #111827;
+  padding: 8px 0;
+  text-align: center;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.topbar .live-dot {
+  width: 7px; height: 7px; background: #22C55E;
+  border-radius: 50%; animation: pulse 1.8s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.topbar span { color: #9CA3AF; font-size: 12px; }
+.topbar strong { color: #F9FAFB; font-size: 12px; }
+.topbar .sep { color: #374151; }
+
+/* ── GNB ── */
+.gnb {
+  background: #fff;
+  border-bottom: 1px solid #F3F4F6;
+  padding: 0 48px;
+  height: 60px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+}
+.gnb .logo {
+  font-size: 17px; font-weight: 900; color: #111827;
+  letter-spacing: -0.8px;
+}
+.gnb .logo .dot { color: #22C55E; }
+.gnb nav { display: flex; gap: 6px; }
+.gnb nav a {
+  color: #6B7280; font-size: 13px; font-weight: 500;
+  text-decoration: none; padding: 6px 14px; border-radius: 8px;
+  transition: all 0.15s;
+}
+.gnb nav a.active { background: #F0FDF4; color: #16A34A; font-weight: 700; }
+.gnb .update-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: #F0FDF4; border: 1px solid #BBF7D0;
+  border-radius: 20px; padding: 5px 12px;
+  font-size: 11px; color: #16A34A; font-weight: 600;
+}
+.gnb .update-chip .dot2 {
+  width: 6px; height: 6px; background: #22C55E;
+  border-radius: 50%;
+}
+
+/* ── 메인 컨테이너 ── */
+.main { max-width: 900px; margin: 0 auto; padding: 40px 24px 60px; }
+
+/* ── 날짜 + 헤로 ── */
+.date-row {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
+}
+.date-chip {
+  background: #F3F4F6; border-radius: 6px;
+  padding: 4px 10px; font-size: 12px; color: #6B7280; font-weight: 500;
+}
+.refresh-chip {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; color: #9CA3AF;
+}
+.refresh-chip .arrow { font-size: 13px; }
+
+.hero h1 {
+  font-size: 36px; font-weight: 900; color: #111827;
+  line-height: 1.25; letter-spacing: -1.2px;
+  margin-bottom: 18px;
+}
+.hero h1 em { font-style: normal; color: #16A34A; }
+
+.lead {
+  font-size: 15px; color: #4B5563; line-height: 1.8;
+  border-left: 3px solid #22C55E;
+  padding-left: 16px;
+  max-width: 640px;
+  margin-bottom: 32px;
+}
+
+/* ── 컨디션 + 지표 row ── */
+.stats-row {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 16px;
+  margin-bottom: 40px;
+}
+
+.condition-card {
+  background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+  border: 1px solid #A7F3D0;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.condition-card .label {
+  font-size: 11px; font-weight: 700; color: #059669;
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;
+}
+.condition-card .grade {
+  font-size: 48px; font-weight: 900; color: #065F46;
+  line-height: 1; letter-spacing: -2px; margin-bottom: 6px;
+}
+.condition-card .desc {
+  font-size: 12px; color: #059669; line-height: 1.5;
+}
+
+.indicators {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+}
+.ind-card {
+  background: #fff;
+  border: 1px solid #F3F4F6;
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.ind-card .iname {
+  font-size: 11px; color: #9CA3AF; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
+}
+.ind-card .ival {
+  font-size: 22px; font-weight: 900; color: #111827;
+  letter-spacing: -0.5px; margin-bottom: 4px;
+}
+.ind-card .ichg {
+  font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 3px;
+}
+.ichg.up { color: #16A34A; }
+.ichg.dn { color: #DC2626; }
+.ichg.flat { color: #9CA3AF; }
+.ichg .bar {
+  height: 3px; border-radius: 2px; margin-top: 6px; width: 100%;
+}
+.bar.up-bar { background: linear-gradient(90deg, #22C55E, #86EFAC); }
+.bar.dn-bar { background: linear-gradient(90deg, #EF4444, #FCA5A5); }
+.bar.flat-bar { background: #E5E7EB; }
+
+/* ── 뉴스 섹션 ── */
+.news-section { margin-bottom: 40px; }
+.section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px;
+}
+.section-title {
+  font-size: 13px; font-weight: 700; color: #111827;
+  display: flex; align-items: center; gap: 8px;
+}
+.news-count {
+  display: flex; gap: 5px;
+}
+.news-count span {
+  width: 20px; height: 4px; border-radius: 2px; background: #E5E7EB;
+}
+.news-count span.done { background: #22C55E; }
+
+.progress-text { font-size: 12px; color: #9CA3AF; }
+
+.news-list { display: flex; flex-direction: column; gap: 1px; }
+
+.news-item {
+  background: #fff;
+  border: 1px solid #F3F4F6;
+  border-radius: 14px;
+  padding: 22px 24px;
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 16px;
+  align-items: start;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.news-item:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  border-color: #D1FAE5;
+}
+.news-num {
+  font-size: 24px; font-weight: 900; color: #E5E7EB;
+  line-height: 1; padding-top: 2px;
+}
+.news-content .ntag {
+  display: inline-block;
+  background: #F0FDF4; color: #16A34A;
+  font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 4px;
+  margin-bottom: 8px;
+}
+.news-content .ntag.red { background: #FEF2F2; color: #DC2626; }
+.news-content .ntag.blue { background: #EFF6FF; color: #2563EB; }
+.news-content h3 {
+  font-size: 15px; font-weight: 700; color: #111827;
+  line-height: 1.5; margin-bottom: 6px;
+}
+.news-content p {
+  font-size: 13px; color: #6B7280; line-height: 1.7;
+}
+.news-arrow {
+  color: #D1D5DB; font-size: 18px; padding-top: 4px;
+}
+
+/* ── 오늘의 용어 ── */
+.term-section {
+  background: #111827;
+  border-radius: 16px;
+  padding: 24px 28px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.term-left .tlabel {
+  font-size: 11px; font-weight: 700; color: #6B7280;
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;
+}
+.term-left h3 {
+  font-size: 20px; font-weight: 900; color: #F9FAFB;
+  margin-bottom: 6px;
+}
+.term-left p {
+  font-size: 13px; color: #9CA3AF; line-height: 1.6; max-width: 480px;
+}
+.term-chip {
+  background: #22C55E; color: #fff;
+  font-size: 12px; font-weight: 700;
+  padding: 8px 18px; border-radius: 8px;
+  white-space: nowrap;
+}
+
+/* ── 긴박감 배너 ── */
+.urgency-bar {
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-radius: 10px;
+  padding: 10px 16px;
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 32px;
+  font-size: 13px; color: #92400E;
+}
+.urgency-bar .icon { font-size: 16px; }
+.urgency-bar strong { font-weight: 700; }
+.urgency-bar .time { margin-left: auto; font-size: 12px; color: #B45309; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- 상단 알림바 -->
+<div class="topbar">
+  <div class="live-dot"></div>
+  <strong>오늘 브리핑 업데이트 완료</strong>
+  <span class="sep">·</span>
+  <span>매일 오전 8시, 새 브리핑이 올라와요</span>
+</div>
+
+<!-- GNB -->
+<div class="gnb">
+  <span class="logo">경제번역기<span class="dot">.</span></span>
+  <nav>
+    <a href="#" class="active">홈</a>
+    <a href="#">링크분석기</a>
+    <a href="#">용어사전</a>
+    <a href="#">달력</a>
+    <a href="#">북마크</a>
+  </nav>
+  <div class="update-chip">
+    <div class="dot2"></div>
+    오늘 오전 8:01 업데이트
+  </div>
+</div>
+
+<!-- 메인 -->
+<div class="main">
+
+  <!-- 날짜 -->
+  <div class="date-row">
+    <span class="date-chip">목요일 · 2026년 6월 5일</span>
+    <span class="refresh-chip"><span class="arrow">↻</span> 내일 오전 8시에 새 브리핑이 올라와요</span>
+  </div>
+
+  <!-- 헤로 -->
+  <div class="hero">
+    <h1>미 연준이 금리를 또 동결했어요<br><em>코스피가 반등했고, 환율도 내렸어요</em></h1>
+    <p class="lead">
+      미국이 기준금리를 그대로 유지하기로 했어요. 이 소식에 외국 투자자들이 한국 주식을 더 사들이면서 코스피가 올랐고, 달러 값도 내려가서 원화가 강해졌어요.
+    </p>
+  </div>
+
+  <!-- 긴박감 배너 -->
+  <div class="urgency-bar">
+    <span class="icon">⏰</span>
+    <span><strong>오늘의 브리핑</strong> — 내일 오전 8시에 새 내용으로 바뀌어요</span>
+    <span class="time">D-day</span>
+  </div>
+
+  <!-- 컨디션 + 지표 -->
+  <div class="stats-row">
+    <div class="condition-card">
+      <div class="label">오늘 경제 컨디션</div>
+      <div class="grade">B+</div>
+      <div class="desc">전반적으로 양호해요.<br>증시·환율 모두 긍정적 신호</div>
+    </div>
+    <div class="indicators">
+      <div class="ind-card">
+        <div class="iname">코스피</div>
+        <div class="ival">2,651</div>
+        <div class="ichg up">▲ +1.24%</div>
+        <div class="bar up-bar"></div>
+      </div>
+      <div class="ind-card">
+        <div class="iname">원 / 달러</div>
+        <div class="ival">1,321</div>
+        <div class="ichg dn">▼ -0.30%</div>
+        <div class="bar dn-bar"></div>
+      </div>
+      <div class="ind-card">
+        <div class="iname">기준금리</div>
+        <div class="ival">3.50%</div>
+        <div class="ichg flat">— 동결</div>
+        <div class="bar flat-bar"></div>
+      </div>
+      <div class="ind-card">
+        <div class="iname">코스닥</div>
+        <div class="ival">862</div>
+        <div class="ichg up">▲ +1.31%</div>
+        <div class="bar up-bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 뉴스 섹션 -->
+  <div class="news-section">
+    <div class="section-header">
+      <div class="section-title">
+        오늘 꼭 알아야 할 뉴스
+        <div class="news-count">
+          <span class="done"></span>
+          <span class="done"></span>
+          <span></span>
+        </div>
+      </div>
+      <span class="progress-text">3개 중 2개 읽었어요</span>
+    </div>
+
+    <div class="news-list">
+      <div class="news-item">
+        <div class="news-num">01</div>
+        <div class="news-content">
+          <span class="ntag">주식</span>
+          <h3>연준이 금리를 안 올렸어요 — 코스피가 2,650까지 올랐어요</h3>
+          <p>미국이 금리를 안 올리면 달러가 약해지고, 그러면 투자자들이 한국 같은 신흥국 주식을 더 사게 돼요. 오늘 외국인이 3,200억원어치 순매수했어요.</p>
+        </div>
+        <div class="news-arrow">›</div>
+      </div>
+
+      <div class="news-item">
+        <div class="news-num">02</div>
+        <div class="news-content">
+          <span class="ntag red">환율</span>
+          <h3>달러 값이 내려갔어요 — 수입 물가가 안정될 수 있어요</h3>
+          <p>원달러 환율이 1,321원으로 내렸어요. 달러가 싸지면 수입하는 식품, 에너지 가격도 내려가서 물가가 안정될 가능성이 높아요.</p>
+        </div>
+        <div class="news-arrow">›</div>
+      </div>
+
+      <div class="news-item">
+        <div class="news-num">03</div>
+        <div class="news-content">
+          <span class="ntag blue">부동산</span>
+          <h3>서울 아파트 사려는 사람이 4개월 만에 늘었어요</h3>
+          <p>금리가 더 안 오를 것 같다는 기대감에 집 사려는 문의가 늘었어요. 아직 가격이 크게 오른 건 아니고, 분위기가 조금 풀렸다는 신호예요.</p>
+        </div>
+        <div class="news-arrow">›</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 오늘의 경제용어 -->
+  <div class="term-section">
+    <div class="term-left">
+      <div class="tlabel">오늘의 경제용어</div>
+      <h3>금리 동결</h3>
+      <p>중앙은행이 기준금리를 올리지도 내리지도 않고 그대로 유지하는 것. 경기가 너무 뜨겁지도, 너무 차갑지도 않을 때 주로 선택해요.</p>
+    </div>
+    <div class="term-chip">용어 더 보기 →</div>
+  </div>
+
+</div>
+
+</body>
+</html>

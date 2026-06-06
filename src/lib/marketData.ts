@@ -28,12 +28,24 @@ function buildIndicator(
 ): Omit<KeyIndicator, 'easyExplanation'> {
   const prev = meta.previousClose ?? meta.chartPreviousClose ?? meta.regularMarketPrice
   const change = meta.regularMarketPrice - prev
+  const pct = prev !== 0 ? (change / prev) * 100 : 0
+  const arrow = change > 0 ? '▲' : change < 0 ? '▼' : '—'
+  const changeStr = change === 0
+    ? '— 보합'
+    : `${arrow} ${change > 0 ? '+' : ''}${pct.toFixed(2)}%`
   return {
     name,
     value: formatter(meta.regularMarketPrice),
-    change: (change >= 0 ? '+' : '') + formatter(change),
+    change: changeStr,
     direction: change > 0 ? 'up' : change < 0 ? 'down' : 'flat',
   }
+}
+
+const BASE_RATE_INDICATOR: Omit<KeyIndicator, 'easyExplanation'> = {
+  name: '기준금리',
+  value: '3.50%',
+  change: '— 동결',
+  direction: 'flat',
 }
 
 export async function getMarketIndicators(): Promise<Omit<KeyIndicator, 'easyExplanation'>[]> {
@@ -45,9 +57,10 @@ export async function getMarketIndicators(): Promise<Omit<KeyIndicator, 'easyExp
 
   const results: Omit<KeyIndicator, 'easyExplanation'>[] = []
 
-  if (kospi) results.push(buildIndicator('코스피', kospi, v => v.toFixed(2)))
-  if (usdKrw) results.push(buildIndicator('환율(원/달러)', usdKrw, v => v.toFixed(1) + '원'))
-  if (kosdaq) results.push(buildIndicator('코스닥', kosdaq, v => v.toFixed(2)))
+  if (kospi) results.push(buildIndicator('코스피', kospi, v => v.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })))
+  if (usdKrw) results.push(buildIndicator('환율(원/달러)', usdKrw, v => v.toLocaleString('ko-KR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '원'))
+  results.push(BASE_RATE_INDICATOR)
+  if (kosdaq) results.push(buildIndicator('코스닥', kosdaq, v => v.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })))
 
   return results
 }

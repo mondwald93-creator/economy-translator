@@ -20,10 +20,10 @@ export default async function Home() {
 
   if (!briefing) {
     return (
-      <div className="border-l-4 border-gray-200 pl-4 py-1">
-        <p className="text-sm text-notion-muted">
-          오늘 브리핑이 준비 중이에요. 잠시 후 다시 확인해 주세요.
-        </p>
+      <div className="rounded-card border border-line p-8 text-center">
+        <p className="text-2xl mb-3">⏳</p>
+        <p className="text-sm font-medium text-ink mb-1">브리핑 준비 중이에요</p>
+        <p className="text-xs text-ink-muted">매일 오전 8시에 업데이트돼요. 잠시 후 다시 확인해 주세요.</p>
       </div>
     )
   }
@@ -42,12 +42,12 @@ export default async function Home() {
   }
 
   return (
-    <div className="space-y-8">
-      <HeadlineBanner headline={briefing.headline ?? null} />
+    <div className="space-y-10">
+      <HeadlineBanner headline={briefing.headline ?? null} summary={briefing.summary ?? null} />
+      <KeyIndicators indicators={indicators} healthCheck={(briefing.health_check as HealthCheckItem[]) ?? null} />
       <EconomyHealthCheck healthCheck={(briefing.health_check as HealthCheckItem[]) ?? null} />
       <Top3NewsSection top3Analysis={(briefing.top3_analysis as Top3AnalysisItem[]) ?? null} />
       <ConnectionDiagram connections={(briefing.connections as ConnectionItem[]) ?? null} />
-      <KeyIndicators indicators={indicators} />
       <NewsCardList articles={articles} />
       <EconomyStudy dailyTerm={dailyTerm} />
     </div>
