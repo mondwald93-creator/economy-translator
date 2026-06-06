@@ -34,11 +34,11 @@ export async function POST() {
   const indicators = await getMarketIndicators()
   const briefingResult = await generateMainBriefing(articleInputs, indicators)
 
-  // TOP3 기사 추출
-  const top3Articles = (briefingResult.top3Indices ?? [0, 1, 2])
-    .filter(i => i < articles.length)
+  // TOP3 기사 추출 (ID 기반)
+  const top3Articles = (briefingResult.top3Ids ?? [])
     .slice(0, 3)
-    .map(i => articleInputs[i])
+    .map(id => articleInputs.find(a => a.id === id))
+    .filter((a): a is { id: string; title: string } => !!a)
 
   // 기사 요약 (미완료분) + TOP3 6단계 분석 병렬 실행
   const articlesNeedingSummary = articles.filter(a => !a.summary).map(a => ({ id: a.id, title: a.title }))
