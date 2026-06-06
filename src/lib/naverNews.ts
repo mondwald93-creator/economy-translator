@@ -22,6 +22,7 @@ const DOMAIN_SOURCE_MAP: Record<string, string> = {
   'kbs.co.kr': 'KBS',
   'mbc.co.kr': 'MBC',
   'yonhapnewstv.co.kr': '연합뉴스TV',
+  'n.news.naver.com': '네이버뉴스',
 }
 
 function extractSource(url: string): string {
@@ -49,21 +50,93 @@ function toDateString(pubDate: string): string {
   return isNaN(d.getTime()) ? toKSTDateString(new Date()) : toKSTDateString(d)
 }
 
-const SEARCH_KEYWORDS = ['한국 경제', '코스피 코스닥', '환율 금리', '부동산 경제', '물가 소비']
+// ① 주요 언론사 RSS 피드
+const RSS_SOURCES = [
+  'https://www.yna.co.kr/rss/economy.xml',
+  'https://www.hankyung.com/feed/economy',
+  'https://www.mk.co.kr/rss/30100041/',
+  'https://www.sedaily.com/RSS',
+]
 
-async function fetchNaverEconomyNews(display = 20): Promise<NaverNewsItem[]> {
+function parseRSSItems(xml: string): NaverNewsItem[] {
+  const items: NaverNewsItem[] = []
+  const blocks = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)]
+  for (const block of blocks) {
+    const c = block[1]
+    const title = cleanHtml(
+      c.match(/<title><!\[CDATA\[([\s\S]*?)\]\]><\/title>/)?.[1] ||
+      c.match(/<title>([\s\S]*?)<\/title>/)?.[1] || ''
+    )
+    const link = (
+      c.match(/<link>([\s\S]*?)<\/link>/)?.[1] ||
+      c.match(/<guid[^>]*>([\s\S]*?)<\/guid>/)?.[1] || ''
+    ).trim()
+    const pubDate = c.match(/<pubDate>(.*?)<\/pubDate>/)?.[1]?.trim() || ''
+    if (title && link) {
+      items.push({ title, originallink: link, link, description: '', pubDate })
+    }
+  }
+  return items
+}
+
+async function fetchRSSFeeds(): Promise<NaverNewsItem[]> {
+  const results = await Promise.allSettled(
+    RSS_SOURCES.map(async (url) => {
+      const res = await fetch(url, { next: { revalidate: 0 } })
+      if (!res.ok) return []
+      return parseRSSItems(await res.text())
+    })
+  )
+  return results.flatMap(r => r.status === 'fulfilled' ? r.value : [])
+}
+
+// ② 네이버 뉴스 경제 많이본 기사
+async function fetchNaverRankingNews(): Promise<NaverNewsItem[]> {
+  try {
+    const res = await fetch(
+      'https://news.naver.com/main/ranking/popularDay.naver?mid=etc&sid1=101',
+      {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+        next: { revalidate: 0 },
+      }
+    )
+    if (!res.ok) return []
+
+    const buffer = await res.arrayBuffer()
+    const html = new TextDecoder('euc-kr').decode(buffer)
+
+    const pattern = /href="(https:\/\/n\.news\.naver\.com\/article\/[^"]+ntype=RANKING)"[^>]*>([^<]+)</g
+    const items: NaverNewsItem[] = []
+    const seen = new Set<string>()
+    let match
+
+    while ((match = pattern.exec(html)) !== null) {
+      const url = match[1]
+      const title = match[2].trim()
+      if (title && !seen.has(url)) {
+        seen.add(url)
+        items.push({ title, originallink: url, link: url, description: '', pubDate: new Date().toUTCString() })
+      }
+    }
+    return items
+  } catch {
+    return []
+  }
+}
+
+// ③ 네이버 키워드 검색 (경제 핵심 지표 관련)
+const SEARCH_KEYWORDS = ['한국 경제', '코스피 코스닥', '환율 금리']
+
+async function fetchNaverKeywordNews(display = 20): Promise<NaverNewsItem[]> {
   const clientId = process.env.NAVER_CLIENT_ID
   const clientSecret = process.env.NAVER_CLIENT_SECRET
-  if (!clientId || !clientSecret) throw new Error('NAVER_CLIENT_ID / NAVER_CLIENT_SECRET 환경변수 없음')
+  if (!clientId || !clientSecret) return []
 
-  const results = await Promise.all(
+  const results = await Promise.allSettled(
     SEARCH_KEYWORDS.map(async (keyword) => {
       const url = `https://openapi.naver.com/v1/search/news.json?query=${encodeURIComponent(keyword)}&display=${display}&sort=date`
       const res = await fetch(url, {
-        headers: {
-          'X-Naver-Client-Id': clientId,
-          'X-Naver-Client-Secret': clientSecret,
-        },
+        headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret },
         next: { revalidate: 0 },
       })
       if (!res.ok) return []
@@ -71,15 +144,7 @@ async function fetchNaverEconomyNews(display = 20): Promise<NaverNewsItem[]> {
       return (data.items ?? []) as NaverNewsItem[]
     })
   )
-
-  // 중복 URL 제거 후 합치기
-  const seen = new Set<string>()
-  return results.flat().filter(item => {
-    const url = item.originallink || item.link
-    if (seen.has(url)) return false
-    seen.add(url)
-    return true
-  })
+  return results.flatMap(r => r.status === 'fulfilled' ? r.value : [])
 }
 
 export async function collectAndSaveNews(): Promise<{ saved: number; errors: string[] }> {
@@ -87,22 +152,25 @@ export async function collectAndSaveNews(): Promise<{ saved: number; errors: str
   const errors: string[] = []
   let saved = 0
 
-  let items: NaverNewsItem[] = []
-  try {
-    items = await fetchNaverEconomyNews(20)
-  } catch (e) {
-    errors.push((e as Error).message)
-    return { saved, errors }
-  }
+  // 세 가지 소스 병렬 수집
+  const [rssItems, rankingItems, keywordItems] = await Promise.all([
+    fetchRSSFeeds(),
+    fetchNaverRankingNews(),
+    fetchNaverKeywordNews(20),
+  ])
 
-  // 오늘 날짜 기사만, 오늘 기사 없으면 전체 사용
-  const todayItems = items.filter(item => toDateString(item.pubDate) === today)
-  const targets = todayItems.length > 0 ? todayItems : items
+  // 전체 합치고 URL 기준 중복 제거
+  const seen = new Set<string>()
+  const allItems = [...rssItems, ...rankingItems, ...keywordItems].filter(item => {
+    const url = item.originallink || item.link
+    if (!url || seen.has(url)) return false
+    seen.add(url)
+    return true
+  })
 
-  for (const item of targets) {
+  for (const item of allItems) {
     const title = cleanHtml(item.title)
     const original_url = item.originallink || item.link
-
     if (!title || !original_url) continue
 
     const { data: existing } = await supabase
@@ -118,14 +186,11 @@ export async function collectAndSaveNews(): Promise<{ saved: number; errors: str
       title,
       summary: '',
       original_url,
-      source: extractSource(item.originallink || item.link),
+      source: extractSource(original_url),
     })
 
-    if (error) {
-      errors.push(`저장 실패: ${error.message}`)
-    } else {
-      saved++
-    }
+    if (error) errors.push(`저장 실패: ${error.message}`)
+    else saved++
   }
 
   return { saved, errors }
