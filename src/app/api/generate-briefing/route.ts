@@ -9,7 +9,7 @@ import {
 } from '@/lib/generateBriefing'
 
 export async function POST() {
-  const today = new Date().toISOString().split('T')[0]
+  const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
 
   const { data: articles, error: fetchError } = await supabase
     .from('news_articles')
@@ -122,12 +122,12 @@ export async function POST() {
     indicatorsCollected: indicators.length,
     headline: briefingResult.headline,
     top3: top3Articles.map(a => a.title),
-    dailyTerm: briefingResult.dailyTerm.term,
+    dailyTerm: briefingResult.dailyTerm?.term ?? '',
   })
 }
 
 export async function GET() {
-  const today = new Date().toISOString().split('T')[0]
+  const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
 
   const { data, error } = await supabase
     .from('briefings')
