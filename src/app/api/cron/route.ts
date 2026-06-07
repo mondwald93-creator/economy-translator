@@ -14,6 +14,20 @@ export async function GET(request: Request) {
     const collectRes = await fetch(`${baseUrl}/api/collect-news`, { method: 'POST' })
     const collectData = await collectRes.json()
 
+    if (!collectRes.ok || collectData.success === false) {
+      return NextResponse.json(
+        { success: false, step: 'collect-news', error: collectData.error ?? '뉴스 수집 실패' },
+        { status: 500 }
+      )
+    }
+
+    if (!collectData.totalToday || collectData.totalToday === 0) {
+      return NextResponse.json(
+        { success: false, step: 'collect-news', error: '수집된 기사가 0건입니다. 브리핑 생성을 건너뜁니다.' },
+        { status: 500 }
+      )
+    }
+
     // 2단계: 브리핑 생성
     const briefingRes = await fetch(`${baseUrl}/api/generate-briefing`, { method: 'POST' })
     const briefingData = await briefingRes.json()

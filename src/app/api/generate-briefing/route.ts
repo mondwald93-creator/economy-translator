@@ -82,12 +82,10 @@ export async function POST() {
     )
   }
 
-  // briefings 저장 — 오늘 날짜 기존 행 전부 삭제 후 새로 insert (중복 방지)
+  // briefings 저장 — upsert (date unique constraint 기준, 중간 실패 시 데이터 유실 없음)
   const top3AnalysisData = buildTop3AnalysisData(top3Analyses, articleInputs)
 
-  await supabase.from('briefings').delete().eq('date', today)
-
-  const { error: insertError } = await supabase.from('briefings').insert({
+  const { error: insertError } = await supabase.from('briefings').upsert({
     date: today,
     summary: briefingResult.summary,
     headline: briefingResult.headline,
@@ -96,7 +94,7 @@ export async function POST() {
     top3_analysis: top3AnalysisData,
     health_check: briefingResult.healthCheck,
     connections: briefingResult.connections,
-  })
+  }, { onConflict: 'date' })
 
   if (insertError) {
     return NextResponse.json({ success: false, error: insertError.message }, { status: 500 })
