@@ -74,7 +74,7 @@ export default function NewsCardList({ articles, updatedAt }: Props) {
           const id = String(article.id)
           const isRead = readIds.has(id)
           return (
-            <div key={article.id} className="rounded-card border border-line py-[22px] px-6 grid grid-cols-[36px_1fr_auto] gap-4 items-start hover:shadow-sm hover:border-[#D1FAE5] transition-all">
+            <div key={article.id} className="rounded-card bg-white border border-line py-[22px] px-6 grid grid-cols-[36px_1fr_auto] gap-4 items-start hover:shadow-sm hover:border-[#D1FAE5] transition-all">
               <span className="text-2xl font-black text-[#E5E7EB] leading-none pt-0.5">
                 {String(idx + 1).padStart(2, '0')}
               </span>

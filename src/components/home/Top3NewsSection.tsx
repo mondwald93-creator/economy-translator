@@ -25,7 +25,7 @@ export default function Top3NewsSection({ top3Analysis }: Props) {
         {top3Analysis.map((item, idx) => (
           <div key={item.articleId} className="rounded-card border border-line overflow-hidden">
             {/* 카드 헤더 */}
-            <div className="flex items-start gap-3 px-4 py-3 bg-surface border-b border-line">
+            <div className="flex items-start gap-3 px-4 py-3 bg-white border-b border-line">
               <span className="flex-shrink-0 w-5 h-5 rounded-full bg-brand-green text-white text-[11px] font-bold flex items-center justify-center mt-0.5">
                 {idx + 1}
               </span>
