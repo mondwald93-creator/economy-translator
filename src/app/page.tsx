@@ -10,12 +10,23 @@ import KeyIndicators from '@/components/home/KeyIndicators'
 import NewsCardList from '@/components/home/NewsCardList'
 import EconomyStudy from '@/components/home/EconomyStudy'
 
+function formatKST(iso: string | null | undefined): string | null {
+  if (!iso) return null
+  return new Date(iso).toLocaleString('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 export default async function Home() {
   const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
 
   const [{ data: briefing }, { data: articles }] = await Promise.all([
     supabase.from('briefings').select('*').eq('date', today).order('created_at', { ascending: false }).limit(1).single(),
-    supabase.from('news_articles').select('*').eq('date', today).order('created_at', { ascending: false }).limit(5),
+    supabase.from('news_articles').select('id, title, source, created_at').eq('date', today).order('created_at', { ascending: false }).limit(5),
   ])
 
   if (!briefing) {
@@ -44,11 +55,11 @@ export default async function Home() {
   return (
     <div className="space-y-10">
       <HeadlineBanner headline={briefing.headline ?? null} summary={briefing.summary ?? null} />
-      <KeyIndicators indicators={indicators} healthCheck={(briefing.health_check as HealthCheckItem[]) ?? null} />
+      <KeyIndicators indicators={indicators} healthCheck={(briefing.health_check as HealthCheckItem[]) ?? null} briefingAt={formatKST(briefing.created_at)} />
       <EconomyHealthCheck healthCheck={(briefing.health_check as HealthCheckItem[]) ?? null} />
       <Top3NewsSection top3Analysis={(briefing.top3_analysis as Top3AnalysisItem[]) ?? null} />
       <ConnectionDiagram connections={(briefing.connections as ConnectionItem[]) ?? null} />
-      <NewsCardList articles={articles} />
+      <NewsCardList articles={articles} updatedAt={formatKST(articles?.[0]?.created_at)} />
       <EconomyStudy dailyTerm={dailyTerm} />
     </div>
   )
