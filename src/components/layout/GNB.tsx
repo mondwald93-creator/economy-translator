@@ -25,15 +25,15 @@ export default function GNB({ updatedAt }: { updatedAt?: string | null }) {
 
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-line">
-      <div className="px-4 sm:px-12 h-[60px] flex items-center justify-between gap-2">
-        <Link href="/" className="flex-shrink-0">
+      <div className="px-4 sm:px-12 h-[60px] grid grid-cols-[1fr_auto_1fr] items-center">
+        <Link href="/" className="justify-self-start">
           <span className="text-[17px] font-black text-ink" style={{ letterSpacing: '-0.8px' }}>
             경제번역기<span className="text-brand-green">.</span>
           </span>
         </Link>
 
-        <div className="relative flex-1 min-w-0">
-          <nav className="flex justify-center items-center gap-[6px] overflow-x-auto scrollbar-hide">
+        <div className="relative">
+          <nav className="flex items-center gap-[6px] overflow-x-auto scrollbar-hide">
             {navItems.map((item) => (
               <Link
                 key={item.href}
@@ -51,7 +51,9 @@ export default function GNB({ updatedAt }: { updatedAt?: string | null }) {
           <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-white to-transparent lg:hidden" />
         </div>
 
-        <UpdateChip updatedAt={updatedAt} />
+        <div className="justify-self-end">
+          <UpdateChip updatedAt={updatedAt} />
+        </div>
       </div>
     </header>
   )
