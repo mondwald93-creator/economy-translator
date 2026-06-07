@@ -82,25 +82,24 @@ export async function POST() {
     )
   }
 
-  // briefings 저장 (새 컬럼 포함)
+  // briefings 저장 — 오늘 날짜 기존 행 전부 삭제 후 새로 insert (중복 방지)
   const top3AnalysisData = buildTop3AnalysisData(top3Analyses, articleInputs)
 
-  const { error: upsertError } = await supabase.from('briefings').upsert(
-    {
-      date: today,
-      summary: briefingResult.summary,
-      headline: briefingResult.headline,
-      daily_term: JSON.stringify(briefingResult.dailyTerm),
-      indicators: fullIndicators,
-      top3_analysis: top3AnalysisData,
-      health_check: briefingResult.healthCheck,
-      connections: briefingResult.connections,
-    },
-    { onConflict: 'date' }
-  )
+  await supabase.from('briefings').delete().eq('date', today)
 
-  if (upsertError) {
-    return NextResponse.json({ success: false, error: upsertError.message }, { status: 500 })
+  const { error: insertError } = await supabase.from('briefings').insert({
+    date: today,
+    summary: briefingResult.summary,
+    headline: briefingResult.headline,
+    daily_term: JSON.stringify(briefingResult.dailyTerm),
+    indicators: fullIndicators,
+    top3_analysis: top3AnalysisData,
+    health_check: briefingResult.healthCheck,
+    connections: briefingResult.connections,
+  })
+
+  if (insertError) {
+    return NextResponse.json({ success: false, error: insertError.message }, { status: 500 })
   }
 
   // 오늘의 용어를 경제용어 사전에 자동 저장
