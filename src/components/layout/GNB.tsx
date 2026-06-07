@@ -33,7 +33,7 @@ export default function GNB({ updatedAt }: { updatedAt?: string | null }) {
         </Link>
 
         <div className="relative flex-1 min-w-0">
-          <nav className="flex items-center gap-[6px] overflow-x-auto scrollbar-hide">
+          <nav className="flex justify-center items-center gap-[6px] overflow-x-auto scrollbar-hide">
             {navItems.map((item) => (
               <Link
                 key={item.href}
