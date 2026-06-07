@@ -23,7 +23,7 @@ export default function Top3NewsSection({ top3Analysis }: Props) {
       <h2 className="text-[11px] font-semibold text-ink-subtle uppercase tracking-widest">오늘의 TOP 3 뉴스</h2>
       <div className="space-y-4">
         {top3Analysis.map((item, idx) => (
-          <div key={item.articleId} className="rounded-card border border-line overflow-hidden">
+          <div key={item.articleId} className="rounded-card bg-white border border-line overflow-hidden">
             {/* 카드 헤더 */}
             <div className="flex items-start gap-3 px-4 py-3 bg-white border-b border-line">
               <span className="flex-shrink-0 w-5 h-5 rounded-full bg-brand-green text-white text-[11px] font-bold flex items-center justify-center mt-0.5">
