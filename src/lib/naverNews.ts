@@ -181,21 +181,12 @@ export async function collectAndSaveNews(): Promise<{ saved: number; errors: str
     return true
   })
 
-  // DB에 이미 있는 URL 한 번에 조회
-  const allUrls = allItems.map(item => item.originallink || item.link).filter(Boolean)
-  const { data: existingRows } = await supabase
-    .from('news_articles')
-    .select('original_url')
-    .in('original_url', allUrls)
-
-  const existingUrls = new Set((existingRows ?? []).map(r => r.original_url))
-
-  // 신규 기사만 필터링
+  // 50개씩 나눠서 upsert (original_url 충돌 시 무시)
   const newItems = allItems
     .map(item => {
       const title = cleanHtml(item.title)
       const original_url = item.originallink || item.link
-      if (!title || !original_url || existingUrls.has(original_url)) return null
+      if (!title || !original_url) return null
       return {
         date: toDateString(item.pubDate),
         title,
@@ -206,13 +197,15 @@ export async function collectAndSaveNews(): Promise<{ saved: number; errors: str
     })
     .filter((item): item is NonNullable<typeof item> => item !== null)
 
-  // 50개씩 나눠서 일괄 삽입
   const CHUNK = 50
   for (let i = 0; i < newItems.length; i += CHUNK) {
     const chunk = newItems.slice(i, i + CHUNK)
-    const { error } = await supabase.from('news_articles').insert(chunk)
+    const { error, data } = await supabase
+      .from('news_articles')
+      .upsert(chunk, { onConflict: 'original_url', ignoreDuplicates: true })
+      .select('id')
     if (error) errors.push(`저장 실패: ${error.message}`)
-    else saved += chunk.length
+    else saved += data?.length ?? 0
   }
 
   return { saved, errors }
