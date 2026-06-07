@@ -72,7 +72,7 @@ ${titleList}
 - 미국·중국 등 해외 뉴스는 한국 경제에 직접 영향을 줄 때만 언급하고, 단독 TOP3로 선정하지 마세요
 - status는 반드시 "good", "normal", "warning" 중 하나
 - healthCheck는 반드시 6개 (물가·소비·수출·고용·부동산·금융 순서)
-- top3Ids는 위 뉴스 목록에서 [ID:xxxx] 형식의 ID를 그대로 사용해 3개 선정. 미국·중국·일본·유럽 등 해외 경제 뉴스는 절대 TOP3에 넣지 마세요. 한국 기업·증시·부동산·정책·소비·고용 관련 기사를 우선하세요
+- top3Ids는 위 뉴스 목록의 [ID:xxxx]에서 xxxx 부분(UUID)만 추출해 3개 선정. 예: [ID:abc-123]이면 "abc-123"만 사용. 미국·중국·일본·유럽 등 해외 경제 뉴스는 절대 TOP3에 넣지 마세요. 한국 기업·증시·부동산·정책·소비·고용 관련 기사를 우선하세요
 - connections는 오늘 한국 경제에서 가장 핵심적인 흐름 3~5개 (짧은 키워드로)`
 
   const res = await openai.chat.completions.create({

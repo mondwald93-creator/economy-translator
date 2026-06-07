@@ -34,10 +34,13 @@ export async function POST() {
   const indicators = await getMarketIndicators()
   const briefingResult = await generateMainBriefing(articleInputs, indicators)
 
-  // TOP3 기사 추출 (ID 기반)
+  // TOP3 기사 추출 (ID 기반, [ID:xxxx] 형식 방어 처리)
   const top3Articles = (briefingResult.top3Ids ?? [])
     .slice(0, 3)
-    .map(id => articleInputs.find(a => a.id === id))
+    .map(id => {
+      const cleanId = String(id).replace(/^\[ID:(.+)\]$/, '$1')
+      return articleInputs.find(a => a.id === cleanId)
+    })
     .filter((a): a is { id: string; title: string } => !!a)
 
   // 기사 요약 (미완료분) + TOP3 6단계 분석 병렬 실행
