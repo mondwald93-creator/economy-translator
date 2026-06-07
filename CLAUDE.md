@@ -20,6 +20,9 @@
 - UX/UI 리뉴얼: Phase 1~5 전체 완료
 - 버그 수정 (2026-06-07): 13개 수정
 - 안정성 패치 (2026-06-07): 타임아웃 방지, 수집 실패 감지, 기준금리 자동화, upsert 전환
+- 뉴스 하루 4회 수집 (2026-06-07): 오전 9시 브리핑 + 오후 1시·5시·10시 뉴스 전용 크론 추가
+- 업데이트 시각 표시 (2026-06-07): 지표 브리핑 기준 시각, 뉴스 마지막 업데이트 시각
+- UI 카드 배경 통일 (2026-06-07): 연결관계·TOP3·헤드라인 카드 bg-white 적용
 
 **6개 페이지**
 - `/` 홈: 헤드라인 + 지표 + 건강진단 + TOP3 + 연결관계 + 뉴스목록 + 경제공부
@@ -34,13 +37,16 @@
 ## 자동화 흐름
 
 ```
-매일 오전 9시 KST → Vercel Cron → GET /api/cron
+[매일 오전 9시 KST] Vercel Cron → GET /api/cron
   → POST /api/collect-news   (RSS + 네이버 랭킹 + 키워드 검색)
   → POST /api/generate-briefing  (OpenAI GPT-4o-mini × 3회)
-  → Supabase 저장
+  → Supabase upsert 저장
+
+[오후 1시·5시·10시 KST] Vercel Cron → GET /api/cron-news
+  → POST /api/collect-news   (뉴스 수집만, 브리핑 생성 없음)
 ```
 
-수집 실패 시 브리핑 생성을 건너뜀 (실패 감지 로직 있음).
+수집 실패 또는 0건 시 브리핑 생성을 건너뜀 (실패 감지 로직 있음).
 
 ---
 
