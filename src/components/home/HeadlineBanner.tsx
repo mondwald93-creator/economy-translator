@@ -6,7 +6,7 @@ interface Props {
 export default function HeadlineBanner({ headline, summary }: Props) {
   if (!headline) return null
 
-  const today = new Date(Date.now() + 9 * 60 * 60 * 1000)
+  const today = new Date()
   const weekday = today.toLocaleDateString('ko-KR', { weekday: 'long', timeZone: 'Asia/Seoul' })
   const date = today.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' })
   const dateStr = `${weekday} · ${date}`
