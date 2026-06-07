@@ -6,16 +6,20 @@ interface BriefingAIResult {
   summary: string
   dailyTerm: { term: string; category: string; explanation: string }
   indicatorExplanations: { name: string; easyExplanation: string }[]
-  top3Ids: string[]
+  top3Indices: number[]
   healthCheck: HealthCheckItem[]
   connections: ConnectionItem[]
+}
+
+export interface BriefingResult extends BriefingAIResult {
+  candidateArticles: { id: string; title: string }[]
 }
 
 // B1 + B3 + B4: 메인 브리핑 생성 (헤드라인, TOP3 선정, 건강진단, 연결관계 포함)
 export async function generateMainBriefing(
   articles: { id: string; title: string }[],
   indicators: Omit<KeyIndicator, 'easyExplanation'>[]
-): Promise<BriefingAIResult> {
+): Promise<BriefingResult> {
   const indicatorList = indicators.length > 0
     ? indicators.map(i => `- ${i.name}: ${i.value} (전일 대비 ${i.change})`).join('\n')
     : '- 지표 데이터를 가져오지 못했습니다'
@@ -28,7 +32,7 @@ export async function generateMainBriefing(
     return aForeign - bForeign
   })
   const candidateArticles = koreanFirst.slice(0, 30)
-  const titleList = candidateArticles.map((a, i) => `${i}. [ID:${a.id}] ${a.title}`).join('\n')
+  const titleList = candidateArticles.map((a, i) => `${i}. ${a.title}`).join('\n')
 
   const prompt = `당신은 한국 경제 전문 브리핑 서비스입니다. 오늘의 한국 경제 뉴스를 바탕으로 다음 내용을 JSON으로 생성해주세요.
 
@@ -52,7 +56,7 @@ ${titleList}
     { "name": "환율(원/달러)", "easyExplanation": "오늘 수치를 바탕으로 초보자에게 1~2문장 설명" },
     { "name": "코스닥", "easyExplanation": "오늘 수치를 바탕으로 초보자에게 1~2문장 설명" }
   ],
-  "top3Ids": ["기사ID_1", "기사ID_2", "기사ID_3"],
+  "top3Indices": [0, 1, 2],
   "healthCheck": [
     { "category": "물가", "status": "warning", "summary": "밥값·전기료 등 생활물가가 계속 오르고 있어요" },
     { "category": "소비", "status": "normal", "summary": "..." },
@@ -72,7 +76,7 @@ ${titleList}
 - 미국·중국 등 해외 뉴스는 한국 경제에 직접 영향을 줄 때만 언급하고, 단독 TOP3로 선정하지 마세요
 - status는 반드시 "good", "normal", "warning" 중 하나
 - healthCheck는 반드시 6개 (물가·소비·수출·고용·부동산·금융 순서)
-- top3Ids는 위 뉴스 목록의 [ID:xxxx]에서 xxxx 부분(UUID)만 추출해 3개 선정. 예: [ID:abc-123]이면 "abc-123"만 사용. 미국·중국·일본·유럽 등 해외 경제 뉴스는 절대 TOP3에 넣지 마세요. 한국 기업·증시·부동산·정책·소비·고용 관련 기사를 우선하세요
+- top3Indices는 위 뉴스 목록의 앞 숫자(인덱스)를 3개 선정. 예: 0번 기사 선택 시 0. 미국·중국·일본·유럽 등 해외 경제 뉴스는 절대 TOP3에 넣지 마세요. 한국 기업·증시·부동산·정책·소비·고용 관련 기사를 우선하세요
 - connections는 오늘 한국 경제에서 가장 핵심적인 흐름 3~5개 (짧은 키워드로)`
 
   const res = await openai.chat.completions.create({
@@ -85,7 +89,8 @@ ${titleList}
     temperature: 0.7,
   })
 
-  return JSON.parse(res.choices[0].message.content ?? '{}') as BriefingAIResult
+  const parsed = JSON.parse(res.choices[0].message.content ?? '{}') as BriefingAIResult
+  return { ...parsed, candidateArticles }
 }
 
 // B2: 기사별 간단 요약 (뉴스 카드용, 2~3문장)
