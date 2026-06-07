@@ -14,7 +14,7 @@ export default async function Home() {
   const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
 
   const [{ data: briefing }, { data: articles }] = await Promise.all([
-    supabase.from('briefings').select('*').eq('date', today).single(),
+    supabase.from('briefings').select('*').eq('date', today).order('created_at', { ascending: false }).limit(1).single(),
     supabase.from('news_articles').select('*').eq('date', today).order('created_at', { ascending: false }).limit(5),
   ])
 

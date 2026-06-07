@@ -41,6 +41,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     .from('briefings')
     .select('created_at')
     .eq('date', todayKST)
+    .order('created_at', { ascending: false })
+    .limit(1)
     .single()
 
   const updatedAt = briefing?.created_at
