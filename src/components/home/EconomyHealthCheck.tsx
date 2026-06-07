@@ -1,9 +1,9 @@
 import { HealthCheckItem } from '@/types'
 
 const statusConfig = {
-  good:    { label: '좋음', color: 'text-up',       bg: 'bg-emerald-50',  points: 2 },
-  normal:  { label: '보통', color: 'text-ink-muted', bg: 'bg-white',       points: 1 },
-  warning: { label: '주의', color: 'text-amber-600', bg: 'bg-amber-50',    points: 0 },
+  good:    { label: '좋음', color: 'text-up',       bg: 'bg-emerald-50', points: 2 },
+  normal:  { label: '보통', color: 'text-ink-muted', bg: 'bg-white',      points: 1 },
+  warning: { label: '주의', color: 'text-amber-600', bg: 'bg-amber-50',   points: 0 },
 }
 
 const categoryIcons: Record<string, string> = {
