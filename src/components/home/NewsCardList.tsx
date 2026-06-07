@@ -11,9 +11,10 @@ interface Article {
 
 interface Props {
   articles: Article[] | null
+  updatedAt?: string | null
 }
 
-export default function NewsCardList({ articles }: Props) {
+export default function NewsCardList({ articles, updatedAt }: Props) {
   const [readIds, setReadIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
@@ -62,7 +63,10 @@ export default function NewsCardList({ articles }: Props) {
             ))}
           </div>
         </h2>
-        <span className="text-xs text-ink-muted">{articles.length}개 중 {readCount}개 읽었어요</span>
+        <span className="text-xs text-ink-muted">
+          {updatedAt && <span className="mr-2 text-[#9CA3AF]">{updatedAt} 업데이트 ·</span>}
+          {articles.length}개 중 {readCount}개 읽었어요
+        </span>
       </div>
 
       <div className="space-y-2.5">

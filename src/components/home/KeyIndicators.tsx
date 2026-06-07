@@ -25,9 +25,10 @@ function getGradeReason(items: HealthCheckItem[]): string {
 interface Props {
   indicators: KeyIndicator[] | null
   healthCheck: HealthCheckItem[] | null
+  briefingAt?: string | null
 }
 
-export default function KeyIndicators({ indicators, healthCheck }: Props) {
+export default function KeyIndicators({ indicators, healthCheck, briefingAt }: Props) {
   if (!indicators || indicators.length === 0) return null
 
   const grade = healthCheck && healthCheck.length > 0 ? getGrade(healthCheck) : null
@@ -66,6 +67,11 @@ export default function KeyIndicators({ indicators, healthCheck }: Props) {
           )
         })}
       </div>
+      {briefingAt && (
+        <p className="text-[11px] text-[#9CA3AF] text-right mt-1">
+          {briefingAt} 브리핑 기준 · 실시간 반영 아님
+        </p>
+      )}
     </div>
   )
 }
