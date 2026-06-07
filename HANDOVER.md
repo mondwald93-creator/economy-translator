@@ -1,7 +1,7 @@
 # 경제번역기 — 인수인계 문서
 
 > 다음 세션에서 이 파일을 **먼저 읽고** 시작하세요.
-> 마지막 업데이트: 2026-06-06
+> 마지막 업데이트: 2026-06-07
 
 ---
 
@@ -25,20 +25,9 @@
 
 ## 다음 세션 시작점 ← 여기서 시작
 
-**✅ 모든 Phase 완료 — 실서비스 정상 운영 중**
+**✅ 버그 수정 완료 (2026-06-07) — 리뉴얼 작업 예정**
 
-남은 작업 없음. 다음에 할 수 있는 일:
-- 뉴스 중복 기사 제거 개선 (아래 알려진 이슈 참고)
-- 새 기능 추가 (예: 뉴스 검색, 알림 등)
-- 사용자 피드백 반영
-
-### 알려진 이슈 (수정 가능하면 수정)
-
-**뉴스 목록 중복 기사 문제**
-- 증상: "오늘의 헤드라인" 5개 중 같은 기사가 2번 보임
-- 원인: RSS·네이버 랭킹·키워드 세 소스가 같은 기사를 **다른 URL**로 수집 → URL 기준 중복 제거를 통과
-- 수정 방향: URL 비교 대신 제목 유사도(예: 첫 20자 일치 시 중복) 기준으로 바꾸면 됨
-- 관련 파일: `src/lib/naverNews.ts` — `collectAndSaveNews()` 함수의 중복 제거 로직
+오늘 세션에서 버그 수정을 모두 마쳤어요. 다음 세션에서는 **UI/기능 리뉴얼** 작업을 이어가면 돼요. 리뉴얼 범위는 아직 미정이므로 사용자에게 먼저 물어보고 시작할 것.
 
 ### 시작 방법
 
@@ -48,6 +37,42 @@ npm run dev
 # http://localhost:3000 열어서 확인
 # 디자인 비교 시 color-preview.html 나란히 열기
 open color-preview.html
+```
+
+---
+
+## 2026-06-07 버그 수정 이력
+
+### 원래 있던 버그 7개 수정
+
+| 순위 | 파일 | 내용 |
+|------|------|------|
+| 1 | `generate-briefing/route.ts` | `dailyTerm?.term ?? ''` 옵셔널 체이닝으로 크래시 방지 |
+| 2 | `HeadlineBanner.tsx` | 날짜 표시 UTC → KST (`timeZone: 'Asia/Seoul'` 적용) |
+| 3 | `TopBar.tsx` + `layout.tsx` | `updatedAt` prop 전달, 브리핑 없으면 "준비 중" 표시 |
+| 4 | `generate-briefing/route.ts` + `page.tsx` | 날짜 조회 전체 KST 통일 (`Date.now() + 9h`) |
+| 5 | `naverNews.ts` | HTML 엔티티(`&amp;` 등) 올바른 문자로 변환 |
+| 6 | `naverNews.ts` | 순차 삽입 → upsert 배치 처리로 변경 |
+| 7 | `naverNews.ts` | 제목 앞 20자 기준 중복 제거 추가 |
+
+### 추가로 발생해서 수정한 버그
+
+- **HeadlineBanner 날짜 이중 적용**: `+9h` 수동 계산 + `timeZone` 동시 적용으로 날짜가 하루 앞으로 밀리는 문제 → `+9h` 제거, `timeZone`만 사용
+- **naverNews upsert 타임아웃**: `.in()` 500개 URL 쿼리가 HTTP 길이 초과 → `upsert(ignoreDuplicates: true)`로 교체
+- **TOP3 기사 항상 빈 배열**: GPT가 UUID 반환 시 매칭 실패 → 프롬프트에서 UUID 제거, **인덱스 번호** 방식으로 교체 (`top3Indices`)
+- **briefings 중복 행**: `upsert`에 unique constraint 없어서 insert 반복 → **delete → insert** 방식으로 교체
+- **page.tsx `.single()` 오동작**: 중복 행 있을 때 엉뚱한 브리핑 반환 → `order(created_at desc).limit(1).single()`으로 변경
+- **GNB 메뉴 중앙 정렬 깨짐**: `flex-1` 래퍼 방식은 로고/칩 너비에 따라 틀어짐 → `grid-cols-[1fr_auto_1fr]`로 교체해 항상 정중앙 고정
+
+### DB 작업 (Supabase에서 직접 실행 완료)
+
+```sql
+-- 중복 행 정리 후 unique constraint 추가 (2026-06-07 완료)
+DELETE FROM briefings
+WHERE id NOT IN (
+  SELECT DISTINCT ON (date) id FROM briefings ORDER BY date, created_at DESC
+);
+ALTER TABLE briefings ADD CONSTRAINT briefings_date_unique UNIQUE (date);
 ```
 
 ---
@@ -66,35 +91,17 @@ open color-preview.html
 - ✅ 북마크 (localStorage 기반)
 
 ### 뉴스 수집 전면 개편
-- ✅ **기존**: 키워드 검색만 → 2개 수집 (핫이슈 누락)
-- ✅ **현재**: RSS 4개 + 네이버 경제탭 랭킹 스크래핑 + 키워드 3개 → **500개+ 수집**
-  - RSS: 연합뉴스·한국경제·매일경제·서울경제
-  - 네이버 랭킹: news.naver.com 경제탭 많이본 기사 (EUC-KR 디코딩 처리)
-  - 키워드: 한국경제 / 코스피코스닥 / 환율금리
-- ✅ URL 기준 중복 제거 후 Supabase 저장
+- ✅ RSS 4개 + 네이버 경제탭 랭킹 스크래핑 + 키워드 3개 → 500개+ 수집
 
 ### 브리핑 품질 개선
-- ✅ TOP3 뉴스 **한국 경제 중심**으로 수정
-  - 외신 키워드(미국·美·중국·연준·나스닥 등) 포함 기사 뒤로 정렬
-  - AI 프롬프트: "해외 경제 뉴스 TOP3 선정 금지, 국내 경제만"
-  - TOP3 선정 방식: 인덱스 기반 → ID 기반 (정렬 후 인덱스 불일치 버그 수정)
-- ✅ 크론 오전 8시 → **오전 9시** (코스피·환율 9시 개장 맞춤)
-
-### 실서비스 배포 버그 수정
-- ✅ Cron URL 버그: `NEXT_PUBLIC_APP_URL` 없을 때 localhost 호출 → `VERCEL_URL` 폴백 추가
-- ✅ 날짜 UTC/KST 불일치: 오전에 "어제 날짜"로 인식하던 문제 → 전체 KST 기준으로 통일
+- ✅ TOP3 뉴스 한국 경제 중심으로 수정 (외신 배제)
+- ✅ 크론 오전 8시 → 오전 9시 변경
 
 ### UX/UI 리뉴얼 (Phase 1~5 전체 완료)
-- ✅ Phase 1: 디자인 시스템 (색상·타이포·카드 스펙 확정)
-- ✅ Phase 2: GNB full-width + TopBar + 레이아웃
-- ✅ Phase 3: 홈 화면 컴포넌트 7개 (헤드라인·지표·건강진단·TOP3·연결관계·뉴스목록·경제공부)
-- ✅ Phase 4: 서브 페이지 5개 리뉴얼 (analyze·dictionary·calendar·bookmarks·news/[id])
-- ✅ Phase 5: 마무리 & 배포
-  - 전체 페이지 통합 테스트 (데스크탑 + 모바일 375px)
-  - 모바일 지표 카드 2열 레이아웃 수정 (기존 4열 → 375px에서 숫자 잘림 해결)
-  - GNB 모바일 패딩 축소 + 우측 그라데이션 페이드 (달력·북마크 스크롤 힌트)
-  - GNB 업데이트 칩 동적 시간 표시 (DB 브리핑 created_at 기반, layout.tsx에서 조회)
-  - '오전 8시' → '오전 9시' 전체 통일 — TopBar, HeadlineBanner(2곳), page.tsx 5곳
+- ✅ Phase 1~5 완료 (디자인 시스템 + GNB + 홈 7개 컴포넌트 + 서브페이지 5개 + 마무리)
+
+### 버그 수정 (2026-06-07)
+- ✅ 위 버그 수정 이력 참고
 
 ---
 
@@ -110,13 +117,14 @@ open color-preview.html
     │         ├── fetchRSSFeeds()          # RSS 4개 언론사
     │         ├── fetchNaverRankingNews()  # 네이버 경제탭 랭킹 스크래핑
     │         └── fetchNaverKeywordNews()  # 키워드 3개 검색
-    │         → URL 기준 중복 제거 → Supabase news_articles 저장
+    │         → URL + 제목 앞 20자 기준 중복 제거
+    │         → upsert(ignoreDuplicates) 배치 저장
     │
     └─ 2단계: POST /api/generate-briefing
               오늘 날짜(KST) 기사 로드 → 외신 뒤로 정렬 → 상위 30개 선택
-              → GPT-4o-mini에 [ID:xxxx] 형식으로 전달
-              → 헤드라인·요약·TOP3·건강진단·연결관계·경제용어 생성
-              → Supabase briefings 저장 (upsert)
+              → GPT-4o-mini에 인덱스 번호 형식으로 전달
+              → 헤드라인·요약·TOP3(인덱스)·건강진단·연결관계·경제용어 생성
+              → 오늘 날짜 기존 행 DELETE 후 INSERT (중복 방지)
 ```
 
 ### 홈 화면 렌더링 흐름
@@ -124,16 +132,16 @@ open color-preview.html
 ```
 page.tsx (Server Component, force-dynamic)
     │
-    ├─ Supabase: briefings WHERE date = 오늘(UTC)  → briefing 데이터
-    └─ Supabase: news_articles WHERE date = 오늘(UTC) LIMIT 5 → 기사 목록
+    ├─ Supabase: briefings WHERE date = 오늘(KST) ORDER BY created_at DESC LIMIT 1
+    └─ Supabase: news_articles WHERE date = 오늘(KST) LIMIT 5
     
     렌더링 순서:
     HeadlineBanner → KeyIndicators → EconomyHealthCheck
     → Top3NewsSection → ConnectionDiagram → NewsCardList → EconomyStudy
 
 layout.tsx (async Server Component)
-    └─ Supabase: briefings WHERE date = 오늘(KST) → created_at
-       → GNB에 updatedAt prop으로 전달 → "오늘 09:23 업데이트" 표시
+    └─ Supabase: briefings WHERE date = 오늘(KST) ORDER BY created_at DESC LIMIT 1
+       → TopBar + GNB에 updatedAt prop 전달
 ```
 
 ---
@@ -144,9 +152,9 @@ layout.tsx (async Server Component)
 |--------|------|-----------|
 | 홈 | `/` | 헤드라인 + 지표(4개) + 건강진단(6개) + TOP3 + 연결관계 + 뉴스목록(5개) + 경제공부 |
 | 뉴스 상세 | `/news/[id]` | 기사 제목 + AI 쉬운 설명 + 원본 링크 |
-| 링크 분석기 | `/analyze` | URL 입력 → AI 4단계 분석 (한 마디로·무슨 일·왜·나한테 영향) |
+| 링크 분석기 | `/analyze` | URL 입력 → AI 4단계 분석 |
 | 경제용어 사전 | `/dictionary` | 검색 + 카테고리 필터 + 용어 카드 200개 |
-| 경제 달력 | `/calendar` | 2026년 연간 경제 일정 (금리·지표·무역·★중요) |
+| 경제 달력 | `/calendar` | 2026년 연간 경제 일정 |
 | 북마크 | `/bookmarks` | 저장한 뉴스 목록 (localStorage) |
 
 ---
@@ -157,8 +165,8 @@ layout.tsx (async Server Component)
 economy-translator/
 ├── src/
 │   ├── app/
-│   │   ├── layout.tsx                     # async 서버컴포넌트, GNB에 updatedAt 전달
-│   │   ├── page.tsx                       # force-dynamic, 브리핑+기사 SSR
+│   │   ├── layout.tsx                     # async 서버컴포넌트, TopBar+GNB에 updatedAt 전달
+│   │   ├── page.tsx                       # force-dynamic, KST 날짜 기준 브리핑+기사 SSR
 │   │   ├── analyze/page.tsx
 │   │   ├── dictionary/page.tsx
 │   │   ├── calendar/page.tsx
@@ -167,33 +175,33 @@ economy-translator/
 │   │   └── api/
 │   │       ├── cron/route.ts              # Cron 진입점 (collect → briefing 순서)
 │   │       ├── collect-news/route.ts      # 뉴스 수집 API
-│   │       ├── generate-briefing/route.ts # 브리핑 생성 API
+│   │       ├── generate-briefing/route.ts # 브리핑 생성 (delete→insert, 인덱스 기반 TOP3)
 │   │       ├── analyze-link/route.ts      # 링크 분석
 │   │       └── terms/route.ts             # 경제용어 검색
 │   ├── components/
 │   │   ├── layout/
-│   │   │   ├── TopBar.tsx                 # 다크 상단바, "오전 9시" 텍스트
-│   │   │   └── GNB.tsx                    # full-width, 모바일 스크롤+페이드, 동적 칩
+│   │   │   ├── TopBar.tsx                 # updatedAt prop, 브리핑 없으면 "준비 중"
+│   │   │   └── GNB.tsx                    # grid-cols-[1fr_auto_1fr], 메뉴 항상 정중앙
 │   │   ├── home/
-│   │   │   ├── HeadlineBanner.tsx         # h1 + lead + D-day 배너
-│   │   │   ├── KeyIndicators.tsx          # 컨디션 카드 + 지표 4개 (모바일 2열)
-│   │   │   ├── EconomyHealthCheck.tsx     # 건강진단 6개 항목
-│   │   │   ├── Top3NewsSection.tsx        # AI 분석 TOP3 기사
-│   │   │   ├── ConnectionDiagram.tsx      # 경제 연결관계 화살표
-│   │   │   ├── NewsCardList.tsx           # 오늘의 헤드라인 5개 (읽음 추적)
-│   │   │   └── EconomyStudy.tsx           # 오늘의 경제용어 다크 카드
+│   │   │   ├── HeadlineBanner.tsx         # 날짜 KST 기준 (timeZone: 'Asia/Seoul')
+│   │   │   ├── KeyIndicators.tsx
+│   │   │   ├── EconomyHealthCheck.tsx
+│   │   │   ├── Top3NewsSection.tsx
+│   │   │   ├── ConnectionDiagram.tsx
+│   │   │   ├── NewsCardList.tsx
+│   │   │   └── EconomyStudy.tsx
 │   │   └── BookmarkButton.tsx
 │   ├── lib/
-│   │   ├── naverNews.ts                   # 뉴스 수집 (RSS+랭킹+키워드), KST 날짜 처리
-│   │   ├── generateBriefing.ts            # GPT 브리핑 생성, 한국 경제 중심 정렬
-│   │   ├── marketData.ts                  # 지표 수집 (▲▼— 형식)
-│   │   └── supabase.ts                    # Supabase 클라이언트
+│   │   ├── naverNews.ts                   # upsert 배치, 제목 20자 중복 제거, 엔티티 디코딩
+│   │   ├── generateBriefing.ts            # top3Indices 인덱스 방식, candidateArticles 반환
+│   │   ├── marketData.ts
+│   │   └── supabase.ts
 │   ├── types/index.ts
 │   └── styles/globals.css
 ├── vercel.json                            # cron: "0 0 * * *" (KST 09:00)
 ├── tailwind.config.ts
-├── color-preview.html                     # ⭐ 레퍼런스 디자인 (브라우저로 비교)
-└── .env.local                             # SUPABASE_URL, SUPABASE_ANON_KEY, OPENAI_API_KEY 등
+├── color-preview.html                     # ⭐ 레퍼런스 디자인 (브라우저로 비교 필수)
+└── .env.local
 ```
 
 ---
@@ -206,8 +214,9 @@ economy-translator/
 | `/api/collect-news` | POST | 뉴스 수집 및 저장 |
 | `/api/collect-news` | GET | 오늘 수집된 기사 목록 반환 |
 | `/api/generate-briefing` | POST | AI 브리핑 생성 |
+| `/api/generate-briefing` | GET | 오늘 브리핑 조회 |
 | `/api/analyze-link` | POST | URL → GPT 4단계 분석 |
-| `/api/terms` | GET | 경제용어 검색 (`?q=환율&category=환율`) |
+| `/api/terms` | GET | 경제용어 검색 |
 
 ---
 
@@ -238,26 +247,15 @@ economy-translator/
 | 카드 보더 | `#F3F4F6` |
 | 카드 radius | `14px` |
 | TopBar 배경 | `#111827` |
-| TopBar 앞 텍스트 | `#F9FAFB` bold 12px |
-| TopBar 뒤 텍스트 | `#9CA3AF` 12px |
 | GNB 높이 | `60px` |
-| GNB 너비 | full-width (max-width 없음) |
 | GNB padding | `0 48px` (데스크탑) / `0 16px` (모바일) |
+| GNB 레이아웃 | `grid-cols-[1fr_auto_1fr]` — 메뉴 항상 정중앙 |
 | GNB 활성 메뉴 | `bg-[#F0FDF4] text-[#16A34A] font-bold` |
-| GNB 업데이트 칩 | `bg-[#F0FDF4] border-[#BBF7D0] text-[#16A34A] radius-20px 5px 12px` |
 | 헤드라인 h1 | `36px / font-weight:900 / line-height:1.25 / letter-spacing:-1.2px` |
-| 헤드라인 줄 1 | `#111827` (검정) / 18자 이내 |
-| 헤드라인 줄 2 | `#16A34A` (초록) |
-| lead 문단 | `15px / line-height:1.8 / border-left:3px #22C55E / max-width:640px` |
-| 긴박감 배너 | `bg-[#FFFBEB] border-[#FDE68A] text-[#92400E]` + D-day 오른쪽 |
-| 컨디션 카드 | `from-[#ECFDF5] to-[#D1FAE5] border-[#A7F3D0]` radius 16px |
-| 지표 숫자 | `22px font-black #111827` |
-| 지표 변화값 | `▲ +X.XX%` / `▼ -X.XX%` / `— 동결` 형식 |
-| 경제용어 카드 | `bg-#111827 / radius-16px` + 초록 버튼 오른쪽 |
 | 콘텐츠 max-width | `900px` |
 
 **디자인 컨셉: "미니멀 에디토리얼 + 젊은 층 참여 요소"**
-⚠️ 디자인 방향 다시 묻지 말 것. 확정된 스펙에서 수정 시 color-preview.html과 반드시 비교.
+⚠️ 디자인 수정 시 color-preview.html과 반드시 브라우저에서 눈으로 비교할 것.
 
 ---
 
@@ -268,8 +266,11 @@ economy-translator/
 | 코드 수정 후 | **반드시 git push** — 로컬 저장만으로는 Vercel 배포 안 됨 |
 | OpenAI 여러 번 호출 | Vercel 10초 타임아웃 → 반드시 **로컬**에서 실행 |
 | 디자인 확인 | 코드만 보면 안 됨 — **브라우저에서 눈으로 직접** 비교 |
-| 네이버 랭킹 스크래핑 | EUC-KR 인코딩 처리 필요 (TextDecoder 사용 중) |
-| 날짜 처리 | 뉴스 수집은 KST 기준, page.tsx 쿼리는 UTC 기준 — 현재 오전에는 동일하지만 자정 전후 주의 |
+| 날짜 처리 | 전체 KST 기준으로 통일 (`Date.now() + 9h` 또는 `timeZone: 'Asia/Seoul'`) |
+| briefings 저장 | delete → insert 방식. DB에 unique constraint 있으므로 upsert 복귀 가능 |
+| TOP3 선정 | 인덱스 번호 방식 (`top3Indices`). UUID 방식으로 되돌리지 말 것 |
+| 뉴스 수동 수집 | `curl -X POST https://economy-translator.vercel.app/api/collect-news` |
+| 브리핑 수동 생성 | `curl -X POST https://economy-translator.vercel.app/api/generate-briefing` |
 
 ---
 
@@ -291,3 +292,4 @@ CRON_SECRET=...
 - 비개발자 (코드 설명 불필요, 결과만 전달)
 - 한국어로만 소통
 - 세션 완료 후 실서비스 링크 반드시 전달: **https://economy-translator.vercel.app**
+- 디자인 변경 시 반드시 color-preview.html 레퍼런스와 브라우저 비교 확인
