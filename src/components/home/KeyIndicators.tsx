@@ -67,11 +67,9 @@ export default function KeyIndicators({ indicators, healthCheck, briefingAt }: P
           )
         })}
       </div>
-      {briefingAt && (
-        <p className="text-[11px] text-[#9CA3AF] text-right mt-1">
-          {briefingAt} 브리핑 기준 · 실시간 반영 아님
-        </p>
-      )}
+      <p className="text-[11px] text-[#9CA3AF] text-right mt-1">
+        실시간 지표 · AI 설명은 {briefingAt ?? '오전 9시'} 브리핑 기준
+      </p>
     </div>
   )
 }
