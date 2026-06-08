@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import { KeyIndicator, Top3AnalysisItem, HealthCheckItem, ConnectionItem } from '@/types'
 import HeadlineBanner from '@/components/home/HeadlineBanner'
 import EconomyHealthCheck from '@/components/home/EconomyHealthCheck'
@@ -22,12 +22,16 @@ function formatKST(iso: string | null | undefined): string | null {
 }
 
 export default async function Home() {
+  const db = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
   const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-  const { data: briefing } = await supabase
+  const { data: briefing } = await db
     .from('briefings').select('*').eq('date', today).order('created_at', { ascending: false }).limit(1).single()
 
-  const { data: articles } = await supabase
+  const { data: articles } = await db
     .from('news_articles').select('id, title, source, created_at').eq('date', today).order('created_at', { ascending: false }).limit(5)
 
   if (!briefing) {
