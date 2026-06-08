@@ -24,7 +24,8 @@ function formatKST(iso: string | null | undefined): string | null {
 export default async function Home() {
   const db = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { global: { fetch: (url, opts) => fetch(url, { ...opts, cache: 'no-store' }) } }
   )
   const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
 
