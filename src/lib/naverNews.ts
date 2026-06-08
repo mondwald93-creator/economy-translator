@@ -197,12 +197,21 @@ export async function collectAndSaveNews(): Promise<{ saved: number; errors: str
     })
     .filter((item): item is NonNullable<typeof item> => item !== null)
 
+  // DB에 이미 있는 URL 조회해서 중복 제거
+  const allUrls = newItems.map(i => i.original_url)
+  const { data: existing } = await supabase
+    .from('news_articles')
+    .select('original_url')
+    .in('original_url', allUrls)
+  const existingUrls = new Set((existing ?? []).map(r => r.original_url))
+  const toInsert = newItems.filter(item => !existingUrls.has(item.original_url))
+
   const CHUNK = 50
-  for (let i = 0; i < newItems.length; i += CHUNK) {
-    const chunk = newItems.slice(i, i + CHUNK)
+  for (let i = 0; i < toInsert.length; i += CHUNK) {
+    const chunk = toInsert.slice(i, i + CHUNK)
     const { error, data } = await supabase
       .from('news_articles')
-      .upsert(chunk, { onConflict: 'original_url', ignoreDuplicates: true })
+      .insert(chunk)
       .select('id')
     if (error) errors.push(`저장 실패: ${error.message}`)
     else saved += data?.length ?? 0
