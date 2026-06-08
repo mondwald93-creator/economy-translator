@@ -24,10 +24,11 @@ function formatKST(iso: string | null | undefined): string | null {
 export default async function Home() {
   const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-  const [{ data: briefing }, { data: articles }] = await Promise.all([
-    supabase.from('briefings').select('*').eq('date', today).order('created_at', { ascending: false }).limit(1).single(),
-    supabase.from('news_articles').select('id, title, source, created_at').eq('date', today).order('created_at', { ascending: false }).limit(5),
-  ])
+  const { data: briefing } = await supabase
+    .from('briefings').select('*').eq('date', today).order('created_at', { ascending: false }).limit(1).single()
+
+  const { data: articles } = await supabase
+    .from('news_articles').select('id, title, source, created_at').eq('date', today).order('created_at', { ascending: false }).limit(5)
 
   if (!briefing) {
     return (
