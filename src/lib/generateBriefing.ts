@@ -18,7 +18,8 @@ export interface BriefingResult extends BriefingAIResult {
 // B1 + B3 + B4: 메인 브리핑 생성 (헤드라인, TOP3 선정, 건강진단, 연결관계 포함)
 export async function generateMainBriefing(
   articles: { id: string; title: string }[],
-  indicators: Omit<KeyIndicator, 'easyExplanation'>[]
+  indicators: Omit<KeyIndicator, 'easyExplanation'>[],
+  recentTerms: string[] = []
 ): Promise<BriefingResult> {
   const indicatorList = indicators.length > 0
     ? indicators.map(i => `- ${i.name}: ${i.value} (전일 대비 ${i.change})`).join('\n')
@@ -33,6 +34,9 @@ export async function generateMainBriefing(
   })
   const candidateArticles = koreanFirst.slice(0, 30)
   const titleList = candidateArticles.map((a, i) => `${i}. ${a.title}`).join('\n')
+  const avoidTerms = recentTerms.length > 0
+    ? ` (최근 7일간 이미 다룬 용어는 피하세요: ${recentTerms.join(', ')})`
+    : ''
 
   const prompt = `당신은 한국 경제 전문 브리핑 서비스입니다. 오늘의 한국 경제 뉴스를 바탕으로 다음 내용을 JSON으로 생성해주세요.
 
@@ -47,7 +51,7 @@ ${titleList}
   "headline": "오늘 핵심 사건 한 줄\\n결과·영향 한 줄 (두 줄을 \\n으로 구분, 구어체 ~했어요 형식. 첫 줄은 반드시 18자 이내 짧게. 예: '코스피가 크게 떨어졌어요\\n환율이 오르면서 생활물가 압박이 커졌어요')",
   "summary": "오늘 경제 전체를 초보자 언어로 정리한 3~5문단 요약 글",
   "dailyTerm": {
-    "term": "오늘 뉴스에서 가장 중요한 경제 용어 1개",
+    "term": "오늘 뉴스와 관련 있는 경제 용어 1개${avoidTerms}",
     "category": "금리|환율|주식|부동산|무역|경기|소비|통화 중 하나",
     "explanation": "그 용어를 초등학생도 이해할 수 있게 2~3문장으로 설명"
   },
