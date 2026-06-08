@@ -1,7 +1,7 @@
 # 경제번역기 — 인수인계 문서
 
 > 다음 세션에서 이 파일을 **먼저 읽고** 시작하세요.
-> 마지막 업데이트: 2026-06-07
+> 마지막 업데이트: 2026-06-08
 
 ---
 
@@ -25,15 +25,15 @@
 
 ## 다음 세션 시작점 ← 여기서 시작
 
-**✅ 2026-06-07 작업 전체 완료 — 다음 작업 범위 미정**
+**✅ 2026-06-08 작업 전체 완료 — 다음 작업 범위 미정**
 
-오늘 세션에서 자동화 안정성 패치 + UI 개선까지 완료했습니다.
+오늘 세션에서 버그 3개 수정 + 경제용어 중복 방지 기능 추가까지 완료.
 다음 세션에서는 추가 작업 방향을 먼저 사용자에게 물어보고 시작할 것.
 
 ### 시작 방법
 
 ```bash
-cd /Users/ninaj/Documents/claude-code-test/economy-translator
+cd /Users/ninaj/Documents/claude-code-test/2축-개인포트폴리오/economy-translator
 npm run dev
 # http://localhost:3000 열어서 확인
 # 디자인 비교 시 color-preview.html 나란히 열기
@@ -42,48 +42,64 @@ open color-preview.html
 
 ---
 
-## 2026-06-07 작업 이력
+## 2026-06-08 작업 이력
 
-### 자동화 안정성 패치 (4개)
+### 버그 1: 뉴스 수집 전면 실패 (크론 자체가 매일 실패하던 문제)
 
-| 파일 | 수정 내용 |
-|------|-----------|
-| `vercel.json` | `maxDuration` 추가 — cron·브리핑 생성 300s, 뉴스 수집 60s (타임아웃 방지) |
-| `cron/route.ts` | collect-news 실패 또는 0건 수집 시 브리핑 생성 중단 |
-| `marketData.ts` | 기준금리 하드코딩 제거 → 네이버 금융 채권 페이지 자동 스크래핑, 실패 시 3.50% 폴백 |
-| `generate-briefing/route.ts` | briefings 저장 방식 delete→insert에서 `upsert({ onConflict: 'date' })`로 교체 (데이터 유실 방지) |
+**원인**: Supabase `news_articles` 테이블의 `original_url` unique constraint가 언젠가 사라짐.
+`upsert(onConflict: 'original_url')`이 전부 에러 반환 → 뉴스 0건 → 브리핑 생성 중단 → "준비중" 화면.
 
-### 뉴스 수집 빈도 증가
+**수정**: `src/lib/naverNews.ts`
 
-| 파일 | 수정 내용 |
-|------|-----------|
-| `vercel.json` | 뉴스 전용 크론 3개 추가 — UTC 04:00(오후 1시), 08:00(오후 5시), 13:00(오후 10시) KST |
-| `cron-news/route.ts` | 뉴스 수집만 실행하는 전용 엔드포인트 신설 (`/api/cron-news`) |
+| 이전 방식 | 수정 후 방식 |
+|-----------|-------------|
+| `upsert(chunk, { onConflict: 'original_url', ignoreDuplicates: true })` | DB에서 기존 URL 선조회 → 새 URL만 `insert` |
 
-### 업데이트 시각 표시
+DB constraint 유무와 무관하게 작동. 중복 방지는 코드 레벨에서 처리.
 
-| 파일 | 수정 내용 |
-|------|-----------|
-| `page.tsx` | `formatKST()` 함수 추가, 브리핑 생성 시각·뉴스 업데이트 시각을 컴포넌트로 전달 |
-| `KeyIndicators.tsx` | 지표 카드 하단에 "XX월 XX일 오전 9시 브리핑 기준 · 실시간 반영 아님" 표시 |
-| `NewsCardList.tsx` | 헤드라인 헤더에 "오후 HH시 MM분 업데이트 ·" 표시 |
+**추가 조치**: 오늘 크론이 실패했으므로 수동으로 브리핑 생성 실행.
+```bash
+curl -X POST https://economy-translator.vercel.app/api/collect-news
+curl -X POST https://economy-translator.vercel.app/api/generate-briefing
+```
 
-### UI — 카드 배경 흰색 통일
+---
 
-배경색(#F9FAFB)과 카드 배경이 동일해 구분이 안 되던 섹션들을 흰색으로 수정.
+### 버그 2: "오늘의 헤드라인" 뉴스 목록 항상 빈 상태
 
-| 파일 | 수정 내용 |
-|------|-----------|
-| `EconomyHealthCheck.tsx` | `normal` 상태 카드 `bg-surface` → `bg-white` (주의=노랑, 좋음=초록 유지) |
-| `ConnectionDiagram.tsx` | 연결관계 컨테이너 `bg-surface` → `bg-white` |
-| `Top3NewsSection.tsx` | TOP3 카드 헤더 `bg-surface` → `bg-white`, 카드 컨테이너 `bg-white` 추가 |
-| `NewsCardList.tsx` | 뉴스 카드 `bg-white` 추가 |
+**원인**: Next.js 14 Server Component 안에서 Supabase가 `fetch`를 호출할 때, Next.js가 자동으로 fetch 결과를 캐시함.
+오전 크론 실패로 뉴스가 없던 시점의 "0건" 결과가 캐시되어, 이후 뉴스를 채워도 캐시된 빈 결과를 계속 반환.
 
-### 프로젝트 문서화
+`force-dynamic`을 설정해도 개별 fetch 레벨 캐시는 별도로 막아야 함.
 
-| 파일 | 내용 |
-|------|------|
-| `CLAUDE.md` | 신규 생성 — 세션 시작 시 자동 로드. 현재 상태·절대 건드리지 말 것·수정 규칙 포함 |
+**수정**: `src/app/page.tsx`
+
+```ts
+// 수정 전: 싱글톤 사용 + Promise.all 병렬
+import { supabase } from '@/lib/supabase'
+const [{ data: briefing }, { data: articles }] = await Promise.all([...])
+
+// 수정 후: 매 렌더마다 새 클라이언트 + cache: no-store + 순차 await
+const db = createClient(url, key, {
+  global: { fetch: (url, opts) => fetch(url, { ...opts, cache: 'no-store' }) }
+})
+const { data: briefing } = await db.from('briefings')...
+const { data: articles } = await db.from('news_articles')...
+```
+
+⚠️ **이 패턴 절대 되돌리지 말 것**: `cache: 'no-store'` 없으면 Next.js가 fetch 결과를 캐시해서 뉴스 목록이 빈 채로 굳어버림.
+
+---
+
+### 기능 추가: 오늘의 경제용어 매일 다른 용어 선택
+
+**문제**: AI 프롬프트가 "오늘 뉴스에서 가장 중요한 용어"를 고르도록 되어 있어서, 환율 뉴스가 많은 날엔 매일 "환율"만 반복.
+
+**수정**:
+- `src/app/api/generate-briefing/route.ts` — 브리핑 생성 전, 최근 7일치 `daily_term`을 조회해서 `recentTerms` 배열 생성
+- `src/lib/generateBriefing.ts` — `generateMainBriefing()`에 `recentTerms` 파라미터 추가, AI 프롬프트에 "이 용어들은 피하세요: 환율, 기준금리, ..." 전달
+
+내일 오전 9시 크론부터 자동 적용.
 
 ---
 
@@ -114,13 +130,22 @@ open color-preview.html
 - ✅ 총 13개 버그 수정 (크래시 방지, KST 날짜 버그, TOP3 빈 배열, 중복 저장, GNB 정렬 등)
 
 ### 자동화 안정성 패치 + UI 개선 (2026-06-07 2차)
-- ✅ 위 "2026-06-07 작업 이력" 참고
+- ✅ `vercel.json` maxDuration (타임아웃 방지)
+- ✅ collect-news 실패 시 브리핑 생성 중단
+- ✅ 기준금리 네이버 금융 자동 스크래핑
+- ✅ briefings 저장 upsert 전환
+- ✅ 뉴스 하루 4회 수집 크론 추가
+- ✅ 업데이트 시각 표시
+- ✅ 카드 배경 흰색 통일
+
+### 버그 수정 + 기능 추가 (2026-06-08)
+- ✅ 뉴스 수집 실패 수정 (upsert → insert, constraint 의존성 제거)
+- ✅ 뉴스 목록 빈 상태 수정 (Next.js fetch 캐시 우회, cache: no-store)
+- ✅ 오늘의 경제용어 중복 방지 (최근 7일 피하기)
 
 ---
 
 ## 절대 건드리지 말 것
-
-과거에 수정했다가 버그가 생겼던 항목들.
 
 | 항목 | 현재 방식 | 되돌리면 생기는 버그 |
 |------|-----------|---------------------|
@@ -128,10 +153,11 @@ open color-preview.html
 | 날짜 처리 | `+9h` 또는 `timeZone: 'Asia/Seoul'` 중 **하나만** 사용 | 둘 다 쓰면 날짜 하루 앞으로 밀림 |
 | briefings 저장 | `upsert({ onConflict: 'date' })` | delete+insert 복귀 시 저장 실패 → 당일 브리핑 유실 |
 | GNB 레이아웃 | `grid-cols-[1fr_auto_1fr]` | flex-1 방식 복귀 시 메뉴 중앙 정렬 깨짐 |
-| 뉴스 중복 제거 | URL + 제목 앞 20자 기준 | 건드리면 중복 기사 대량 저장 |
+| 뉴스 중복 제거 | URL + 제목 앞 20자 기준 (코드 레벨) | DB constraint에 의존하면 upsert 에러로 전체 수집 실패 |
 | 기준금리 | 네이버 금융 자동 스크래핑 | 하드코딩 절대 금지 |
 | vercel.json maxDuration | cron·브리핑 300s, 뉴스 60s | 삭제 시 타임아웃으로 크론 매일 실패 |
 | Supabase briefings.date | unique constraint 적용됨 | 삭제 시 중복 행 문제 재발 |
+| page.tsx Supabase 클라이언트 | 매 렌더마다 `createClient` + `cache: 'no-store'` | 싱글톤으로 되돌리거나 no-store 빼면 뉴스 목록 캐시로 빈 채로 굳음 |
 
 ---
 
@@ -141,6 +167,7 @@ open color-preview.html
 [매일 오전 9시 KST] Vercel Cron → GET /api/cron
     ├─ POST /api/collect-news   (뉴스 수집 — 실패 또는 0건이면 중단)
     └─ POST /api/generate-briefing  (OpenAI GPT-4o-mini × 3회 → Supabase upsert)
+           └─ 최근 7일 daily_term 조회 → AI 프롬프트에 "이 용어 피하세요" 전달
 
 [오후 1시·5시·10시 KST] Vercel Cron → GET /api/cron-news
     └─ POST /api/collect-news   (뉴스 수집만, 브리핑 생성 없음)
@@ -167,8 +194,8 @@ open color-preview.html
 economy-translator/
 ├── src/
 │   ├── app/
-│   │   ├── layout.tsx                     # async 서버컴포넌트, TopBar+GNB에 updatedAt 전달
-│   │   ├── page.tsx                       # force-dynamic, KST 날짜 기준 브리핑+기사 SSR, formatKST()
+│   │   ├── layout.tsx
+│   │   ├── page.tsx                       # force-dynamic, createClient+cache:no-store, 순차 await
 │   │   ├── analyze/page.tsx
 │   │   ├── dictionary/page.tsx
 │   │   ├── calendar/page.tsx
@@ -178,27 +205,27 @@ economy-translator/
 │   │       ├── cron/route.ts              # 브리핑 크론 (collect 실패 시 중단, maxDuration 300s)
 │   │       ├── cron-news/route.ts         # 뉴스 전용 크론 (오후 1시·5시·10시)
 │   │       ├── collect-news/route.ts      # 뉴스 수집 API
-│   │       ├── generate-briefing/route.ts # 브리핑 생성 (upsert, 인덱스 기반 TOP3)
+│   │       ├── generate-briefing/route.ts # 브리핑 생성 (upsert, 인덱스 기반 TOP3, recentTerms 전달)
 │   │       ├── analyze-link/route.ts      # 링크 분석
 │   │       └── terms/route.ts             # 경제용어 검색
 │   ├── components/
 │   │   ├── layout/
-│   │   │   ├── TopBar.tsx                 # updatedAt prop, 브리핑 없으면 "준비 중"
+│   │   │   ├── TopBar.tsx
 │   │   │   └── GNB.tsx                    # grid-cols-[1fr_auto_1fr], 메뉴 항상 정중앙
 │   │   ├── home/
-│   │   │   ├── HeadlineBanner.tsx         # 날짜 KST 기준 (timeZone: 'Asia/Seoul')
-│   │   │   ├── KeyIndicators.tsx          # 브리핑 생성 시각 표시 (briefingAt prop)
-│   │   │   ├── EconomyHealthCheck.tsx     # normal=흰색, warning=노랑, good=초록
-│   │   │   ├── Top3NewsSection.tsx        # 카드 전체 bg-white
-│   │   │   ├── ConnectionDiagram.tsx      # 컨테이너 bg-white
-│   │   │   ├── NewsCardList.tsx           # 카드 bg-white, 업데이트 시각 표시 (updatedAt prop)
+│   │   │   ├── HeadlineBanner.tsx
+│   │   │   ├── KeyIndicators.tsx
+│   │   │   ├── EconomyHealthCheck.tsx
+│   │   │   ├── Top3NewsSection.tsx
+│   │   │   ├── ConnectionDiagram.tsx
+│   │   │   ├── NewsCardList.tsx
 │   │   │   └── EconomyStudy.tsx
 │   │   └── BookmarkButton.tsx
 │   ├── lib/
-│   │   ├── naverNews.ts                   # upsert 배치, 제목 20자 중복 제거, 엔티티 디코딩
-│   │   ├── generateBriefing.ts            # top3Indices 인덱스 방식, candidateArticles 반환
+│   │   ├── naverNews.ts                   # insert 방식 (upsert 아님), URL 선조회로 중복 제거
+│   │   ├── generateBriefing.ts            # recentTerms 파라미터 추가, top3Indices 인덱스 방식
 │   │   ├── marketData.ts                  # 기준금리 네이버 금융 스크래핑, 실패 시 3.50% 폴백
-│   │   └── supabase.ts
+│   │   └── supabase.ts                    # 싱글톤 (API 라우트용) — page.tsx는 직접 createClient
 │   ├── types/index.ts
 │   └── styles/globals.css
 ├── CLAUDE.md                              # ⭐ Claude 자동 로드 파일 (세션 시작 시 항상 읽힘)

@@ -23,6 +23,9 @@
 - 뉴스 하루 4회 수집 (2026-06-07): 오전 9시 브리핑 + 오후 1시·5시·10시 뉴스 전용 크론 추가
 - 업데이트 시각 표시 (2026-06-07): 지표 브리핑 기준 시각, 뉴스 마지막 업데이트 시각
 - UI 카드 배경 통일 (2026-06-07): 연결관계·TOP3·헤드라인 카드 bg-white 적용
+- 뉴스 수집 DB constraint 버그 수정 (2026-06-08): upsert → insert 전환, constraint 의존성 제거
+- 뉴스 목록 캐시 버그 수정 (2026-06-08): page.tsx Supabase 클라이언트에 cache: no-store 명시
+- 오늘의 경제용어 중복 방지 (2026-06-08): 최근 7일 사용 용어 AI 프롬프트에 전달
 
 **6개 페이지**
 - `/` 홈: 헤드라인 + 지표 + 건강진단 + TOP3 + 연결관계 + 뉴스목록 + 경제공부
@@ -60,10 +63,12 @@
 | 날짜 처리 | `+9h` 또는 `timeZone: 'Asia/Seoul'` 중 하나만 사용 | 둘 다 쓰면 날짜가 하루 앞으로 밀림 |
 | briefings 저장 | `upsert({ onConflict: 'date' })` | delete+insert 복귀 시 저장 실패 → 당일 브리핑 유실 |
 | GNB 레이아웃 | `grid-cols-[1fr_auto_1fr]` | flex-1 방식 복귀 시 메뉴 중앙 정렬 깨짐 |
-| 뉴스 중복 제거 | URL + 제목 앞 20자 기준 | 건드리면 중복 기사 대량 저장 |
+| 뉴스 중복 제거 | URL + 제목 앞 20자 기준 (코드 레벨) | DB constraint에 의존하면 upsert 에러로 전체 수집 실패 |
+| 뉴스 저장 방식 | `naverNews.ts` — 기존 URL 선조회 후 `insert` | upsert 복귀 시 DB constraint 없으면 전체 에러 |
 | 기준금리 | 네이버 금융 자동 수집 | 하드코딩 금지 |
 | vercel.json maxDuration | cron 300s, generate-briefing 300s | 삭제 시 타임아웃으로 크론 매일 실패 |
 | Supabase briefings.date | unique constraint 적용됨 | 삭제 시 중복 행 문제 재발 |
+| page.tsx Supabase 클라이언트 | 매 렌더마다 `createClient` + `cache: 'no-store'` | 싱글톤 or no-store 제거 시 뉴스 목록 캐시로 빈 채 굳음 |
 
 ---
 
