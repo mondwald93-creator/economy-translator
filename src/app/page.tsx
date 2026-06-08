@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { createClient } from '@supabase/supabase-js'
+import { getMarketIndicators } from '@/lib/marketData'
 import { KeyIndicator, Top3AnalysisItem, HealthCheckItem, ConnectionItem } from '@/types'
 import HeadlineBanner from '@/components/home/HeadlineBanner'
 import EconomyHealthCheck from '@/components/home/EconomyHealthCheck'
@@ -45,7 +46,15 @@ export default async function Home() {
     )
   }
 
-  const indicators: KeyIndicator[] | null = briefing.indicators ?? null
+  // 지표: 실시간 숫자 + 브리핑 AI 설명 합치기
+  const storedIndicators = (briefing.indicators ?? []) as KeyIndicator[]
+  const liveMarket = await getMarketIndicators()
+  const indicators: KeyIndicator[] = liveMarket.length > 0
+    ? liveMarket.map(live => ({
+        ...live,
+        easyExplanation: storedIndicators.find(s => s.name === live.name)?.easyExplanation ?? '',
+      }))
+    : storedIndicators
 
   let dailyTerm: { term: string; explanation: string } | null = null
   if (briefing.daily_term) {
