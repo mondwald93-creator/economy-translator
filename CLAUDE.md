@@ -26,6 +26,7 @@
 - 뉴스 수집 DB constraint 버그 수정 (2026-06-08): upsert → insert 전환, constraint 의존성 제거
 - 뉴스 목록 캐시 버그 수정 (2026-06-08): page.tsx Supabase 클라이언트에 cache: no-store 명시
 - 오늘의 경제용어 중복 방지 (2026-06-08): 최근 7일 사용 용어 AI 프롬프트에 전달
+- 지표 실시간화 (2026-06-08): page.tsx에서 Yahoo Finance 실시간 호출, AI 설명만 브리핑 병합
 
 **6개 페이지**
 - `/` 홈: 헤드라인 + 지표 + 건강진단 + TOP3 + 연결관계 + 뉴스목록 + 경제공부
@@ -69,6 +70,7 @@
 | vercel.json maxDuration | cron 300s, generate-briefing 300s | 삭제 시 타임아웃으로 크론 매일 실패 |
 | Supabase briefings.date | unique constraint 적용됨 | 삭제 시 중복 행 문제 재발 |
 | page.tsx Supabase 클라이언트 | 매 렌더마다 `createClient` + `cache: 'no-store'` | 싱글톤 or no-store 제거 시 뉴스 목록 캐시로 빈 채 굳음 |
+| page.tsx 지표 | `getMarketIndicators()` 실시간 호출 + 브리핑 AI 설명 병합 | `briefing.indicators` 단독 사용 복귀 시 9시 스냅샷만 표시 |
 
 ---
 

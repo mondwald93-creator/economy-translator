@@ -27,7 +27,12 @@
 
 **✅ 2026-06-08 작업 전체 완료 — 다음 작업 범위 미정**
 
-오늘 세션에서 버그 3개 수정 + 경제용어 중복 방지 기능 추가까지 완료.
+오늘 세션에서 버그 2개 수정 + 기능 2개 추가 완료.
+- 뉴스 수집 DB constraint 버그 → 수정 완료
+- 뉴스 목록 Next.js 캐시 버그 → 수정 완료
+- 오늘의 경제용어 중복 방지 → 적용 완료
+- 지표(코스피·코스닥·환율) 실시간화 → 적용 완료
+
 다음 세션에서는 추가 작업 방향을 먼저 사용자에게 물어보고 시작할 것.
 
 ### 시작 방법
@@ -103,6 +108,20 @@ const { data: articles } = await db.from('news_articles')...
 
 ---
 
+### 기능 추가: 지표 실시간화 (코스피·코스닥·환율)
+
+**문제**: 지표 숫자가 오전 9시 브리핑 생성 시점에 DB에 저장되고, 이후 장 중에 값이 바뀌어도 계속 9시 스냅샷을 보여줌. Naver와 크게 달라 보이는 이유.
+
+**수정**:
+- `src/app/page.tsx` — `getMarketIndicators()` 직접 호출해서 페이지 로드 시마다 Yahoo Finance 실시간값 취득
+- 숫자(value, change, direction)는 실시간, AI 설명(easyExplanation)은 브리핑 저장값 유지
+- 야후파이낸스 실패 시 브리핑 저장값으로 자동 폴백
+- `src/components/home/KeyIndicators.tsx` — 하단 문구 "브리핑 기준 · 실시간 반영 아님" → "실시간 지표 · AI 설명은 오전 9시 브리핑 기준"
+
+⚠️ **주의**: `getMarketIndicators()`가 page.tsx에 직접 들어간 구조. 야후파이낸스 응답이 느리면 페이지 로드가 느려질 수 있음. 필요 시 별도 API 라우트로 분리 가능.
+
+---
+
 ## 전체 완료 이력
 
 ### MVP (초기 구축)
@@ -142,6 +161,7 @@ const { data: articles } = await db.from('news_articles')...
 - ✅ 뉴스 수집 실패 수정 (upsert → insert, constraint 의존성 제거)
 - ✅ 뉴스 목록 빈 상태 수정 (Next.js fetch 캐시 우회, cache: no-store)
 - ✅ 오늘의 경제용어 중복 방지 (최근 7일 피하기)
+- ✅ 지표 실시간화 (페이지 로드마다 Yahoo Finance 실시간값, AI 설명은 브리핑 기준 유지)
 
 ---
 
@@ -158,6 +178,7 @@ const { data: articles } = await db.from('news_articles')...
 | vercel.json maxDuration | cron·브리핑 300s, 뉴스 60s | 삭제 시 타임아웃으로 크론 매일 실패 |
 | Supabase briefings.date | unique constraint 적용됨 | 삭제 시 중복 행 문제 재발 |
 | page.tsx Supabase 클라이언트 | 매 렌더마다 `createClient` + `cache: 'no-store'` | 싱글톤으로 되돌리거나 no-store 빼면 뉴스 목록 캐시로 빈 채로 굳음 |
+| page.tsx 지표 | `getMarketIndicators()` 실시간 호출 후 브리핑 AI 설명 병합 | briefing.indicators 단독 사용 복귀 시 9시 스냅샷만 보임 |
 
 ---
 
