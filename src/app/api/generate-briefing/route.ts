@@ -30,9 +30,26 @@ export async function POST() {
 
   const articleInputs = articles.map(a => ({ id: a.id, title: a.title }))
 
+  // 최근 7일 사용 용어 조회 (오늘 제외)
+  const sevenDaysAgo = new Date(Date.now() + 9 * 60 * 60 * 1000 - 7 * 24 * 60 * 60 * 1000)
+    .toISOString().split('T')[0]
+  const { data: recentBriefings } = await supabase
+    .from('briefings')
+    .select('daily_term')
+    .gte('date', sevenDaysAgo)
+    .lt('date', today)
+  const recentTerms = (recentBriefings ?? [])
+    .map(b => {
+      try {
+        const t = typeof b.daily_term === 'string' ? JSON.parse(b.daily_term) : b.daily_term
+        return t?.term ?? ''
+      } catch { return '' }
+    })
+    .filter(Boolean) as string[]
+
   // 지표 수집 후 메인 브리핑 생성 (헤드라인 + TOP3 인덱스 + 건강진단 + 연결관계 포함)
   const indicators = await getMarketIndicators()
-  const briefingResult = await generateMainBriefing(articleInputs, indicators)
+  const briefingResult = await generateMainBriefing(articleInputs, indicators, recentTerms)
 
   // TOP3 기사 추출 (인덱스 기반)
   const { candidateArticles } = briefingResult
