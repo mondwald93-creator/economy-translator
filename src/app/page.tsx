@@ -57,10 +57,13 @@ export default async function Home() {
       }))
     : storedIndicators
 
-  // 오늘의 한 문장: 헤드라인 전체 (두 줄을 공백으로 이어 붙임)
-  const todaySentence = briefing.headline
-    ? briefing.headline.replace('\n', ' ')
-    : ''
+  // 오늘의 한 문장: AI가 생성한 share_card 우선, 없으면 summary 첫 문장
+  const todaySentence: string = briefing.share_card
+    || (() => {
+      if (!briefing.summary) return ''
+      const firstPara = (briefing.summary as string).split(/\n+/).find((p: string) => p.trim().length > 10) ?? ''
+      return firstPara.match(/[^。.!?!?]*[。.!?!?]+/)?.[0]?.trim() ?? firstPara.slice(0, 60)
+    })()
   const todayDateLabel = new Date(Date.now() + 9 * 60 * 60 * 1000)
     .toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' })
 
