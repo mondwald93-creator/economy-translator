@@ -64,7 +64,7 @@ export default function NewsCardList({ articles, updatedAt }: Props) {
           </div>
         </h2>
         <span className="text-xs text-ink-muted">
-          {updatedAt && <span className="mr-2 text-[#9CA3AF]">{updatedAt} 업데이트 ·</span>}
+          <span className="hidden sm:inline">{updatedAt && <span className="mr-2 text-[#9CA3AF]">{updatedAt} 업데이트 ·</span>}</span>
           {articles.length}개 중 {readCount}개 읽었어요
         </span>
       </div>
