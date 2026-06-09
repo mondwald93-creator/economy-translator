@@ -65,7 +65,7 @@ export default function HeadlineBanner({ headline, summary }: Props) {
       >
         <span style={{ fontSize: 16 }}>⏰</span>
         <span><strong className="font-bold">오늘의 브리핑</strong> — 내일 오전 9시에 새 내용으로 바뀌어요</span>
-        <span className="ml-auto font-semibold text-[#B45309] text-xs">D-day</span>
+        <span className="ml-auto font-semibold text-[#B45309] text-xs hidden sm:inline">D-day</span>
       </div>
     </div>
   )
