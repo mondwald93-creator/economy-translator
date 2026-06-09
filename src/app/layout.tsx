@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import Script from 'next/script'
 import '../styles/globals.css'
 import TopBar from '@/components/layout/TopBar'
 import GNB from '@/components/layout/GNB'
@@ -64,6 +65,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           rel="stylesheet"
         />
       </head>
+      <Script
+        src="https://www.googletagmanager.com/gtag/js?id=G-4EX6PHFTLB"
+        strategy="afterInteractive"
+      />
+      <Script id="google-analytics" strategy="afterInteractive">
+        {`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-4EX6PHFTLB');
+        `}
+      </Script>
       <body className="min-h-screen bg-surface text-ink">
         <TopBar updatedAt={updatedAt} />
         <GNB updatedAt={updatedAt} />
