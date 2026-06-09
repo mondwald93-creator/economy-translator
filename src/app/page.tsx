@@ -10,6 +10,7 @@ import ConnectionDiagram from '@/components/home/ConnectionDiagram'
 import KeyIndicators from '@/components/home/KeyIndicators'
 import NewsCardList from '@/components/home/NewsCardList'
 import EconomyStudy from '@/components/home/EconomyStudy'
+import TodaySentenceCard from '@/components/home/TodaySentenceCard'
 
 function formatKST(iso: string | null | undefined): string | null {
   if (!iso) return null
@@ -56,6 +57,13 @@ export default async function Home() {
       }))
     : storedIndicators
 
+  // 오늘의 한 문장: 헤드라인 전체 (두 줄을 공백으로 이어 붙임)
+  const todaySentence = briefing.headline
+    ? briefing.headline.replace('\n', ' ')
+    : ''
+  const todayDateLabel = new Date(Date.now() + 9 * 60 * 60 * 1000)
+    .toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' })
+
   let dailyTerm: { term: string; explanation: string } | null = null
   if (briefing.daily_term) {
     try {
@@ -70,6 +78,9 @@ export default async function Home() {
   return (
     <div className="space-y-10">
       <HeadlineBanner headline={briefing.headline ?? null} summary={briefing.summary ?? null} />
+      {todaySentence && (
+        <TodaySentenceCard sentence={todaySentence} dateLabel={todayDateLabel} />
+      )}
       <KeyIndicators indicators={indicators} healthCheck={(briefing.health_check as HealthCheckItem[]) ?? null} briefingAt={formatKST(briefing.created_at)} />
       <EconomyHealthCheck healthCheck={(briefing.health_check as HealthCheckItem[]) ?? null} />
       <Top3NewsSection top3Analysis={(briefing.top3_analysis as Top3AnalysisItem[]) ?? null} />
