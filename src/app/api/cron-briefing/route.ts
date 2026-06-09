@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { collectAndSaveNews, getTodayArticles } from '@/lib/naverNews'
+import { runDailyBriefing } from '@/lib/runBriefing'
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')
@@ -8,15 +8,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    const result = await collectAndSaveNews()
-    const articles = await getTodayArticles()
-
-    return NextResponse.json({
-      success: true,
-      saved: result.saved,
-      totalToday: articles.length,
-      errors: result.errors,
-    })
+    const result = await runDailyBriefing()
+    return NextResponse.json({ success: true, ...result })
   } catch (error) {
     return NextResponse.json(
       { success: false, error: String(error) },
