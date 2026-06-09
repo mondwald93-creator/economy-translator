@@ -11,7 +11,7 @@ const navItems = [
 ]
 
 function UpdateChip({ updatedAt }: { updatedAt?: string | null }) {
-  const text = updatedAt ? `오늘 ${updatedAt} 업데이트` : '매일 오전 9시 업데이트'
+  const text = updatedAt ? '오늘 브리핑 완료 ✓' : '매일 아침 9시 브리핑'
   return (
     <span className="hidden lg:inline-flex items-center gap-[6px] text-[11px] font-semibold text-[#16A34A] bg-[#F0FDF4] border border-[#BBF7D0] whitespace-nowrap flex-shrink-0" style={{ borderRadius: 20, padding: '5px 12px' }}>
       <span className="w-[6px] h-[6px] rounded-full bg-[#22C55E] inline-block flex-shrink-0" />

@@ -8,23 +8,23 @@ import { supabase } from '@/lib/supabase'
 export const metadata: Metadata = {
   metadataBase: new URL('https://economy-translator.vercel.app'),
   title: {
-    default: '경제번역기 — 매일 경제를 쉽게',
+    default: '경제번역기 — 5분으로 끝내는 경제 입문',
     template: '%s | 경제번역기',
   },
-  description: '주식·환율·금리 등 경제를 전혀 몰라도 OK. 매일 한국 경제 뉴스를 초보자 언어로 쉽게 정리해드려요.',
-  keywords: ['경제번역기', '경제 쉽게', '경제 초보', '금리', '환율', '주식', '경제 뉴스', '한국 경제', '경제용어'],
+  description: '경제 공부, 어디서부터 시작할지 모르겠다면? 매일 아침 5분, 한국 경제 뉴스를 쉬운 말로 풀어드려요. 투자를 시작하고 싶은 분들을 위한 무료 경제 브리핑.',
+  keywords: ['경제번역기', '경제 입문', '경제 공부', '경제 쉽게', '경제 초보', '2030 경제', '투자 입문', '금리', '환율', '주식', '경제 뉴스', '한국 경제'],
   openGraph: {
     type: 'website',
     locale: 'ko_KR',
     url: 'https://economy-translator.vercel.app',
     siteName: '경제번역기',
-    title: '경제번역기 — 매일 경제를 쉽게',
-    description: '주식·환율·금리 등 경제를 전혀 몰라도 OK. 매일 한국 경제 뉴스를 초보자 언어로 쉽게 정리해드려요.',
+    title: '경제번역기 — 5분으로 끝내는 경제 입문',
+    description: '경제 공부, 어디서부터 시작할지 모르겠다면? 매일 아침 5분, 한국 경제 뉴스를 쉬운 말로 풀어드려요.',
   },
   twitter: {
     card: 'summary',
-    title: '경제번역기 — 매일 경제를 쉽게',
-    description: '주식·환율·금리 등 경제를 전혀 몰라도 OK. 매일 한국 경제 뉴스를 초보자 언어로.',
+    title: '경제번역기 — 5분으로 끝내는 경제 입문',
+    description: '경제 공부, 어디서부터 시작할지 모르겠다면? 매일 아침 5분, 쉬운 말로 풀어드려요.',
   },
   alternates: {
     canonical: 'https://economy-translator.vercel.app',
@@ -84,7 +84,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           {children}
         </main>
         <footer className="max-w-[900px] mx-auto px-4 sm:px-6 py-8 text-xs text-ink-subtle border-t border-line mt-4">
-          © 경제번역기 · 매일 경제를 쉽게
+          © 경제번역기 · 매일 아침 5분, 경제 입문 브리핑
         </footer>
       </body>
     </html>
