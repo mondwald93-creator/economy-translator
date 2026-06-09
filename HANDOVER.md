@@ -1,7 +1,7 @@
 # 경제번역기 — 인수인계 문서
 
 > 다음 세션에서 이 파일을 **먼저 읽고** 시작하세요.
-> 마지막 업데이트: 2026-06-09 (Phase 4 진행 중 — 오늘의 한 문장 카드 완료, 이메일 구독 남음)
+> 마지막 업데이트: 2026-06-09 (리뉴얼 진입 전 버그 점검 완료 — KeyIndicators 레이아웃 버그 + 크론 폴백 주소 수정)
 
 ---
 
@@ -27,7 +27,7 @@
 
 ## 다음 세션 시작점 ← 여기서 시작
 
-**✅ 2026-06-09 — Phase 1~3 완료. Phase 4 진행 중 (항목 1 완료, 항목 2·3 남음)**
+**✅ 2026-06-09 — Phase 1~3 완료. Phase 4 진행 중 (항목 1 완료, 항목 2·3 남음). 리뉴얼 진입 전 버그 점검 완료.**
 
 ### 서비스 리뉴얼 배경
 외부 피드백 3가지를 수용해서 리뉴얼 결정:
@@ -56,6 +56,8 @@
 
 ### 다음 세션 시작 멘트
 > "경제번역기 리뉴얼 이어서 해줘" → Phase 4 항목 2 (이메일 구독) 바로 시작
+
+> **버그 점검 상태**: 리뉴얼 진입 전 전체 코드 점검 완료 (2026-06-09). 수정된 파일: KeyIndicators.tsx, cron-news/route.ts. 알려진 버그 없음.
 
 ---
 
@@ -101,7 +103,7 @@
 
 ### Phase 4 세부 과업 (재방문 유도)
 - [x] 오늘의 한 문장 카드 ✅ 완료 (2026-06-09)
-- [ ] 이메일 구독 기능 — **다음 세션 P0**
+- [ ] 이메일 구독 기능 — **다음 세션 P0** ← 여기서 시작
 - [ ] "매일 브리핑" 강조 UI 조정
 
 #### 오늘의 한 문장 카드 — 상세 (2026-06-09 완료)
@@ -263,6 +265,22 @@ const { data: articles } = await db.from('news_articles')...
 - ✅ Supabase briefings 테이블 share_card TEXT 컬럼 추가
 - ✅ `HeadlineBanner.tsx` — 소수점 문장 절단 버그 수정
 
+### 리뉴얼 진입 전 버그 점검 완료 (2026-06-09)
+
+전체 코드 점검 후 수정된 버그 2개:
+
+| 파일 | 버그 | 수정 내용 |
+|------|------|---------|
+| `src/components/home/KeyIndicators.tsx` | 지표 카드 4개 밑에 보여야 할 타임스탬프 텍스트("실시간 지표 · AI 설명은...")가 왼쪽 200px 등급 칸으로 잘못 들어가던 그리드 레이아웃 버그. healthCheck 없을 때는 지표 카드 전체가 200px 칸에 쑤셔들어가는 버그도 함께. | 지표 카드 + 타임스탬프를 wrapper div로 묶어서 항상 올바른 오른쪽 칸에 배치되게 수정. grade 없을 때 `sm:col-span-full`로 전체 폭 사용 |
+| `src/app/api/cron-news/route.ts` | 오후 뉴스 수집 크론이 `NEXT_PUBLIC_APP_URL` 없으면 배포별 임시 주소(`VERCEL_URL`)를 폴백으로 쓰다가 운영 주소와 달라 수집 실패할 수 있는 구조 | 운영 주소(`https://economy-translator.vercel.app`)로 직접 고정 |
+
+커밋: `93b596f` — 배포 완료
+
+발견했지만 수정 안 한 것:
+- `DailyBriefing.tsx` — 어디서도 import 안 하는 죽은 파일. 기능에 영향 없음.
+
+---
+
 ### 서비스 리뉴얼 Phase 2 완료 (2026-06-09)
 
 - ✅ `ShareButtons.tsx` 신규 생성 — "📤 친구에게 공유" (Web Share API, 모바일에서 카카오톡 등 기기 공유창 뜸) + "🔗 링크 복사" (클립보드 복사, 2초 후 원래대로)
@@ -365,12 +383,14 @@ economy-translator/
 │   │   ├── home/
 │   │   │   ├── HeadlineBanner.tsx         # D-day 배너 + ShareButtons 포함
 │   │   │   ├── ShareButtons.tsx           # ⭐ 공유 버튼 (Web Share API + 링크 복사) — 2026-06-09 추가
-│   │   │   ├── KeyIndicators.tsx
+│   │   │   ├── TodaySentenceCard.tsx      # ⭐ 오늘의 한 문장 카드 (이미지 저장 + 텍스트 복사) — 2026-06-09 추가
+│   │   │   ├── KeyIndicators.tsx          # 지표 4개 + 경제 등급 (2026-06-09 그리드 레이아웃 버그 수정)
 │   │   │   ├── EconomyHealthCheck.tsx
 │   │   │   ├── Top3NewsSection.tsx
 │   │   │   ├── ConnectionDiagram.tsx
 │   │   │   ├── NewsCardList.tsx
-│   │   │   └── EconomyStudy.tsx
+│   │   │   ├── EconomyStudy.tsx
+│   │   │   └── DailyBriefing.tsx          # ⚠️ 사용 안 하는 파일 (import 없음, 삭제 가능)
 │   │   └── BookmarkButton.tsx
 │   ├── lib/
 │   │   ├── runBriefing.ts                 # ⭐ 브리핑 생성 오케스트레이션 (cron-briefing + generate-briefing 공유)
