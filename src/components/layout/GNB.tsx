@@ -25,14 +25,15 @@ export default function GNB({ updatedAt }: { updatedAt?: string | null }) {
 
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-line">
-      <div className="px-4 sm:px-12 h-[60px] grid grid-cols-[1fr_auto_1fr] items-center">
-        <Link href="/" className="justify-self-start">
-          <span className="text-[17px] font-black text-ink" style={{ letterSpacing: '-0.8px' }}>
+      {/* 모바일: 로고(auto) + 네비(1fr) / 데스크탑: 1fr + 네비(auto) + 1fr */}
+      <div className="px-4 sm:px-12 h-[60px] grid grid-cols-[auto_1fr] sm:grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-0">
+        <Link href="/" className="justify-self-start flex-shrink-0">
+          <span className="text-[17px] font-black text-ink whitespace-nowrap" style={{ letterSpacing: '-0.8px' }}>
             경제번역기<span className="text-brand-green">.</span>
           </span>
         </Link>
 
-        <div className="relative">
+        <div className="relative min-w-0 sm:justify-self-center">
           <nav className="flex items-center gap-[6px] overflow-x-auto scrollbar-hide">
             {navItems.map((item) => (
               <Link
@@ -51,7 +52,7 @@ export default function GNB({ updatedAt }: { updatedAt?: string | null }) {
           <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-white to-transparent lg:hidden" />
         </div>
 
-        <div className="justify-self-end">
+        <div className="justify-self-end hidden sm:block">
           <UpdateChip updatedAt={updatedAt} />
         </div>
       </div>
