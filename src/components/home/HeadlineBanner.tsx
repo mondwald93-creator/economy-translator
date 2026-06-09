@@ -1,3 +1,5 @@
+import ShareButtons from './ShareButtons'
+
 interface Props {
   headline: string | null
   summary: string | null
@@ -61,12 +63,15 @@ export default function HeadlineBanner({ headline, summary }: Props) {
       {/* 긴박감 배너 */}
       <div
         className="flex items-center gap-3 text-[#92400E]"
-        style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '10px 16px', fontSize: 13, marginBottom: 32 }}
+        style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '10px 16px', fontSize: 13, marginBottom: 16 }}
       >
         <span style={{ fontSize: 16 }}>⏰</span>
         <span><strong className="font-bold">오늘의 브리핑</strong> — 내일 오전 9시에 새 내용으로 바뀌어요</span>
         <span className="ml-auto font-semibold text-[#B45309] text-xs hidden sm:inline">D-day</span>
       </div>
+
+      {/* 공유 버튼 */}
+      <ShareButtons />
     </div>
   )
 }
