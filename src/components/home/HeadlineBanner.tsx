@@ -20,8 +20,10 @@ export default function HeadlineBanner({ headline, summary }: Props) {
   const leadText = (() => {
     if (!summary) return null
     const firstParagraph = summary.split(/\n+/).find(p => p.trim().length > 0) ?? summary
-    const sentences = firstParagraph.match(/[^。.!?]*[。.!?]+\s*/g) ?? [firstParagraph]
-    return sentences.slice(0, 2).join('').trim() || firstParagraph
+    // 숫자 사이 점(8.18% 등)은 문장 끝으로 인식하지 않음
+    const parts = firstParagraph.split(/\.(?!\d)\s*/)
+    const twoSentences = parts.slice(0, 2).join('. ')
+    return (twoSentences + (parts.length > 2 ? '.' : '')).trim() || firstParagraph
   })()
 
   return (
