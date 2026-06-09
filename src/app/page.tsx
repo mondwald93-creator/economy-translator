@@ -40,8 +40,8 @@ export default async function Home() {
     return (
       <div className="rounded-card border border-line p-8 text-center">
         <p className="text-2xl mb-3">⏳</p>
-        <p className="text-sm font-medium text-ink mb-1">브리핑 준비 중이에요</p>
-        <p className="text-xs text-ink-muted">매일 오전 9시에 업데이트돼요. 잠시 후 다시 확인해 주세요.</p>
+        <p className="text-sm font-medium text-ink mb-1">오늘 브리핑 준비 중이에요</p>
+        <p className="text-xs text-ink-muted">매일 아침 9시에 올라와요. 커피 한 잔 마시고 다시 와주세요 ☕</p>
       </div>
     )
   }

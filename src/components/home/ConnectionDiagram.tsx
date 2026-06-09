@@ -40,7 +40,7 @@ export default function ConnectionDiagram({ connections }: Props) {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-[11px] font-semibold text-ink-subtle uppercase tracking-widest">오늘의 경제 연결관계</h2>
+      <h2 className="text-[11px] font-semibold text-ink-subtle uppercase tracking-widest">오늘 뉴스, 어떻게 연결되어 있을까?</h2>
       <div className="bg-white rounded-card border border-line p-4 space-y-3">
         {chains.map((chain, i) => (
           <div key={i} className="flex flex-wrap items-center gap-1.5">

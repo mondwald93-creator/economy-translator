@@ -26,13 +26,18 @@ export default function HeadlineBanner({ headline, summary }: Props) {
 
   return (
     <div>
+      {/* 포지셔닝 문구 — 처음 온 사람이 "나 위한 거네" 느끼게 */}
+      <p className="text-[12px] font-semibold text-[#16A34A] mb-3 tracking-wide">
+        📰 매일 아침 5분 · 경제 초보를 위한 브리핑
+      </p>
+
       {/* 날짜 + 새로고침 안내 */}
       <div className="flex flex-wrap items-center gap-2 mb-5">
         <span className="bg-[#F3F4F6] text-[#6B7280] text-xs font-medium px-3 py-1 rounded-md">
           {dateStr}
         </span>
         <span className="hidden sm:flex text-[11px] text-[#9CA3AF] items-center gap-1">
-          <span className="text-[13px]">↻</span> 내일 오전 9시에 새 브리핑이 올라와요
+          <span className="text-[13px]">↻</span> 내일 아침 9시에 새 브리핑이 올라와요
         </span>
       </div>
 
@@ -60,14 +65,13 @@ export default function HeadlineBanner({ headline, summary }: Props) {
         </p>
       )}
 
-      {/* 긴박감 배너 */}
+      {/* 응원 배너 */}
       <div
         className="flex items-center gap-3 text-[#92400E]"
         style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '10px 16px', fontSize: 13, marginBottom: 16 }}
       >
-        <span style={{ fontSize: 16 }}>⏰</span>
-        <span><strong className="font-bold">오늘의 브리핑</strong> — 내일 오전 9시에 새 내용으로 바뀌어요</span>
-        <span className="ml-auto font-semibold text-[#B45309] text-xs hidden sm:inline">D-day</span>
+        <span style={{ fontSize: 16 }}>☀️</span>
+        <span>오늘 브리핑 읽으면 <strong className="font-bold">경제 공부 하루치 완료!</strong> 내일 아침 9시에 새로 올라와요</span>
       </div>
 
       {/* 공유 버튼 */}

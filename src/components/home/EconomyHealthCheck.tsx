@@ -19,7 +19,7 @@ export default function EconomyHealthCheck({ healthCheck }: Props) {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-[11px] font-semibold text-ink-subtle uppercase tracking-widest">한국 경제 건강진단</h2>
+      <h2 className="text-[11px] font-semibold text-ink-subtle uppercase tracking-widest">지금 한국 경제, 어떤 상태일까?</h2>
       <div className="grid grid-cols-3 gap-2">
         {healthCheck.map((item) => {
           const config = statusConfig[item.status] ?? statusConfig.normal
