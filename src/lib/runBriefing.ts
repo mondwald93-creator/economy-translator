@@ -93,6 +93,7 @@ export async function runDailyBriefing() {
     date: today,
     summary: briefingResult.summary,
     headline: briefingResult.headline,
+    share_card: briefingResult.shareCard ?? null,
     daily_term: JSON.stringify(briefingResult.dailyTerm),
     indicators: fullIndicators,
     top3_analysis: top3AnalysisData,

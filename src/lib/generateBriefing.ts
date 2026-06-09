@@ -4,6 +4,7 @@ import { KeyIndicator, Top3AnalysisItem, HealthCheckItem, ConnectionItem, Articl
 interface BriefingAIResult {
   headline: string
   summary: string
+  shareCard: string
   dailyTerm: { term: string; category: string; explanation: string }
   indicatorExplanations: { name: string; easyExplanation: string }[]
   top3Indices: number[]
@@ -50,6 +51,7 @@ ${titleList}
 {
   "headline": "오늘 핵심 사건 한 줄\\n결과·영향 한 줄 (두 줄을 \\n으로 구분, 구어체 ~했어요 형식. 첫 줄은 반드시 18자 이내 짧게. 예: '코스피가 크게 떨어졌어요\\n환율이 오르면서 생활물가 압박이 커졌어요')",
   "summary": "오늘 경제 전체를 초보자 언어로 정리한 3~5문단 요약 글",
+  "shareCard": "경제를 전혀 모르는 친구에게 카카오톡으로 보내는 오늘의 한 줄 (20~40자, 숫자보다 의미 중심, headline과 다른 내용. 예: '오늘 주식이 올랐어요 — 외국인들이 올해 들어 가장 많이 산 날이에요')",
   "dailyTerm": {
     "term": "오늘 뉴스와 관련 있는 경제 용어 1개${avoidTerms}",
     "category": "금리|환율|주식|부동산|무역|경기|소비|통화 중 하나",
