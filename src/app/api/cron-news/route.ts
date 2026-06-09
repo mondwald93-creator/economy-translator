@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL
-    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+    || 'https://economy-translator.vercel.app'
 
   try {
     const collectRes = await fetch(`${baseUrl}/api/collect-news`, { method: 'POST' })

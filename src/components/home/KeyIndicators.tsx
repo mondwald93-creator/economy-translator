@@ -46,30 +46,32 @@ export default function KeyIndicators({ indicators, healthCheck, briefingAt }: P
         </div>
       )}
 
-      {/* 오른쪽: 지표 그리드 — 모바일 2열, 데스크탑 카드 수에 맞게 열 수 조정 */}
-      <div className={`grid gap-3 grid-cols-2 ${indicators.length === 4 ? 'sm:grid-cols-4' : indicators.length === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
-        {indicators.map((item) => {
-          const isUp = item.direction === 'up'
-          const isDown = item.direction === 'down'
-          return (
-            <div key={item.name} className="bg-white rounded-[14px] border border-[#F3F4F6] p-4 flex flex-col shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-              <p className="text-[11px] text-[#9CA3AF] font-medium uppercase tracking-wide mb-2">{item.name}</p>
-              <p className="text-[22px] font-black text-[#111827] tracking-tight mb-1">{item.value}</p>
-              <p className={`text-xs font-semibold flex items-center gap-1 ${isUp ? 'text-[#16A34A]' : isDown ? 'text-[#DC2626]' : 'text-[#9CA3AF]'}`}>
-                {item.change}
-              </p>
-              <div className={`mt-2 h-[3px] rounded-full ${
-                isUp ? 'bg-gradient-to-r from-[#22C55E] to-[#86EFAC]' :
-                isDown ? 'bg-gradient-to-r from-[#EF4444] to-[#FCA5A5]' :
-                'bg-[#E5E7EB]'
-              }`} />
-            </div>
-          )
-        })}
+      {/* 오른쪽: 지표 그리드 + 타임스탬프 — grade가 없으면 전체 폭 사용 */}
+      <div className={!grade ? 'sm:col-span-full' : ''}>
+        <div className={`grid gap-3 grid-cols-2 ${indicators.length === 4 ? 'sm:grid-cols-4' : indicators.length === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+          {indicators.map((item) => {
+            const isUp = item.direction === 'up'
+            const isDown = item.direction === 'down'
+            return (
+              <div key={item.name} className="bg-white rounded-[14px] border border-[#F3F4F6] p-4 flex flex-col shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                <p className="text-[11px] text-[#9CA3AF] font-medium uppercase tracking-wide mb-2">{item.name}</p>
+                <p className="text-[22px] font-black text-[#111827] tracking-tight mb-1">{item.value}</p>
+                <p className={`text-xs font-semibold flex items-center gap-1 ${isUp ? 'text-[#16A34A]' : isDown ? 'text-[#DC2626]' : 'text-[#9CA3AF]'}`}>
+                  {item.change}
+                </p>
+                <div className={`mt-2 h-[3px] rounded-full ${
+                  isUp ? 'bg-gradient-to-r from-[#22C55E] to-[#86EFAC]' :
+                  isDown ? 'bg-gradient-to-r from-[#EF4444] to-[#FCA5A5]' :
+                  'bg-[#E5E7EB]'
+                }`} />
+              </div>
+            )
+          })}
+        </div>
+        <p className="text-[11px] text-[#9CA3AF] text-right mt-1">
+          실시간 지표 · AI 설명은 {briefingAt ?? '오전 9시'} 브리핑 기준
+        </p>
       </div>
-      <p className="text-[11px] text-[#9CA3AF] text-right mt-1">
-        실시간 지표 · AI 설명은 {briefingAt ?? '오전 9시'} 브리핑 기준
-      </p>
     </div>
   )
 }
