@@ -1,13 +1,15 @@
 # 경제번역기 — 인수인계 문서
 
 > 다음 세션에서 이 파일을 **먼저 읽고** 시작하세요.
-> 마지막 업데이트: 2026-06-08
+> 마지막 업데이트: 2026-06-09 (Phase 2 모바일 최적화 완료 + 공유 버튼 추가. 다음: Phase 3)
 
 ---
 
 ## 프로젝트 한 줄 요약
 
-**주식·환율·물가 등 경제를 전혀 모르는 사람들을 위해, 매일 한국 경제 뉴스를 쉬운 언어로 정리해주는 웹사이트**
+**경제 지식이 0인 2030 여성, 투자 입문 희망자를 위한 매일 5분 경제 입문 브리핑 사이트**
+
+> 2026-06-09 서비스 리뉴얼 방향 확정. 타겟과 목표가 이번에 처음 명확히 정의됨.
 
 ---
 
@@ -17,7 +19,7 @@
 |------|------|
 | 실서비스 주소 | **https://economy-translator.vercel.app** |
 | GitHub | https://github.com/mondwald93-creator/economy-translator |
-| 자동 업데이트 | 매일 한국시간 **오전 9시** 브리핑 생성 + **오후 1시·5시·10시** 뉴스 수집 |
+| 자동 업데이트 | 매일 한국시간 **오전 9:00** 뉴스 수집 + **오전 9:10** 브리핑 생성 + **오후 1시·5시·10시** 뉴스 수집 |
 | 로컬 개발 | `npm run dev` → http://localhost:3000 |
 | 배포 방식 | git push → Vercel 자동 재배포 |
 
@@ -25,15 +27,84 @@
 
 ## 다음 세션 시작점 ← 여기서 시작
 
-**✅ 2026-06-08 작업 전체 완료 — 다음 작업 범위 미정**
+**✅ 2026-06-09 — Phase 1(GA) 완료. Phase 2(모바일) 전체 완료. Phase 3(첫인상·톤) 완료. 다음: Phase 4(재방문 유도 기능)**
 
-오늘 세션에서 버그 2개 수정 + 기능 2개 추가 완료.
-- 뉴스 수집 DB constraint 버그 → 수정 완료
-- 뉴스 목록 Next.js 캐시 버그 → 수정 완료
-- 오늘의 경제용어 중복 방지 → 적용 완료
-- 지표(코스피·코스닥·환율) 실시간화 → 적용 완료
+### 서비스 리뉴얼 배경
+외부 피드백 3가지를 수용해서 리뉴얼 결정:
+1. 모바일 최적화 시급
+2. 타겟 방문자 명확히 정의
+3. 운영 목표를 수치로 설정
 
-다음 세션에서는 추가 작업 방향을 먼저 사용자에게 물어보고 시작할 것.
+### 확정된 타겟 & 목표
+
+| 항목 | 내용 |
+|------|------|
+| 타겟 | 경제 지식이 0인 2030 여성, 투자를 시작하고 싶지만 어디서부터 시작할지 모르는 사람 |
+| 포지셔닝 | "매일 5분 경제 입문 브리핑" |
+| 목표 (3개월) | 재방문율 30% / 일일 방문자 100명 / 평균 체류시간 3분 이상 |
+
+### 서비스 리뉴얼 로드맵
+
+| 단계 | 내용 | 시기 | 상태 |
+|------|------|------|------|
+| Phase 0 | 타겟·목표·포지셔닝 정의 | 2026-06-09 | ✅ 완료 |
+| Phase 1 | GA(방문자 추적) 설치 | 6월 3주차 | ✅ 완료 (2026-06-09) |
+| Phase 2 | 모바일 최적화 전체 | 6월 3~4주차 | ✅ 완료 (2026-06-09) |
+| Phase 3 | 첫인상·사이트 톤 타겟 맞게 조정 | 6월 3주차 | ✅ 완료 (2026-06-09) |
+| Phase 4 | 재방문 유도 기능 추가 | 7월 1주차 | ⬜ 대기 |
+| Phase 5 | 케이스스터디 작성 | 8월 1~2주차 | ⬜ 대기 (데이터 쌓인 후) |
+
+### 다음 세션 시작 멘트
+> "경제번역기 리뉴얼 이어서 해줘" → Phase 4 (재방문 유도 기능) 바로 시작
+
+---
+
+### Phase 1 세부 과업 (GA 설치) ✅ 완료 (2026-06-09)
+- [x] 구글 애널리틱스 계정 만들기 (측정 ID: G-4EX6PHFTLB)
+- [x] 사이트에 추적 코드 심기 (layout.tsx — next/script afterInteractive 방식)
+- [x] 실시간 방문자 수 1 확인 완료
+- [ ] 리뉴얼 전 기준값 기록 → 1~2일 후 GA 대시보드에서 확인 후 기록
+
+---
+
+### Phase 2 세부 과업 (모바일 최적화) ✅ 전체 완료 (2026-06-09)
+
+#### ✅ 완료된 수정 (2026-06-09)
+
+| 파일 | 수정 내용 |
+|------|----------|
+| `layout.tsx` | 좌우 여백 `px-6` → `px-4 sm:px-6`, 상하 `py-10` → `py-8 sm:py-10` |
+| `HeadlineBanner.tsx` | 헤드라인 폰트 `36px 고정` → `22px/30px/36px` 반응형, 리드 문단 `text-sm sm:text-[15px]`, 날짜 줄바꿈 `flex-wrap`, "9시 업데이트" 문구 모바일 숨김, D-day 모바일 숨김 |
+| `EconomyStudy.tsx` | 하단 경제용어 카드 `flex-col sm:flex-row` (모바일 세로 배치), 버튼 `text-center` |
+| `NewsCardList.tsx` | 업데이트 시각 텍스트 모바일 숨김 `hidden sm:inline` |
+| `GNB.tsx` | 모바일 2열(`auto+1fr`) / 데스크탑 3열(`1fr+auto+1fr`) 분리, 로고 `whitespace-nowrap` 추가, UpdateChip 모바일 숨김 |
+
+#### ✅ Phase 2 전체 완료 (2026-06-09)
+- [x] 카카오톡·링크 공유 버튼 추가 → ShareButtons.tsx 신규 생성 (Web Share API + 링크 복사)
+- [x] 모바일 최종 전체 화면 점검 — 서브 페이지 이상 없음, 달력 셀 높이 반응형 조정
+
+---
+
+### Phase 3 세부 과업 (첫인상 개선) ✅ 완료 (2026-06-09)
+
+**목표:** 처음 방문한 2030 여성이 3초 안에 "이거 나 위한 거네"라고 느끼게 만들기
+
+| 파일 | 수정 내용 | 상태 |
+|------|----------|------|
+| `HeadlineBanner.tsx` | 포지셔닝 문구 추가("📰 매일 아침 5분 · 경제 초보를 위한 브리핑") + 응원 배너 | ✅ |
+| `layout.tsx` | title "5분으로 끝내는 경제 입문", description 타겟 맞게, keywords 보강 | ✅ |
+| `GNB.tsx` | UpdateChip "오늘 브리핑 완료 ✓" / "매일 아침 9시 브리핑" | ✅ |
+| `EconomyStudy.tsx` | "오늘 알면 좋은 경제 단어", "단어 더 보기 →" | ✅ |
+| `EconomyHealthCheck.tsx` | "지금 한국 경제, 어떤 상태일까?" | ✅ |
+| `ConnectionDiagram.tsx` | "오늘 뉴스, 어떻게 연결되어 있을까?" | ✅ |
+| `page.tsx` | 브리핑 준비중 문구 친근하게 | ✅ |
+
+### Phase 4 세부 과업 (재방문 유도)
+- [ ] 오늘의 한 문장 카드 (인스타·카카오 공유용)
+- [ ] 이메일 구독 기능 검토 및 구현
+- [ ] "매일 브리핑" 강조 UI 조정
+
+---
 
 ### 시작 방법
 
@@ -163,6 +234,30 @@ const { data: articles } = await db.from('news_articles')...
 - ✅ 오늘의 경제용어 중복 방지 (최근 7일 피하기)
 - ✅ 지표 실시간화 (페이지 로드마다 Yahoo Finance 실시간값, AI 설명은 브리핑 기준 유지)
 
+### 서비스 리뉴얼 Phase 2 완료 (2026-06-09 — 이번 세션)
+
+- ✅ `ShareButtons.tsx` 신규 생성 — "📤 친구에게 공유" (Web Share API, 모바일에서 카카오톡 등 기기 공유창 뜸) + "🔗 링크 복사" (클립보드 복사, 2초 후 원래대로)
+- ✅ `HeadlineBanner.tsx` — ShareButtons 삽입, D-day 배너 하단 여백 32px → 16px로 조정
+- ✅ `calendar/page.tsx` — 달력 셀 높이 `min-h-[64px]` → `min-h-[48px] sm:min-h-[64px]` 반응형
+- ✅ 서브 페이지 모바일 점검 — 용어사전·링크분석기·북마크 이상 없음 확인
+- ✅ git push → Vercel 자동 배포 완료
+
+**ShareButtons 작동 방식 (기술 용어 없이):**
+- 📤 버튼: 휴대폰에서 누르면 → 카카오톡·문자·메일 등 내 폰에 깔린 앱 선택창이 뜸. 컴퓨터에서 누르면 → 링크 자동 복사.
+- 🔗 버튼: 어디서든 누르면 → 링크 복사. "복사됨!" 메시지 2초 뜨고 사라짐.
+- 공유되는 내용: URL(https://economy-translator.vercel.app) + 제목 + 한 줄 소개
+
+---
+
+### 자동화 타임아웃 근본 수정 (2026-06-09)
+- ✅ 원인 분석: 단일 크론(300초 제한)에서 뉴스수집(60초) + 브리핑생성(250초) 연속 실행 → 타임아웃 간헐적 실패
+- ✅ 크론 분리: 9:00 뉴스수집 전용 / 9:10 브리핑생성 전용 (각자 독립 300초)
+- ✅ `src/lib/runBriefing.ts` 신규 생성 — 브리핑 생성 오케스트레이션 공유 lib
+- ✅ `src/app/api/cron-briefing/route.ts` 신규 생성 — 브리핑 전용 크론 라우트
+- ✅ `cron/route.ts` 개선 — HTTP fetch 제거, collectAndSaveNews() 직접 호출
+- ✅ `generate-briefing/route.ts` 간소화 — runDailyBriefing() 사용
+- ✅ `vercel.json` 업데이트 — cron-briefing 추가, maxDuration 분리 적용
+
 ---
 
 ## 절대 건드리지 말 것
@@ -185,14 +280,18 @@ const { data: articles } = await db.from('news_articles')...
 ## 자동화 흐름
 
 ```
-[매일 오전 9시 KST] Vercel Cron → GET /api/cron
-    ├─ POST /api/collect-news   (뉴스 수집 — 실패 또는 0건이면 중단)
-    └─ POST /api/generate-briefing  (OpenAI GPT-4o-mini × 3회 → Supabase upsert)
+[매일 오전 9:00 KST] Vercel Cron → GET /api/cron
+    └─ collectAndSaveNews() 직접 호출 (HTTP fetch 없이, 60초 제한)
+
+[매일 오전 9:10 KST] Vercel Cron → GET /api/cron-briefing
+    └─ runDailyBriefing() 직접 호출 (OpenAI GPT-4o-mini × 3회 → Supabase upsert, 300초 제한)
            └─ 최근 7일 daily_term 조회 → AI 프롬프트에 "이 용어 피하세요" 전달
 
 [오후 1시·5시·10시 KST] Vercel Cron → GET /api/cron-news
     └─ POST /api/collect-news   (뉴스 수집만, 브리핑 생성 없음)
 ```
+
+> ⚠️ 뉴스 수집(9:00)과 브리핑 생성(9:10)은 반드시 분리 운영. 합치면 300초 제한 초과로 실패함.
 
 ---
 
@@ -223,10 +322,11 @@ economy-translator/
 │   │   ├── bookmarks/page.tsx
 │   │   ├── news/[id]/page.tsx
 │   │   └── api/
-│   │       ├── cron/route.ts              # 브리핑 크론 (collect 실패 시 중단, maxDuration 300s)
+│   │       ├── cron/route.ts              # ⭐ 9:00 뉴스 수집 전용 크론 (collectAndSaveNews 직접 호출, 60s)
+│   │       ├── cron-briefing/route.ts     # ⭐ 9:10 브리핑 생성 전용 크론 (runDailyBriefing 직접 호출, 300s)
 │   │       ├── cron-news/route.ts         # 뉴스 전용 크론 (오후 1시·5시·10시)
 │   │       ├── collect-news/route.ts      # 뉴스 수집 API
-│   │       ├── generate-briefing/route.ts # 브리핑 생성 (upsert, 인덱스 기반 TOP3, recentTerms 전달)
+│   │       ├── generate-briefing/route.ts # 브리핑 생성 API (runDailyBriefing 호출, 300s)
 │   │       ├── analyze-link/route.ts      # 링크 분석
 │   │       └── terms/route.ts             # 경제용어 검색
 │   ├── components/
@@ -234,7 +334,8 @@ economy-translator/
 │   │   │   ├── TopBar.tsx
 │   │   │   └── GNB.tsx                    # grid-cols-[1fr_auto_1fr], 메뉴 항상 정중앙
 │   │   ├── home/
-│   │   │   ├── HeadlineBanner.tsx
+│   │   │   ├── HeadlineBanner.tsx         # D-day 배너 + ShareButtons 포함
+│   │   │   ├── ShareButtons.tsx           # ⭐ 공유 버튼 (Web Share API + 링크 복사) — 2026-06-09 추가
 │   │   │   ├── KeyIndicators.tsx
 │   │   │   ├── EconomyHealthCheck.tsx
 │   │   │   ├── Top3NewsSection.tsx
@@ -243,6 +344,7 @@ economy-translator/
 │   │   │   └── EconomyStudy.tsx
 │   │   └── BookmarkButton.tsx
 │   ├── lib/
+│   │   ├── runBriefing.ts                 # ⭐ 브리핑 생성 오케스트레이션 (cron-briefing + generate-briefing 공유)
 │   │   ├── naverNews.ts                   # insert 방식 (upsert 아님), URL 선조회로 중복 제거
 │   │   ├── generateBriefing.ts            # recentTerms 파라미터 추가, top3Indices 인덱스 방식
 │   │   ├── marketData.ts                  # 기준금리 네이버 금융 스크래핑, 실패 시 3.50% 폴백
@@ -250,7 +352,7 @@ economy-translator/
 │   ├── types/index.ts
 │   └── styles/globals.css
 ├── CLAUDE.md                              # ⭐ Claude 자동 로드 파일 (세션 시작 시 항상 읽힘)
-├── vercel.json                            # cron 4개, maxDuration 설정
+├── vercel.json                            # cron 5개 (9:00 수집 + 9:10 브리핑 + 오후 3개), maxDuration 분리
 ├── tailwind.config.ts
 ├── color-preview.html                     # ⭐ 레퍼런스 디자인 (브라우저로 비교 필수)
 └── .env.local
