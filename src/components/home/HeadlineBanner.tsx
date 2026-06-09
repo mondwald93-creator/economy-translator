@@ -25,19 +25,19 @@ export default function HeadlineBanner({ headline, summary }: Props) {
   return (
     <div>
       {/* 날짜 + 새로고침 안내 */}
-      <div className="flex items-center gap-3 mb-5">
+      <div className="flex flex-wrap items-center gap-2 mb-5">
         <span className="bg-[#F3F4F6] text-[#6B7280] text-xs font-medium px-3 py-1 rounded-md">
           {dateStr}
         </span>
-        <span className="text-[11px] text-[#9CA3AF] flex items-center gap-1">
+        <span className="hidden sm:flex text-[11px] text-[#9CA3AF] items-center gap-1">
           <span className="text-[13px]">↻</span> 내일 오전 9시에 새 브리핑이 올라와요
         </span>
       </div>
 
       {/* 헤드라인 */}
       <h1
-        className="font-black text-[#111827]"
-        style={{ fontSize: 36, lineHeight: 1.25, letterSpacing: '-1.2px', marginBottom: 18 }}
+        className="font-black text-[#111827] text-[22px] sm:text-[30px] lg:text-[36px] leading-tight mb-4"
+        style={{ letterSpacing: '-0.8px' }}
       >
         {firstLine}
         {secondLine && (
@@ -51,8 +51,8 @@ export default function HeadlineBanner({ headline, summary }: Props) {
       {/* 리드 문단 — 첫 번째 문단만 */}
       {leadText && (
         <p
-          className="text-[#4B5563]"
-          style={{ fontSize: 15, lineHeight: 1.8, borderLeft: '3px solid #22C55E', paddingLeft: 16, maxWidth: 640, marginBottom: 32 }}
+          className="text-[#4B5563] text-sm sm:text-[15px] mb-8"
+          style={{ lineHeight: 1.8, borderLeft: '3px solid #22C55E', paddingLeft: 16 }}
         >
           {leadText}
         </p>
