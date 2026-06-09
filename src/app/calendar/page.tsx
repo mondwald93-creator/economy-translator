@@ -204,7 +204,7 @@ export default function CalendarPage() {
         <div className="grid grid-cols-7 divide-x divide-y divide-line">
           {calendarDays.map((day, i) => {
             if (!day) {
-              return <div key={`e-${i}`} className="min-h-[64px] bg-surface/50" />
+              return <div key={`e-${i}`} className="min-h-[48px] sm:min-h-[64px] bg-surface/50" />
             }
 
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
@@ -217,7 +217,7 @@ export default function CalendarPage() {
               <div
                 key={dateStr}
                 onClick={() => events.length > 0 && setSelectedDate(isSelected ? null : dateStr)}
-                className={`min-h-[64px] p-1.5 transition-colors ${
+                className={`min-h-[48px] sm:min-h-[64px] p-1 sm:p-1.5 transition-colors ${
                   events.length > 0 ? 'cursor-pointer hover:bg-surface' : ''
                 } ${isSelected ? 'bg-[#F0FDF4]' : ''}`}
               >
