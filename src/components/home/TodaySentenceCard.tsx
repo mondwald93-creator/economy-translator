@@ -88,14 +88,17 @@ export default function TodaySentenceCard({ sentence, dateLabel }: Props) {
           </span>
         </div>
 
-        {/* 큰따옴표 */}
+        {/* 큰따옴표 — 배경 장식 (절대 위치, 텍스트 흐름과 분리) */}
         <div style={{
-          color: 'rgba(34,197,94,0.4)',
-          fontSize: 72,
-          lineHeight: 0.7,
+          position: 'absolute',
+          top: 52,
+          left: 20,
+          color: 'rgba(34,197,94,0.15)',
+          fontSize: 130,
+          lineHeight: 1,
           fontFamily: 'Georgia, serif',
-          marginBottom: 12,
           userSelect: 'none',
+          pointerEvents: 'none',
         }}>
           &ldquo;
         </div>
@@ -108,6 +111,8 @@ export default function TodaySentenceCard({ sentence, dateLabel }: Props) {
           lineHeight: 1.6,
           letterSpacing: '-0.3px',
           marginBottom: 28,
+          position: 'relative',
+          zIndex: 1,
         }}>
           {sentence}
         </p>

@@ -1,10 +1,21 @@
+export const dynamic = 'force-dynamic'
+
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import BookmarkButton from '@/components/BookmarkButton'
 
+function getDb() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { global: { fetch: (url, opts) => fetch(url, { ...opts, cache: 'no-store' }) } }
+  )
+}
+
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-  const { data: article } = await supabase
+  const db = getDb()
+  const { data: article } = await db
     .from('news_articles')
     .select('title, summary')
     .eq('id', params.id)
@@ -27,8 +38,17 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   }
 }
 
+const STEP_LABELS: Record<string, { label: string; icon: string }> = {
+  whatHappened: { label: '무슨 일이야?', icon: '📰' },
+  whyHappened: { label: '왜 이런 일이 생겼어?', icon: '🔍' },
+  myImpact: { label: '나한테 어떤 영향이 있어?', icon: '🙋' },
+  outlook: { label: '앞으로 어떻게 될까?', icon: '🔭' },
+  conclusion: { label: '한 줄 결론', icon: '✅' },
+}
+
 export default async function NewsDetailPage({ params }: { params: { id: string } }) {
-  const { data: article } = await supabase
+  const db = getDb()
+  const { data: article } = await db
     .from('news_articles')
     .select('*')
     .eq('id', params.id)
@@ -47,6 +67,8 @@ export default async function NewsDetailPage({ params }: { params: { id: string 
     )
   }
 
+  const fullAnalysis = article.full_analysis as Record<string, string> | null
+
   return (
     <div className="space-y-4 max-w-2xl">
       <Link href="/" className="text-sm text-brand-green-dark hover:underline">
@@ -60,7 +82,30 @@ export default async function NewsDetailPage({ params }: { params: { id: string 
             <BookmarkButton id={params.id} title={article.title} source={article.source} />
           </div>
         </div>
-        {article.summary && (
+
+        {fullAnalysis?.oneline && (
+          <div className="bg-[#111827] rounded-[14px] px-4 py-3 text-center">
+            <p className="text-sm font-bold text-[#22C55E]">{fullAnalysis.oneline}</p>
+          </div>
+        )}
+
+        {fullAnalysis && (
+          <div className="space-y-3">
+            {(['whatHappened', 'whyHappened', 'myImpact', 'outlook', 'conclusion'] as const).map(key => {
+              const val = fullAnalysis[key]
+              if (!val) return null
+              const meta = STEP_LABELS[key]
+              return (
+                <div key={key} className="bg-[#F9FAFB] rounded-[14px] p-4 border border-[#E5E7EB]">
+                  <p className="text-xs font-bold text-ink-subtle mb-1">{meta.icon} {meta.label}</p>
+                  <p className="text-sm text-ink leading-relaxed">{val}</p>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {!fullAnalysis && article.summary && (
           <div className="bg-[#F0FDF4] rounded-[14px] p-4 border border-[#BBF7D0]">
             <p className="text-xs font-semibold text-brand-green uppercase tracking-widest mb-2">
               쉬운 설명
@@ -68,12 +113,20 @@ export default async function NewsDetailPage({ params }: { params: { id: string 
             <p className="text-sm text-ink-muted leading-relaxed">{article.summary}</p>
           </div>
         )}
+
+        {!fullAnalysis && !article.summary && (
+          <div className="bg-[#F9FAFB] rounded-[14px] p-4 border border-[#E5E7EB] text-center space-y-1">
+            <p className="text-sm text-ink-muted">이 기사는 AI 분석이 아직 준비되지 않았어요.</p>
+            <p className="text-xs text-ink-subtle">원본 기사를 직접 확인해 보세요.</p>
+          </div>
+        )}
+
         {article.original_url && (
           <a
             href={article.original_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block text-sm text-brand-green-dark hover:underline"
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-[14px] bg-[#111827] text-white text-sm font-semibold hover:bg-[#1F2937] transition-colors"
           >
             원본 기사 보기 →
           </a>

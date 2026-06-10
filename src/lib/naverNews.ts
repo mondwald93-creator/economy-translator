@@ -21,8 +21,52 @@ const DOMAIN_SOURCE_MAP: Record<string, string> = {
   'edaily.co.kr': '이데일리',
   'kbs.co.kr': 'KBS',
   'mbc.co.kr': 'MBC',
+  'sbs.co.kr': 'SBS',
+  'jtbc.co.kr': 'JTBC',
+  'tvchosun.com': 'TV조선',
+  'mbn.co.kr': 'MBN',
+  'ytn.co.kr': 'YTN',
   'yonhapnewstv.co.kr': '연합뉴스TV',
   'n.news.naver.com': '네이버뉴스',
+  'news.naver.com': '네이버뉴스',
+  'finance.naver.com': '네이버금융',
+  'mt.co.kr': '머니투데이',
+  'fnnews.com': '파이낸셜뉴스',
+  'inews24.com': '아이뉴스24',
+  'etnews.com': '전자신문',
+  'newsis.com': '뉴시스',
+  'news1.kr': '뉴스1',
+  'etoday.co.kr': '이투데이',
+  'gukjenews.com': '국제뉴스',
+  'cjb.co.kr': 'CJB',
+  'kyeongin.com': '경인일보',
+  'kyeonggi.com': '경기일보',
+  'smartbizn.com': '스마트비즈니스',
+  'businesspost.co.kr': '비즈니스포스트',
+  'thebell.co.kr': '더벨',
+  'ddaily.co.kr': '디지털데일리',
+  'zdnet.co.kr': 'ZDNet코리아',
+  'bloter.net': '블로터',
+  'heraldcorp.com': '헤럴드경제',
+  'koreaherald.com': '코리아헤럴드',
+  'khan.co.kr': '경향신문',
+  'pressian.com': '프레시안',
+  'ohmynews.com': '오마이뉴스',
+  'mediatoday.co.kr': '미디어오늘',
+  'nocutnews.co.kr': '노컷뉴스',
+  'seoul.co.kr': '서울신문',
+  'munhwa.com': '문화일보',
+  'kmib.co.kr': '국민일보',
+  'kookje.co.kr': '국제신문',
+  'busan.com': '부산일보',
+  'daejeonilbo.com': '대전일보',
+  'joongdo.co.kr': '중도일보',
+  'cnbnews.com': 'CNB뉴스',
+  'newdaily.co.kr': '뉴데일리',
+  'pennmike.com': '펜앤드마이크',
+  'wikitree.co.kr': '위키트리',
+  'sisain.co.kr': '시사인',
+  'hankookilbo.com': '한국일보',
 }
 
 function extractSource(url: string): string {
@@ -31,7 +75,7 @@ function extractSource(url: string): string {
     for (const [domain, source] of Object.entries(DOMAIN_SOURCE_MAP)) {
       if (hostname.includes(domain)) return source
     }
-    return hostname.replace('www.', '').split('.')[0]
+    return '뉴스'
   } catch {
     return '뉴스'
   }
