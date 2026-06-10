@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
-import { collectAndSaveNews, getTodayArticles } from '@/lib/naverNews'
+import { collectAndSaveNews } from '@/lib/naverNews'
+import { runDailyBriefing } from '@/lib/runBriefing'
+import { sendDailyNewsletter } from '@/lib/sendNewsletter'
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')
@@ -8,14 +10,16 @@ export async function GET(request: Request) {
   }
 
   try {
-    const result = await collectAndSaveNews()
-    const articles = await getTodayArticles()
+    const collectResult = await collectAndSaveNews()
+    const briefingResult = await runDailyBriefing()
+    const newsletter = await sendDailyNewsletter().catch(() => ({ sent: 0, skipped: '발송 오류' }))
 
     return NextResponse.json({
       success: true,
-      saved: result.saved,
-      totalToday: articles.length,
-      errors: result.errors,
+      saved: collectResult.saved,
+      collectErrors: collectResult.errors,
+      ...briefingResult,
+      newsletter,
     })
   } catch (error) {
     return NextResponse.json(

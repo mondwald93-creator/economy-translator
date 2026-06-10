@@ -1,15 +1,14 @@
 {
   "crons": [
-    { "path": "/api/cron",          "schedule": "0 0 * * *"  },
-    { "path": "/api/cron-briefing", "schedule": "10 0 * * *" },
-    { "path": "/api/cron-news",     "schedule": "0 4 * * *"  },
-    { "path": "/api/cron-news",     "schedule": "0 8 * * *"  },
-    { "path": "/api/cron-news",     "schedule": "0 13 * * *" }
+    { "path": "/api/cron",      "schedule": "0 0 * * *"  },
+    { "path": "/api/cron-news", "schedule": "0 4 * * *"  },
+    { "path": "/api/cron-news", "schedule": "0 8 * * *"  },
+    { "path": "/api/cron-news", "schedule": "0 13 * * *" }
   ],
   "functions": {
-    "src/app/api/cron/route.ts":          { "maxDuration": 60  },
-    "src/app/api/cron-briefing/route.ts": { "maxDuration": 300 },
+    "src/app/api/cron/route.ts":              { "maxDuration": 300 },
+    "src/app/api/cron-briefing/route.ts":     { "maxDuration": 300 },
     "src/app/api/generate-briefing/route.ts": { "maxDuration": 300 },
-    "src/app/api/collect-news/route.ts":  { "maxDuration": 60  }
+    "src/app/api/collect-news/route.ts":      { "maxDuration": 60  }
   }
 }
