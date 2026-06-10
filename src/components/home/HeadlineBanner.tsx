@@ -1,4 +1,5 @@
 import ShareButtons from './ShareButtons'
+import DailyStreakBanner from './DailyStreakBanner'
 
 interface Props {
   headline: string | null
@@ -38,8 +39,8 @@ export default function HeadlineBanner({ headline, summary }: Props) {
         <span className="bg-[#F3F4F6] text-[#6B7280] text-xs font-medium px-3 py-1 rounded-md">
           {dateStr}
         </span>
-        <span className="hidden sm:flex text-[11px] text-[#9CA3AF] items-center gap-1">
-          <span className="text-[13px]">↻</span> 내일 아침 9시에 새 브리핑이 올라와요
+        <span className="flex text-[11px] text-[#9CA3AF] items-center gap-1">
+          <span className="text-[13px]">↻</span> 매일 아침 9시 새 브리핑
         </span>
       </div>
 
@@ -67,14 +68,8 @@ export default function HeadlineBanner({ headline, summary }: Props) {
         </p>
       )}
 
-      {/* 응원 배너 */}
-      <div
-        className="flex items-center gap-3 text-[#92400E]"
-        style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '10px 16px', fontSize: 13, marginBottom: 16 }}
-      >
-        <span style={{ fontSize: 16 }}>☀️</span>
-        <span>오늘 브리핑 읽으면 <strong className="font-bold">경제 공부 하루치 완료!</strong> 내일 아침 9시에 새로 올라와요</span>
-      </div>
+      {/* 응원 배너 + 연속 방문 카운터 */}
+      <DailyStreakBanner />
 
       {/* 공유 버튼 */}
       <ShareButtons />

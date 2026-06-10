@@ -105,7 +105,8 @@ export default async function Home() {
       const firstPara = (briefing.summary as string).split(/\n+/).find((p: string) => p.trim().length > 10) ?? ''
       return firstPara.match(/[^。.!?!?]*[。.!?!?]+/)?.[0]?.trim() ?? firstPara.slice(0, 60)
     })()
-  const todayDateLabel = new Date(Date.now() + 9 * 60 * 60 * 1000)
+  // 주의: +9h 보정과 timeZone 옵션을 같이 쓰면 날짜가 하루 밀림 — timeZone만 사용
+  const todayDateLabel = new Date()
     .toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' })
 
   let dailyTerm: { term: string; explanation: string } | null = null

@@ -1,7 +1,7 @@
 # 경제번역기 — 인수인계 문서
 
 > 다음 세션에서 이 파일을 **먼저 읽고** 시작하세요.
-> 마지막 업데이트: 2026-06-09 (리뉴얼 진입 전 버그 점검 완료 — KeyIndicators 레이아웃 버그 + 크론 폴백 주소 수정)
+> 마지막 업데이트: 2026-06-09 (Phase 4 항목 2 이메일 구독 코드 완성·보류 결정)
 
 ---
 
@@ -27,7 +27,14 @@
 
 ## 다음 세션 시작점 ← 여기서 시작
 
-**✅ 2026-06-09 — Phase 1~3 완료. Phase 4 진행 중 (항목 1 완료, 항목 2·3 남음). 리뉴얼 진입 전 버그 점검 완료.**
+**✅ 2026-06-10 — Phase 4 전체 완료 + 고도화 1단계(측정 기반) 완료. 다음 = 고도화 2단계 (AI 품질 자동 점검 체계).**
+
+### 2026-06-10 고도화 1단계 작업 내역
+1. **GA 버튼 클릭 추적** — `src/lib/gtag.ts` 신규. 공유(share_click)·링크복사(copy_link_click)·한문장 텍스트복사(sentence_card_copy_text)·이미지저장(sentence_card_save_image)·북마크(bookmark_add/remove) 이벤트 수집
+2. **자동화 실패 이메일 알림** — `src/lib/notifyAdmin.ts` 신규, 크론 3개(cron/cron-briefing/cron-news)에 연결. **Vercel에 RESEND_API_KEY + ALERT_EMAIL 환경변수 등록해야 작동** (없으면 서버 로그만)
+3. **Phase 4 항목 3 — 매일 브리핑 강조 UI** — ① "매일 아침 9시 새 브리핑" 문구 모바일 노출 ② 응원 배너를 DailyStreakBanner.tsx로 교체: 연속 방문 카운터 "🔥 N일 연속 공부 중" (2일째부터 표시, 브라우저 저장소 visit_streak/visit_last_date)
+4. **버그 수정** — 한 문장 카드 날짜 하루 밀림 (page.tsx todayDateLabel +9h와 timeZone 이중 적용 → timeZone만) / TopBar 안내문구 모바일 숨김 (375px 폰에서 가로 넘침 방지)
+5. **⚠️ 배포 사고 복구** — 6/9 이메일 구독 코드 중 cron/route.ts의 import만 커밋되고 lib 파일들이 누락 → 이후 모든 Vercel 빌드 실패, 실서비스가 6/9 버전에 멈춰 있었음. 이번 커밋에 이메일 관련 파일 전체 포함해서 해결. **교훈: 배포 후 Vercel 빌드 성공 확인 필수**
 
 ### 서비스 리뉴얼 배경
 외부 피드백 3가지를 수용해서 리뉴얼 결정:
@@ -55,7 +62,7 @@
 | Phase 5 | 케이스스터디 작성 | 8월 1~2주차 | ⬜ 대기 (데이터 쌓인 후) |
 
 ### 다음 세션 시작 멘트
-> "경제번역기 리뉴얼 이어서 해줘" → Phase 4 항목 2 (이메일 구독) 바로 시작
+> "경제번역기 리뉴얼 이어서 해줘" → Phase 4 항목 3 (매일 브리핑 강조 UI 조정) 바로 시작
 
 > **버그 점검 상태**: 리뉴얼 진입 전 전체 코드 점검 완료 (2026-06-09). 수정된 파일: KeyIndicators.tsx, cron-news/route.ts. 알려진 버그 없음.
 
@@ -103,8 +110,40 @@
 
 ### Phase 4 세부 과업 (재방문 유도)
 - [x] 오늘의 한 문장 카드 ✅ 완료 (2026-06-09)
-- [ ] 이메일 구독 기능 — **다음 세션 P0** ← 여기서 시작
-- [ ] "매일 브리핑" 강조 UI 조정
+- [~] 이메일 구독 기능 — **코드 완성, 보류** (트래픽 생기면 활성화)
+- [ ] "매일 브리핑" 강조 UI 조정 — **다음 세션 P0** ← 여기서 시작
+
+#### 이메일 구독 기능 — 코드 완성, 보류 (2026-06-09)
+
+**보류 이유:** 트래픽이 생기기 전에 이메일 발송하는 건 섣부름. 방문자가 쌓인 후 활성화.
+
+**만들어진 파일 (코드 완성 상태, page.tsx에서만 주석 처리됨):**
+- `src/lib/emailTemplate.ts` — 뉴스레터·환영 이메일 HTML 템플릿
+- `src/lib/sendNewsletter.ts` — 구독자 전체에게 오늘 브리핑 발송 로직
+- `src/app/api/subscribe/route.ts` — 구독 신청 처리 (이메일 저장 + 환영 이메일)
+- `src/app/api/unsubscribe/route.ts` — 구독 취소 처리
+- `src/app/api/send-newsletter/route.ts` — 수동 발송 API
+- `src/app/unsubscribe/page.tsx` — 구독 취소 완료 화면
+- `src/components/home/EmailSubscribeSection.tsx` — 구독 폼 UI 컴포넌트
+- `src/app/api/cron-briefing/route.ts` — 브리핑 생성 후 뉴스레터 자동 발송 연결됨
+
+**Supabase `subscribers` 테이블:** SQL 실행 완료 (2026-06-09)
+```sql
+CREATE TABLE subscribers (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  email text UNIQUE NOT NULL,
+  subscribed_at timestamptz DEFAULT now(),
+  is_active boolean DEFAULT true
+);
+```
+
+**활성화하려면:**
+1. resend.com 가입 → API 키 발급
+2. `.env.local`에 `RESEND_API_KEY=re_...` 추가
+3. Vercel 환경변수에도 동일하게 추가
+4. `page.tsx`에서 EmailSubscribeSection import 주석 해제 (2곳)
+
+---
 
 #### 오늘의 한 문장 카드 — 상세 (2026-06-09 완료)
 
