@@ -74,7 +74,7 @@ export default async function Home() {
     .from('briefings').select('*').eq('date', today).order('created_at', { ascending: false }).limit(1).single()
 
   const { data: rawArticles } = await db
-    .from('news_articles').select('id, title, source, created_at').eq('date', today).order('created_at', { ascending: false }).limit(50)
+    .from('news_articles').select('id, title, source, created_at').eq('date', today).order('created_at', { ascending: false }).limit(500)
 
   const articles = selectDiverseArticles((rawArticles ?? []) as RawArticle[])
 
