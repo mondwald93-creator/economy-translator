@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { collectAndSaveNews } from '@/lib/naverNews'
 import { runDailyBriefing } from '@/lib/runBriefing'
 import { sendDailyNewsletter } from '@/lib/sendNewsletter'
+import { notifyFailure } from '@/lib/notifyAdmin'
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')
@@ -22,6 +23,7 @@ export async function GET(request: Request) {
       newsletter,
     })
   } catch (error) {
+    await notifyFailure('오전 9시 뉴스 수집·브리핑 생성', String(error))
     return NextResponse.json(
       { success: false, error: String(error) },
       { status: 500 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { trackEvent } from '@/lib/gtag'
 
 const SHARE_URL = 'https://economy-translator.vercel.app'
 const SHARE_TITLE = '경제번역기 — 매일 5분 경제 입문 브리핑'
@@ -10,6 +11,7 @@ export default function ShareButtons() {
   const [copied, setCopied] = useState(false)
 
   async function handleShare() {
+    trackEvent('share_click', { method: typeof navigator.share === 'function' ? 'web_share' : 'copy_fallback' })
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({ title: SHARE_TITLE, text: SHARE_TEXT, url: SHARE_URL })
@@ -17,11 +19,16 @@ export default function ShareButtons() {
         // 사용자가 취소한 경우
       }
     } else {
-      await handleCopy()
+      await copyToClipboard()
     }
   }
 
   async function handleCopy() {
+    trackEvent('copy_link_click')
+    await copyToClipboard()
+  }
+
+  async function copyToClipboard() {
     try {
       await navigator.clipboard.writeText(SHARE_URL)
       setCopied(true)

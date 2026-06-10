@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { trackEvent } from '@/lib/gtag'
 
 interface Props {
   sentence: string
@@ -13,6 +14,7 @@ export default function TodaySentenceCard({ sentence, dateLabel }: Props) {
   const [saving, setSaving] = useState(false)
 
   const handleCopyText = async () => {
+    trackEvent('sentence_card_copy_text')
     const text = `${sentence}\n\n📰 경제번역기 · 매일 5분 경제 입문 브리핑\nhttps://economy-translator.vercel.app`
     await navigator.clipboard.writeText(text)
     setCopied(true)
@@ -21,6 +23,7 @@ export default function TodaySentenceCard({ sentence, dateLabel }: Props) {
 
   const handleSaveImage = async () => {
     if (!cardRef.current) return
+    trackEvent('sentence_card_save_image')
     setSaving(true)
     try {
       const html2canvas = (await import('html2canvas')).default

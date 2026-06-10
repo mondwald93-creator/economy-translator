@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { isBookmarked, toggleBookmark } from '@/lib/bookmarks'
+import { trackEvent } from '@/lib/gtag'
 
 interface Props {
   id: string
@@ -19,6 +20,7 @@ export default function BookmarkButton({ id, title, source }: Props) {
     e.preventDefault()
     e.stopPropagation()
     const added = toggleBookmark({ id, title, source })
+    trackEvent(added ? 'bookmark_add' : 'bookmark_remove')
     setBookmarked(added)
   }
 

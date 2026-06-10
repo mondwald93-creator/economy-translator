@@ -8,8 +8,8 @@ export default function TopBar({ updatedAt }: { updatedAt?: string | null }) {
         <strong className="text-[#F9FAFB] font-bold text-[12px]">
           {hasBriefing ? `오늘 ${updatedAt} 브리핑 업데이트 완료` : '브리핑 준비 중'}
         </strong>
-        <span className="text-[#374151] text-[12px]">·</span>
-        <span className="text-[#9CA3AF] text-[12px]">매일 오전 9시, 새 브리핑이 올라와요</span>
+        <span className="hidden sm:inline text-[#374151] text-[12px]">·</span>
+        <span className="hidden sm:inline text-[#9CA3AF] text-[12px]">매일 오전 9시, 새 브리핑이 올라와요</span>
       </span>
     </div>
   )
