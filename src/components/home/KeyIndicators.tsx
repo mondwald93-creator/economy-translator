@@ -56,12 +56,13 @@ export default function KeyIndicators({ indicators, healthCheck, briefingAt }: P
               <div key={item.name} className="bg-white rounded-[14px] border border-[#F3F4F6] p-4 flex flex-col shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
                 <p className="text-[11px] text-[#9CA3AF] font-medium uppercase tracking-wide mb-2">{item.name}</p>
                 <p className="text-[22px] font-black text-[#111827] tracking-tight mb-1">{item.value}</p>
-                <p className={`text-xs font-semibold flex items-center gap-1 ${isUp ? 'text-[#16A34A]' : isDown ? 'text-[#DC2626]' : 'text-[#9CA3AF]'}`}>
+                {/* 한국 금융앱 관습: 상승=빨강, 하락=파랑 (2026-06-11 사용자 결정) */}
+                <p className={`text-xs font-semibold flex items-center gap-1 ${isUp ? 'text-[#DC2626]' : isDown ? 'text-[#2563EB]' : 'text-[#9CA3AF]'}`}>
                   {item.change}
                 </p>
                 <div className={`mt-2 h-[3px] rounded-full ${
-                  isUp ? 'bg-gradient-to-r from-[#22C55E] to-[#86EFAC]' :
-                  isDown ? 'bg-gradient-to-r from-[#EF4444] to-[#FCA5A5]' :
+                  isUp ? 'bg-gradient-to-r from-[#EF4444] to-[#FCA5A5]' :
+                  isDown ? 'bg-gradient-to-r from-[#3B82F6] to-[#93C5FD]' :
                   'bg-[#E5E7EB]'
                 }`} />
               </div>
