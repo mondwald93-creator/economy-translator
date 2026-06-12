@@ -123,7 +123,7 @@ ${articleList}
     ],
     response_format: { type: 'json_object' },
     temperature: 0.7,
-  })
+  }, { timeout: 100_000 }) // 요약은 건수가 많아 출력이 길다 — 기본 60초로는 정상 응답도 끊길 수 있음
 
   const parsed = JSON.parse(res.choices[0].message.content ?? '{"articles":[]}')
   return (parsed.articles ?? []) as { id: string; summary: string }[]
