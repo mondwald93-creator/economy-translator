@@ -10,7 +10,7 @@ async function fetchQuote(symbol: string): Promise<YahooMeta | null> {
   try {
     const res = await fetch(
       `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`,
-      { next: { revalidate: 0 } }
+      { next: { revalidate: 0 }, signal: AbortSignal.timeout(10_000) }
     )
     if (!res.ok) return null
     const json = await res.json()
@@ -57,6 +57,7 @@ async function fetchBaseRate(): Promise<Omit<KeyIndicator, 'easyExplanation'>> {
         'Accept-Language': 'ko-KR,ko;q=0.9',
       },
       next: { revalidate: 0 },
+      signal: AbortSignal.timeout(10_000),
     })
     if (!res.ok) return FALLBACK_BASE_RATE
     const buffer = await res.arrayBuffer()

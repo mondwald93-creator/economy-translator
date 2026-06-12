@@ -68,6 +68,7 @@
 | 뉴스 저장 방식 | `naverNews.ts` — 기존 URL 선조회 후 `insert` | upsert 복귀 시 DB constraint 없으면 전체 에러 |
 | 기준금리 | 네이버 금융 자동 수집 | 하드코딩 금지 |
 | vercel.json maxDuration | cron 300s, generate-briefing 300s | 삭제 시 타임아웃으로 크론 매일 실패 |
+| 외부 호출 기다림 한도 | OpenAI 60초+재시도 1회(요약만 100초), 시세 fetch 10초 (openai.ts·generateBriefing.ts·marketData.ts) | 제거 시 외부 지연 1건이 5분 예산 전체 소진 → 브리핑 미생성 (2026-06-12 장애 원인) |
 | Supabase briefings.date | unique constraint 적용됨 | 삭제 시 중복 행 문제 재발 |
 | page.tsx Supabase 클라이언트 | 매 렌더마다 `createClient` + `cache: 'no-store'` | 싱글톤 or no-store 제거 시 뉴스 목록 캐시로 빈 채 굳음 |
 | page.tsx 지표 | `getMarketIndicators()` 실시간 호출 + 브리핑 AI 설명 병합 | `briefing.indicators` 단독 사용 복귀 시 9시 스냅샷만 표시 |
