@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { waitUntil } from '@vercel/functions'
 import { runDailyBriefing } from '@/lib/runBriefing'
 import { sendDailyNewsletter } from '@/lib/sendNewsletter'
 import { notifyFailure } from '@/lib/notifyAdmin'
@@ -9,15 +10,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  try {
-    const result = await runDailyBriefing()
-    const newsletter = await sendDailyNewsletter().catch(() => ({ sent: 0, skipped: '발송 오류' }))
-    return NextResponse.json({ success: true, ...result, newsletter })
-  } catch (error) {
-    await notifyFailure('브리핑 생성', String(error))
-    return NextResponse.json(
-      { success: false, error: String(error) },
-      { status: 500 }
-    )
-  }
+  // cron-job.org는 30초만 기다리고 timeout을 실패로 기록 → 연속 25회 실패 시 크론잡 자동 비활성화.
+  // 그래서 "접수 완료"를 먼저 응답하고 실제 작업은 백그라운드로 이어간다 (vercel.json maxDuration 300초 안에서 완주).
+  waitUntil(
+    (async () => {
+      try {
+        await runDailyBriefing()
+        await sendDailyNewsletter().catch(() => ({ sent: 0, skipped: '발송 오류' }))
+      } catch (error) {
+        await notifyFailure('브리핑 생성', String(error))
+      }
+    })()
+  )
+
+  return NextResponse.json({ accepted: true, message: '브리핑 생성 시작됨 (백그라운드 진행, 완료까지 약 3분)' })
 }

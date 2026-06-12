@@ -70,6 +70,7 @@
 | vercel.json maxDuration | cron 300s, generate-briefing 300s | 삭제 시 타임아웃으로 크론 매일 실패 |
 | 외부 호출 기다림 한도 | OpenAI 60초+재시도 1회(요약만 100초), 시세 fetch 10초 (openai.ts·generateBriefing.ts·marketData.ts) | 제거 시 외부 지연 1건이 5분 예산 전체 소진 → 브리핑 미생성 (2026-06-12 장애 원인) |
 | Supabase briefings.date | unique constraint 적용됨 | 삭제 시 중복 행 문제 재발 |
+| cron-briefing 응답 방식 | 즉시 `accepted` 응답 + `waitUntil` 백그라운드 실행 | 동기 대기로 복귀 시 cron-job.org 30초 timeout이 매일 실패로 기록 → 연속 25회면 크론잡 자동 비활성화(2026-06-12 발견) |
 | page.tsx Supabase 클라이언트 | 매 렌더마다 `createClient` + `cache: 'no-store'` | 싱글톤 or no-store 제거 시 뉴스 목록 캐시로 빈 채 굳음 |
 | page.tsx 지표 | `getMarketIndicators()` 실시간 호출 + 브리핑 AI 설명 병합 | `briefing.indicators` 단독 사용 복귀 시 9시 스냅샷만 표시 |
 
