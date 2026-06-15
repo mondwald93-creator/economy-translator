@@ -70,7 +70,7 @@ export default function KeyIndicators({ indicators, healthCheck, briefingAt }: P
           })}
         </div>
         <p className="text-[11px] text-[#9CA3AF] text-right mt-1">
-          실시간 지표 · AI 설명은 {briefingAt ?? '오전 9시'} 브리핑 기준
+          숫자는 실시간 · 헤드라인·해설은 직전 거래일 마감 기준{briefingAt ? ` (${briefingAt} 작성)` : ''}
         </p>
       </div>
     </div>
