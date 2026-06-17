@@ -5,7 +5,11 @@
 - 실서비스: https://economy-translator.vercel.app
 - GitHub: https://github.com/mondwald93-creator/economy-translator
 - 배포: git push → Vercel 자동 재배포
-- 자동 업데이트: 매일 한국시간 오전 9시 (Vercel Cron)
+- 자동 업데이트(2026-06-17 구조 확정):
+  - **주력 = Vercel Cron** `/api/cron` = `30 23`(UTC) = **KST 8:30** (수집+브리핑 통합). ※무료 플랜이라 정각 보장 없이 그 언저리에 돎.
+  - **백업 = cron-job.org** 9:00 수집 / 9:07 브리핑 — **폐기하지 말 것(유지).** 주력이 가끔 시간초과로 죽는 날 받쳐줌(2026-06-17 실제로 받침).
+  - 목적 = "9시 전에 브리핑이 완성돼 떠 있기". 발행 시각 정확도는 중요치 않고 9시 전 완성만 보장하면 됨.
+  - (옛 기록의 "8시 정각/9시 폐기 예정"은 폐기된 계획임)
 
 ---
 
@@ -41,10 +45,13 @@
 ## 자동화 흐름
 
 ```
-[매일 오전 9시 KST] Vercel Cron → GET /api/cron
+[주력 · 매일 오전 8:30 KST 언저리] Vercel Cron → GET /api/cron
   → POST /api/collect-news   (RSS + 네이버 랭킹 + 키워드 검색)
   → POST /api/generate-briefing  (OpenAI GPT-4o-mini × 3회)
   → Supabase upsert 저장
+
+[백업 · 매일 9:00/9:07 KST] cron-job.org → /api/cron-news, /api/cron-briefing
+  → 주력이 죽은 날만 사실상 사용됨(평소엔 덮어쓰기라 무해). 폐기 금지.
 
 [오후 1시·5시·10시 KST] Vercel Cron → GET /api/cron-news
   → POST /api/collect-news   (뉴스 수집만, 브리핑 생성 없음)
@@ -68,6 +75,7 @@
 | 뉴스 저장 방식 | `naverNews.ts` — 기존 URL 선조회 후 `insert` | upsert 복귀 시 DB constraint 없으면 전체 에러 |
 | 기준금리 | 네이버 금융 자동 수집 | 하드코딩 금지 |
 | vercel.json maxDuration | cron 300s, generate-briefing 300s | 삭제 시 타임아웃으로 크론 매일 실패 |
+| cron-job.org 9시 백업 | 9:00 수집 / 9:07 브리핑 유지 | 폐기 시 주력(Vercel)이 시간초과로 죽는 날 브리핑 통째 유실 (2026-06-17 실제로 백업이 받음) |
 | 외부 호출 기다림 한도 | OpenAI 60초+재시도 1회(요약만 100초), 시세 fetch 10초 (openai.ts·generateBriefing.ts·marketData.ts) | 제거 시 외부 지연 1건이 5분 예산 전체 소진 → 브리핑 미생성 (2026-06-12 장애 원인) |
 | Supabase briefings.date | unique constraint 적용됨 | 삭제 시 중복 행 문제 재발 |
 | cron-briefing 응답 방식 | 즉시 `accepted` 응답 + `waitUntil` 백그라운드 실행 | 동기 대기로 복귀 시 cron-job.org 30초 timeout이 매일 실패로 기록 → 연속 25회면 크론잡 자동 비활성화(2026-06-12 발견) |
@@ -93,7 +101,7 @@
 | AI | OpenAI GPT-4o-mini |
 | DB | Supabase PostgreSQL (테이블: briefings, news_articles, terms) |
 | 뉴스 | RSS 4개 + 네이버 경제탭 스크래핑 + 네이버 검색 API |
-| 자동화 | Vercel Cron (매일 UTC 00:00 = KST 09:00) |
+| 자동화 | 주력=Vercel Cron(UTC 23:30=KST 8:30), 백업=cron-job.org 9시 — 2026-06-17 확정 |
 | 배포 | Vercel (git push → 자동 재배포) |
 
 ---
