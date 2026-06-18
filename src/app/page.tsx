@@ -14,41 +14,33 @@ import TodaySentenceCard from '@/components/home/TodaySentenceCard'
 // EmailSubscribeSection — 트래픽 생기면 활성화
 // import EmailSubscribeSection from '@/components/home/EmailSubscribeSection'
 
-const ARTICLE_CATEGORIES = [
-  { keywords: ['환율', '원달러', '달러', '금리', '기준금리', '한국은행', '원화', '외환'] },
-  { keywords: ['부동산', '아파트', '주택', '건설', '분양', '전세', '집값', '청약', '재건축'] },
-  { keywords: ['물가', '소비', '인플레', '식료품', '유가', '에너지', '전기료', '장바구니', 'CPI'] },
-  { keywords: ['정부', '수출', '무역', '관세', '정책', '예산', '고용', '실업', '기획재정부'] },
-  { keywords: ['반도체', '삼성', 'SK하이닉스', '현대차', 'LG', '기업', '실적', '영업이익', '수주'] },
-  { keywords: ['코스피', '코스닥', '주식', '증시', '주가', '상장', '급등', '급락', '외국인'] },
+// 홈 뉴스 목록 = 분야별(6개) 대표 기사 1개씩. 경제건강진단과 같은 6개 분류로 화면 일관성 유지.
+// 각 기사는 브리핑이 full_analysis.category 꼬리표를 붙여 저장해 둔 것 중에서 고른다.
+const CATEGORY_META = [
+  { key: '물가', icon: '🛒' },
+  { key: '소비', icon: '💳' },
+  { key: '수출', icon: '🚢' },
+  { key: '고용', icon: '👷' },
+  { key: '부동산', icon: '🏠' },
+  { key: '금융', icon: '📈' },
 ]
 
-type RawArticle = { id: string; title: string; source: string; created_at: string }
+type AnalyzedArticle = {
+  id: string
+  title: string
+  source: string
+  created_at: string
+  full_analysis: { category?: string } | null
+}
 
-function selectDiverseArticles(articles: RawArticle[], count = 5): RawArticle[] {
-  const selected: RawArticle[] = []
-  const usedIds = new Set<string>()
-
-  for (const category of ARTICLE_CATEGORIES) {
-    if (selected.length >= count) break
-    const match = articles.find(
-      a => !usedIds.has(a.id) && category.keywords.some(kw => a.title.includes(kw))
-    )
-    if (match) {
-      selected.push(match)
-      usedIds.add(match.id)
-    }
-  }
-
-  for (const article of articles) {
-    if (selected.length >= count) break
-    if (!usedIds.has(article.id)) {
-      selected.push(article)
-      usedIds.add(article.id)
-    }
-  }
-
-  return selected
+function selectCategoryArticles(articles: AnalyzedArticle[]) {
+  return CATEGORY_META
+    .map(c => {
+      const match = articles.find(a => a.full_analysis?.category === c.key)
+      if (!match) return null
+      return { id: match.id, title: match.title, source: match.source, category: c.key, categoryIcon: c.icon }
+    })
+    .filter((a): a is NonNullable<typeof a> => a !== null)
 }
 
 function formatKST(iso: string | null | undefined): string | null {
@@ -73,10 +65,12 @@ export default async function Home() {
   const { data: briefing } = await db
     .from('briefings').select('*').eq('date', today).order('created_at', { ascending: false }).limit(1).single()
 
-  const { data: rawArticles } = await db
-    .from('news_articles').select('id, title, source, created_at').eq('date', today).order('created_at', { ascending: false }).limit(500)
+  const { data: analyzedArticles } = await db
+    .from('news_articles').select('id, title, source, created_at, full_analysis')
+    .eq('date', today).not('full_analysis', 'is', null)
+    .order('created_at', { ascending: false }).limit(50)
 
-  const articles = selectDiverseArticles((rawArticles ?? []) as RawArticle[])
+  const articles = selectCategoryArticles((analyzedArticles ?? []) as AnalyzedArticle[])
 
   if (!briefing) {
     return (
@@ -130,7 +124,7 @@ export default async function Home() {
       <EconomyHealthCheck healthCheck={(briefing.health_check as HealthCheckItem[]) ?? null} />
       <Top3NewsSection top3Analysis={(briefing.top3_analysis as Top3AnalysisItem[]) ?? null} />
       <ConnectionDiagram connections={(briefing.connections as ConnectionItem[]) ?? null} />
-      <NewsCardList articles={articles} updatedAt={formatKST(rawArticles?.[0]?.created_at)} />
+      <NewsCardList articles={articles} updatedAt={formatKST(briefing.created_at)} />
       <EconomyStudy dailyTerm={dailyTerm} />
     </div>
   )

@@ -2,7 +2,7 @@ import { supabase } from './supabase'
 import { getMarketIndicators } from './marketData'
 import {
   generateMainBriefing,
-  generateArticleSummaries,
+  generateCategoryNews,
   generateTop3Analysis,
   buildTop3AnalysisData,
 } from './generateBriefing'
@@ -47,12 +47,9 @@ export async function runDailyBriefing() {
     .map(idx => briefingResult.candidateArticles[idx])
     .filter((a): a is { id: string; title: string } => !!a)
 
-  const articlesNeedingSummary = articles
-    .filter(a => !a.summary)
-    .map(a => ({ id: a.id, title: a.title }))
-
-  const [summaries, top3Analyses] = await Promise.all([
-    generateArticleSummaries(articlesNeedingSummary),
+  // 홈 목록용 = 분야별(6개) 대표 기사 1개씩 선정 + 분석 / TOP3 = 별도 하이라이트 분석
+  const [categoryNews, top3Analyses] = await Promise.all([
+    generateCategoryNews(articleInputs),
     generateTop3Analysis(top3Articles),
   ])
 
@@ -62,19 +59,31 @@ export async function runDailyBriefing() {
       briefingResult.indicatorExplanations?.find(e => e.name === ind.name)?.easyExplanation ?? '',
   }))
 
-  if (summaries.length > 0) {
-    await Promise.all(
-      summaries.map(s =>
-        supabase.from('news_articles').update({ summary: s.summary }).eq('id', s.id)
-      )
-    )
-  }
-
+  // TOP3 먼저 저장 → 분야 대표와 겹치는 기사가 있으면 아래에서 category까지 덮어쓰도록 순서 보장
   if (top3Analyses.length > 0) {
     await Promise.all(
       top3Analyses.map(a =>
         supabase.from('news_articles').update({
           full_analysis: {
+            oneline: a.oneline,
+            whatHappened: a.whatHappened,
+            whyHappened: a.whyHappened,
+            myImpact: a.myImpact,
+            outlook: a.outlook,
+            conclusion: a.conclusion,
+          },
+        }).eq('id', a.id)
+      )
+    )
+  }
+
+  // 분야별 대표 기사: full_analysis에 category 꼬리표 포함 저장 (홈 목록이 이걸로 골라 뿌림)
+  if (categoryNews.length > 0) {
+    await Promise.all(
+      categoryNews.map(a =>
+        supabase.from('news_articles').update({
+          full_analysis: {
+            category: a.category,
             oneline: a.oneline,
             whatHappened: a.whatHappened,
             whyHappened: a.whyHappened,
@@ -117,7 +126,7 @@ export async function runDailyBriefing() {
   return {
     date: today,
     articlesTotal: articles.length,
-    articlesSummarized: summaries.length,
+    categoryNewsCount: categoryNews.length,
     indicatorsCollected: indicators.length,
     headline: briefingResult.headline,
     top3: top3Articles.map(a => a.title),
