@@ -180,6 +180,95 @@ ${articleList}
   return (parsed.articles ?? []) as (ArticleFullAnalysis & { id: string })[]
 }
 
+// B5: 분야별(6개) 대표 기사 1개씩 선정 + 6단계 분석 (홈 뉴스 목록용)
+// 기존 "오늘 기사 전부를 한 번에 요약"(generateArticleSummaries)이 기사 1,000건+에서
+// 출력 길이 한도에 막혀 ~80건만 처리되던 문제를 대체. 보여줄 기사만 선별·분석한다.
+export const NEWS_CATEGORIES = ['물가', '소비', '수출', '고용', '부동산', '금융'] as const
+
+export interface CategoryNewsItem extends ArticleFullAnalysis {
+  id: string
+  category: string
+}
+
+export async function generateCategoryNews(
+  articles: { id: string; title: string }[]
+): Promise<CategoryNewsItem[]> {
+  if (articles.length === 0) return []
+
+  // 한국 경제 기사 우선 정렬 후 후보 50개로 압축 (분야 커버리지 확보 + 출력 길이 안전)
+  const foreignKeywords = ['미국', '미 ', '美 ', '美국', '연준', 'Fed ', '중국', '中 ', '일본', '日 ', '유럽', '월가', '나스닥', '다우', 'S&P', '뉴욕증시']
+  const koreanFirst = [...articles].sort((a, b) => {
+    const aForeign = foreignKeywords.some(k => a.title.includes(k)) ? 1 : 0
+    const bForeign = foreignKeywords.some(k => b.title.includes(k)) ? 1 : 0
+    return aForeign - bForeign
+  })
+  const candidates = koreanFirst.slice(0, 50)
+  const titleList = candidates.map((a, i) => `${i}. ${a.title}`).join('\n')
+
+  const prompt = `다음은 오늘 수집된 한국 경제 뉴스입니다. 아래 6개 분야 각각에 대해 "오늘 가장 중요하거나 이슈가 된 대표 기사" 1개씩을 골라주세요.
+
+분야: 물가, 소비, 수출, 고용, 부동산, 금융
+
+## 오늘의 뉴스 (인덱스. 제목)
+${titleList}
+
+규칙:
+- 각 분야에 어울리는 기사가 없으면 그 분야는 생략하세요. 억지로 끼워맞추지 마세요.
+- 같은 기사를 두 분야에 중복 선정하지 마세요.
+- 미국·중국 등 해외 단독 뉴스는 고르지 마세요. 한국 경제 중심으로.
+- 고른 기사마다 경제 과외 선생님처럼 6단계로 설명하세요.
+
+다음 JSON 형식으로만 응답하세요:
+{
+  "categories": [
+    {
+      "category": "물가|소비|수출|고용|부동산|금융 중 하나",
+      "index": 위 목록의 기사 인덱스 숫자,
+      "oneline": "한 마디 요약 (15자 이내)",
+      "whatHappened": "무슨 일이야? (초보자 언어로 2~3문장)",
+      "whyHappened": "왜 이런 일이 생겼어? (원인 2~3문장)",
+      "myImpact": "나한테 어떤 영향이 있어? (실생활 연결 2~3문장)",
+      "outlook": "앞으로 어떻게 될까? (전망 1~2문장)",
+      "conclusion": "한 줄 결론 (10자 이내)"
+    }
+  ]
+}`
+
+  const res = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: prompt },
+    ],
+    response_format: { type: 'json_object' },
+    temperature: 0.7,
+  }, { timeout: 100_000 })
+
+  const parsed = JSON.parse(res.choices[0].message.content ?? '{"categories":[]}')
+  const rows = (parsed.categories ?? []) as Array<{ category: string; index: number } & ArticleFullAnalysis>
+
+  const seen = new Set<string>()
+  const result: CategoryNewsItem[] = []
+  for (const r of rows) {
+    const art = candidates[r.index]
+    if (!art) continue
+    if (seen.has(art.id)) continue
+    if (!(NEWS_CATEGORIES as readonly string[]).includes(r.category)) continue
+    seen.add(art.id)
+    result.push({
+      id: art.id,
+      category: r.category,
+      oneline: r.oneline,
+      whatHappened: r.whatHappened,
+      whyHappened: r.whyHappened,
+      myImpact: r.myImpact,
+      outlook: r.outlook,
+      conclusion: r.conclusion,
+    })
+  }
+  return result
+}
+
 // Top3AnalysisItem 배열로 변환 (DB 저장용)
 export function buildTop3AnalysisData(
   top3Analyses: (ArticleFullAnalysis & { id: string })[],

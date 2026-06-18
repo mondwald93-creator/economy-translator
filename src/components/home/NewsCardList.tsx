@@ -7,6 +7,8 @@ interface Article {
   id: string | number
   title: string
   source: string
+  category?: string
+  categoryIcon?: string
 }
 
 interface Props {
@@ -36,7 +38,7 @@ export default function NewsCardList({ articles, updatedAt }: Props) {
   if (!articles || articles.length === 0) {
     return (
       <section className="space-y-3">
-        <h2 className="text-[11px] font-semibold text-ink-subtle uppercase tracking-widest">오늘의 헤드라인</h2>
+        <h2 className="text-[11px] font-semibold text-ink-subtle uppercase tracking-widest">분야별 핵심 뉴스</h2>
         <div className="rounded-card border border-line text-center py-10">
           <p className="text-ink-muted text-sm">오늘의 뉴스를 불러오는 중이에요</p>
         </div>
@@ -45,13 +47,13 @@ export default function NewsCardList({ articles, updatedAt }: Props) {
   }
 
   const readCount = articles.filter(a => readIds.has(String(a.id))).length
-  const dotCount = Math.min(articles.length, 5)
+  const dotCount = Math.min(articles.length, 6)
 
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-[13px] font-bold text-ink flex items-center gap-2">
-          오늘의 헤드라인
+          분야별 핵심 뉴스
           <div className="flex gap-[5px]">
             {Array.from({ length: dotCount }).map((_, i) => (
               <span
@@ -83,7 +85,14 @@ export default function NewsCardList({ articles, updatedAt }: Props) {
                 className="min-w-0"
                 onClick={() => markRead(id)}
               >
-                <p className="text-[10px] font-bold text-[#16A34A] bg-[#F0FDF4] inline-block px-2 py-0.5 rounded mb-2">{article.source}</p>
+                <div className="flex items-center gap-1.5 mb-2">
+                  {article.category && (
+                    <span className="text-[10px] font-bold text-[#92400E] bg-[#FFFBEB] border border-[#FDE68A] inline-block px-2 py-0.5 rounded">
+                      {article.categoryIcon} {article.category}
+                    </span>
+                  )}
+                  <span className="text-[10px] font-bold text-[#16A34A] bg-[#F0FDF4] inline-block px-2 py-0.5 rounded">{article.source}</span>
+                </div>
                 <p className={`text-[15px] font-bold leading-snug transition-colors ${
                   isRead ? 'text-ink-subtle' : 'text-ink'
                 }`}>
