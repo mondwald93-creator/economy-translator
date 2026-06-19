@@ -66,8 +66,10 @@ async function fetchBaseRate(): Promise<Omit<KeyIndicator, 'easyExplanation'>> {
     if (!res.ok) return { ...FALLBACK_BASE_RATE, value: '0.02%' } // [임시 진단] HTTP 실패
     const json = await res.json()
     const rows = json?.StatisticSearch?.row
-    if (!(Array.isArray(rows) && rows.length > 0)) return { ...FALLBACK_BASE_RATE, value: '0.03%' } // [임시 진단] 데이터 없음
+    if (!(Array.isArray(rows) && rows.length > 0)) return { ...FALLBACK_BASE_RATE, value: '0.03%', change: `dbg:${JSON.stringify(json).slice(0, 90)}` } // [임시 진단] 데이터 없음
     if (Array.isArray(rows) && rows.length > 0) {
+      const _raw = rows[rows.length - 1]?.DATA_VALUE // [임시 진단]
+      if (isNaN(parseFloat(_raw))) return { ...FALLBACK_BASE_RATE, value: '0.05%', change: `dbg:n=${rows.length},t=${typeof _raw},v=${String(_raw).slice(0, 12)}` } // [임시 진단]
       // ECOS는 날짜 오름차순 → 마지막 행이 최신값
       const latest = parseFloat(rows[rows.length - 1].DATA_VALUE)
       if (!isNaN(latest)) {
