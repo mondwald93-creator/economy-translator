@@ -29,15 +29,17 @@ function buildIndicator(
   const prev = meta.previousClose ?? meta.chartPreviousClose ?? meta.regularMarketPrice
   const change = meta.regularMarketPrice - prev
   const pct = prev !== 0 ? (change / prev) * 100 : 0
-  const arrow = change > 0 ? '▲' : change < 0 ? '▼' : '—'
-  const changeStr = change === 0
+  // 표시 소수 2자리 기준으로 판정 → 변동이 0.00%로 떨어지면(거의 무변동) '보합'으로 통일
+  const pctRounded = Math.round(pct * 100) / 100
+  const arrow = pctRounded > 0 ? '▲' : pctRounded < 0 ? '▼' : '—'
+  const changeStr = pctRounded === 0
     ? '— 보합'
-    : `${arrow} ${change > 0 ? '+' : ''}${pct.toFixed(2)}%`
+    : `${arrow} ${pctRounded > 0 ? '+' : ''}${pctRounded.toFixed(2)}%`
   return {
     name,
     value: formatter(meta.regularMarketPrice),
     change: changeStr,
-    direction: change > 0 ? 'up' : change < 0 ? 'down' : 'flat',
+    direction: pctRounded > 0 ? 'up' : pctRounded < 0 ? 'down' : 'flat',
   }
 }
 
