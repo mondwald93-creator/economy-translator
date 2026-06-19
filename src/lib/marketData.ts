@@ -41,7 +41,7 @@ function buildIndicator(
   }
 }
 
-// 스크래핑 실패 시 쓰는 비상값. 한국은행 현재 기준금리 기준으로 최신화할 것.
+// 스크래핑/조회 실패 또는 키 미설정 시 쓰는 비상값. 한국은행 현재 기준금리 기준으로 최신화할 것.
 // (2026-06 현재 2.50% 동결 — 8회 연속. 과거 3.50%는 '최종금리 전망치'였고 현재값이 아니었음)
 const FALLBACK_BASE_RATE: Omit<KeyIndicator, 'easyExplanation'> = {
   name: '기준금리',
@@ -50,27 +50,40 @@ const FALLBACK_BASE_RATE: Omit<KeyIndicator, 'easyExplanation'> = {
   direction: 'flat',
 }
 
+// 한국은행 기준금리: ECOS 공식 OpenAPI(일별 시계열)에서 최신값 사용.
+// (옛 네이버 채권 페이지 스크래핑은 페이지가 404로 사라져 폐기 — 2026-06-19)
+// 통계표 722Y001 / 항목 0101000(한국은행 기준금리) / 주기 D(일별), 키는 환경변수 ECOS_API_KEY.
 async function fetchBaseRate(): Promise<Omit<KeyIndicator, 'easyExplanation'>> {
+  const apiKey = process.env.ECOS_API_KEY
+  if (!apiKey) return FALLBACK_BASE_RATE
   try {
-    const res = await fetch('https://finance.naver.com/bond/bondDeal.naver', {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Referer': 'https://finance.naver.com/',
-        'Accept-Language': 'ko-KR,ko;q=0.9',
-      },
-      next: { revalidate: 0 },
-      signal: AbortSignal.timeout(10_000),
-    })
+    const ymd = (d: Date) =>
+      `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}`
+    const end = new Date()
+    const start = new Date(end.getTime() - 60 * 24 * 60 * 60 * 1000) // 최근 60일 (데이터 며칠 지연 대비)
+    const url = `https://ecos.bok.or.kr/api/StatisticSearch/${apiKey}/json/kr/1/100/722Y001/D/${ymd(start)}/${ymd(end)}/0101000`
+    const res = await fetch(url, { next: { revalidate: 0 }, signal: AbortSignal.timeout(10_000) })
     if (!res.ok) return FALLBACK_BASE_RATE
-    const buffer = await res.arrayBuffer()
-    const html = new TextDecoder('euc-kr').decode(buffer)
-    const match = html.match(/기준금리[^0-9]*([0-9]+\.[0-9]{2})/)
-    if (match?.[1]) {
-      return {
-        name: '기준금리',
-        value: `${match[1]}%`,
-        change: '— 동결',
-        direction: 'flat',
+    const json = await res.json()
+    const rows = json?.StatisticSearch?.row
+    if (Array.isArray(rows) && rows.length > 0) {
+      // ECOS는 날짜 오름차순 → 마지막 행이 최신값
+      const latest = parseFloat(rows[rows.length - 1].DATA_VALUE)
+      if (!isNaN(latest)) {
+        // 최신값과 다른 직전값을 찾아 인상/인하/동결 판정
+        let prev: number | null = null
+        for (let i = rows.length - 2; i >= 0; i--) {
+          const v = parseFloat(rows[i].DATA_VALUE)
+          if (!isNaN(v) && v !== latest) { prev = v; break }
+        }
+        const direction = prev === null ? 'flat' : latest > prev ? 'up' : 'down'
+        const change = direction === 'flat' ? '— 동결' : direction === 'up' ? '▲ 인상' : '▼ 인하'
+        return {
+          name: '기준금리',
+          value: `${latest.toFixed(2)}%`,
+          change,
+          direction,
+        }
       }
     }
   } catch {}
