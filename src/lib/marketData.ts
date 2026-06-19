@@ -55,7 +55,7 @@ const FALLBACK_BASE_RATE: Omit<KeyIndicator, 'easyExplanation'> = {
 // 통계표 722Y001 / 항목 0101000(한국은행 기준금리) / 주기 D(일별), 키는 환경변수 ECOS_API_KEY.
 async function fetchBaseRate(): Promise<Omit<KeyIndicator, 'easyExplanation'>> {
   const apiKey = process.env.ECOS_API_KEY
-  if (!apiKey) return FALLBACK_BASE_RATE
+  if (!apiKey) return { ...FALLBACK_BASE_RATE, value: '0.01%' } // [임시 진단] 키 미인식
   try {
     const ymd = (d: Date) =>
       `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}`
@@ -63,9 +63,10 @@ async function fetchBaseRate(): Promise<Omit<KeyIndicator, 'easyExplanation'>> {
     const start = new Date(end.getTime() - 60 * 24 * 60 * 60 * 1000) // 최근 60일 (데이터 며칠 지연 대비)
     const url = `https://ecos.bok.or.kr/api/StatisticSearch/${apiKey}/json/kr/1/100/722Y001/D/${ymd(start)}/${ymd(end)}/0101000`
     const res = await fetch(url, { next: { revalidate: 0 }, signal: AbortSignal.timeout(10_000) })
-    if (!res.ok) return FALLBACK_BASE_RATE
+    if (!res.ok) return { ...FALLBACK_BASE_RATE, value: '0.02%' } // [임시 진단] HTTP 실패
     const json = await res.json()
     const rows = json?.StatisticSearch?.row
+    if (!(Array.isArray(rows) && rows.length > 0)) return { ...FALLBACK_BASE_RATE, value: '0.03%' } // [임시 진단] 데이터 없음
     if (Array.isArray(rows) && rows.length > 0) {
       // ECOS는 날짜 오름차순 → 마지막 행이 최신값
       const latest = parseFloat(rows[rows.length - 1].DATA_VALUE)
@@ -86,8 +87,10 @@ async function fetchBaseRate(): Promise<Omit<KeyIndicator, 'easyExplanation'>> {
         }
       }
     }
-  } catch {}
-  return FALLBACK_BASE_RATE
+  } catch {
+    return { ...FALLBACK_BASE_RATE, value: '0.04%' } // [임시 진단] 예외 발생
+  }
+  return { ...FALLBACK_BASE_RATE, value: '0.05%' } // [임시 진단] 값 파싱 실패
 }
 
 export async function getMarketIndicators(): Promise<Omit<KeyIndicator, 'easyExplanation'>[]> {
