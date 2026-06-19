@@ -41,9 +41,11 @@ function buildIndicator(
   }
 }
 
+// 스크래핑 실패 시 쓰는 비상값. 한국은행 현재 기준금리 기준으로 최신화할 것.
+// (2026-06 현재 2.50% 동결 — 8회 연속. 과거 3.50%는 '최종금리 전망치'였고 현재값이 아니었음)
 const FALLBACK_BASE_RATE: Omit<KeyIndicator, 'easyExplanation'> = {
   name: '기준금리',
-  value: '3.50%',
+  value: '2.50%',
   change: '— 동결',
   direction: 'flat',
 }
