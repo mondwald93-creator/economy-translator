@@ -45,7 +45,7 @@ function buildIndicator(
 // (2026-06 현재 2.50% 동결 — 8회 연속. 과거 3.50%는 '최종금리 전망치'였고 현재값이 아니었음)
 const FALLBACK_BASE_RATE: Omit<KeyIndicator, 'easyExplanation'> = {
   name: '기준금리',
-  value: '0.00%', // [임시 진단 2026-06-19] ECOS 실작동 확인용 센티넬 — 확인 후 2.50%로 원복할 것
+  value: '2.50%',
   change: '— 동결',
   direction: 'flat',
 }
@@ -55,7 +55,7 @@ const FALLBACK_BASE_RATE: Omit<KeyIndicator, 'easyExplanation'> = {
 // 통계표 722Y001 / 항목 0101000(한국은행 기준금리) / 주기 D(일별), 키는 환경변수 ECOS_API_KEY.
 async function fetchBaseRate(): Promise<Omit<KeyIndicator, 'easyExplanation'>> {
   const apiKey = process.env.ECOS_API_KEY
-  if (!apiKey) return { ...FALLBACK_BASE_RATE, value: '0.01%' } // [임시 진단] 키 미인식
+  if (!apiKey) return FALLBACK_BASE_RATE
   try {
     const ymd = (d: Date) =>
       `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}`
@@ -63,21 +63,21 @@ async function fetchBaseRate(): Promise<Omit<KeyIndicator, 'easyExplanation'>> {
     const start = new Date(end.getTime() - 60 * 24 * 60 * 60 * 1000) // 최근 60일 (데이터 며칠 지연 대비)
     const url = `https://ecos.bok.or.kr/api/StatisticSearch/${apiKey}/json/kr/1/100/722Y001/D/${ymd(start)}/${ymd(end)}/0101000`
     const res = await fetch(url, { next: { revalidate: 0 }, signal: AbortSignal.timeout(10_000) })
-    if (!res.ok) return { ...FALLBACK_BASE_RATE, value: '0.02%' } // [임시 진단] HTTP 실패
+    if (!res.ok) return FALLBACK_BASE_RATE
     const json = await res.json()
     const rows = json?.StatisticSearch?.row
-    if (!(Array.isArray(rows) && rows.length > 0)) return { ...FALLBACK_BASE_RATE, value: '0.03%', change: `dbg:${JSON.stringify(json).slice(0, 90)}` } // [임시 진단] 데이터 없음
     if (Array.isArray(rows) && rows.length > 0) {
-      const _raw = rows[rows.length - 1]?.DATA_VALUE // [임시 진단]
-      if (isNaN(parseFloat(_raw))) return { ...FALLBACK_BASE_RATE, value: '0.05%', change: `dbg:n=${rows.length},t=${typeof _raw},v=${String(_raw).slice(0, 12)}` } // [임시 진단]
-      // ECOS는 날짜 오름차순 → 마지막 행이 최신값
-      const latest = parseFloat(rows[rows.length - 1].DATA_VALUE)
-      if (!isNaN(latest)) {
+      // ECOS는 날짜 오름차순. 가끔 가장 최근 행의 값이 비어 와(NaN) 비상값으로 떨어지므로,
+      // 숫자로 읽히는 값들만 추려 그 중 최신값을 쓴다.
+      const values: number[] = rows
+        .map((r: { DATA_VALUE?: string }) => parseFloat(r?.DATA_VALUE ?? ''))
+        .filter((v: number) => !isNaN(v))
+      if (values.length > 0) {
+        const latest = values[values.length - 1]
         // 최신값과 다른 직전값을 찾아 인상/인하/동결 판정
         let prev: number | null = null
-        for (let i = rows.length - 2; i >= 0; i--) {
-          const v = parseFloat(rows[i].DATA_VALUE)
-          if (!isNaN(v) && v !== latest) { prev = v; break }
+        for (let i = values.length - 2; i >= 0; i--) {
+          if (values[i] !== latest) { prev = values[i]; break }
         }
         const direction = prev === null ? 'flat' : latest > prev ? 'up' : 'down'
         const change = direction === 'flat' ? '— 동결' : direction === 'up' ? '▲ 인상' : '▼ 인하'
@@ -89,10 +89,8 @@ async function fetchBaseRate(): Promise<Omit<KeyIndicator, 'easyExplanation'>> {
         }
       }
     }
-  } catch {
-    return { ...FALLBACK_BASE_RATE, value: '0.04%' } // [임시 진단] 예외 발생
-  }
-  return { ...FALLBACK_BASE_RATE, value: '0.05%' } // [임시 진단] 값 파싱 실패
+  } catch {}
+  return FALLBACK_BASE_RATE
 }
 
 export async function getMarketIndicators(): Promise<Omit<KeyIndicator, 'easyExplanation'>[]> {
