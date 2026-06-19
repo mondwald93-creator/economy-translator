@@ -45,7 +45,7 @@ function buildIndicator(
 // (2026-06 현재 2.50% 동결 — 8회 연속. 과거 3.50%는 '최종금리 전망치'였고 현재값이 아니었음)
 const FALLBACK_BASE_RATE: Omit<KeyIndicator, 'easyExplanation'> = {
   name: '기준금리',
-  value: '2.50%',
+  value: '0.00%', // [임시 진단 2026-06-19] ECOS 실작동 확인용 센티넬 — 확인 후 2.50%로 원복할 것
   change: '— 동결',
   direction: 'flat',
 }
