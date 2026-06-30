@@ -1,5 +1,6 @@
 import { openai, SYSTEM_PROMPT } from './openai'
 import { KeyIndicator, Top3AnalysisItem, HealthCheckItem, ConnectionItem, ArticleFullAnalysis } from '@/types'
+import { titleTokenSet, isNearDuplicate } from './titleSimilarity'
 
 interface BriefingAIResult {
   headline: string
@@ -33,7 +34,15 @@ export async function generateMainBriefing(
     const bForeign = foreignKeywords.some(k => b.title.includes(k)) ? 1 : 0
     return aForeign - bForeign
   })
-  const candidateArticles = koreanFirst.slice(0, 30)
+  // 같은 사건을 제목만 바꿔 쓴 중복 기사를 후보 단계에서 제거 (TOP3에 같은 뉴스 3개 방지)
+  const acceptedTokenSets: Set<string>[] = []
+  const dedupedArticles = koreanFirst.filter(a => {
+    const tokens = titleTokenSet(a.title)
+    if (isNearDuplicate(tokens, acceptedTokenSets)) return false
+    acceptedTokenSets.push(tokens)
+    return true
+  })
+  const candidateArticles = dedupedArticles.slice(0, 30)
   const titleList = candidateArticles.map((a, i) => `${i}. ${a.title}`).join('\n')
   const avoidTerms = recentTerms.length > 0
     ? ` (최근 7일간 이미 다룬 용어는 피하세요: ${recentTerms.join(', ')})`
@@ -84,6 +93,7 @@ ${titleList}
 - status는 반드시 "good", "normal", "warning" 중 하나
 - healthCheck는 반드시 6개 (물가·소비·수출·고용·부동산·금융 순서)
 - top3Indices는 위 뉴스 목록의 앞 숫자(인덱스)를 3개 선정. 예: 0번 기사 선택 시 0. 미국·중국·일본·유럽 등 해외 경제 뉴스는 절대 TOP3에 넣지 마세요. 한국 기업·증시·부동산·정책·소비·고용 관련 기사를 우선하세요
+- ⭐TOP3 세 기사는 반드시 서로 다른 사건이어야 합니다. 같은 사건을 여러 언론사가 제목만 바꿔 쓴 기사(내용이 사실상 같은 것)를 2개 이상 넣지 마세요. 같은 사건이면 그중 하나만 고르고, 남는 자리는 다른 주제·다른 분야의 뉴스로 채우세요
 - ⭐헤드라인과 TOP3는 아래 "이슈 범위" 안에서 그날 가장 큰 이슈를 고르세요. 판단 질문: "오늘 한국에서 보통 사람이 가장 알아야 하고 체감할 경제 뉴스 한 가지는?" 이 질문에 답할 때 다음을 함께 저울질하되 어느 하나가 항상 이기지 않게 종합 판단하세요 — 파급(영향받는 사람 수)·체감(내 지갑·일상에 닿는 정도)·사건성(오늘 새로 터진 일인가)·규모(변화의 크기). 큰 사건이 터진 날은 사건성이, 잔잔한 날은 생활 밀접 뉴스가 1위가 되는 게 정상입니다. 특정 분야를 편애하지 말고 분야 불문 그날 가장 중요한 것을 선택하세요.
   [이슈 범위] ① 기업·산업(실적·투자·M&A·신제품·구조조정, 반도체·자동차·배터리·바이오·플랫폼 등) ② 정책·국가사업(정부·국회 경제정책, 지원금·세제·예산, 청년·소상공인 사업, 부동산·금리 대책) ③ 생활·물가(장바구니 물가, 전기·가스·교통요금, 외식·식품, 대출이자) ④ 부동산·주거(집값·전월세·청약·대출규제) ⑤ 고용·일자리(채용·취업·임금·자영업) ⑥ 금융·자산(금리 결정·가계부채·새 금융상품/규제 같은 구조적 이슈) ⑦ 대외(미국 금리·관세·환율 등은 한국에 직접 영향 줄 때만, 한국 영향 각도로)
   [제외] 단순 지수 시황("코스피·환율이 몇 % 올랐다/내렸다"), 환율·시세 전망, "신문 사설"·"오늘의 증시" 같은 모음·시황 기사, 단순 속보, 해외 단독 뉴스. 지수·환율 수치는 이미 지표 박스로 보여주므로 헤드라인에서 또 다루지 마세요

@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { titleTokenSet, isNearDuplicate } from './titleSimilarity'
 
 interface NaverNewsItem {
   title: string
@@ -212,16 +213,22 @@ export async function collectAndSaveNews(): Promise<{ saved: number; errors: str
     fetchNaverKeywordNews(20),
   ])
 
-  // 전체 합치고 URL + 제목 앞 20자 기준 중복 제거
+  // 전체 합치고 중복 제거: URL + 제목 앞 20자(완전 일치) + 핵심 단어 겹침(거의 같은 중복)
   const seenUrls = new Set<string>()
   const seenTitles = new Set<string>()
+  const acceptedTokenSets: Set<string>[] = []
   const allItems = [...rssItems, ...rankingItems, ...keywordItems].filter(item => {
     const url = item.originallink || item.link
-    const titleKey = cleanHtml(item.title).slice(0, 20)
+    const cleanTitle = cleanHtml(item.title)
+    const titleKey = cleanTitle.slice(0, 20)
     if (!url || !titleKey) return false
     if (seenUrls.has(url) || seenTitles.has(titleKey)) return false
+    // 같은 사건을 제목만 바꿔 쓴 기사(다른 언론사) 걸러내기
+    const tokens = titleTokenSet(cleanTitle)
+    if (isNearDuplicate(tokens, acceptedTokenSets)) return false
     seenUrls.add(url)
     seenTitles.add(titleKey)
+    acceptedTokenSets.push(tokens)
     return true
   })
 
