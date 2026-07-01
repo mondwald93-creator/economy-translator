@@ -2,6 +2,75 @@ import { openai, SYSTEM_PROMPT } from './openai'
 import { KeyIndicator, Top3AnalysisItem, HealthCheckItem, ConnectionItem, ArticleFullAnalysis } from '@/types'
 import { titleTokenSet, isNearDuplicate } from './titleSimilarity'
 
+// ── B안: AI가 고른 TOP3를 코드가 한 번 더 검문 ──────────────────────────────
+// 프롬프트(A안)만으로는 "같은 기업·통계를 다른 각도로 쓴 기사"나 "환율·지수 시황"을
+// AI가 100% 걸러내지 못함을 라이브에서 확인(2026-07-01: KB금융 2건 + 환율 1,550원 시황).
+// 그래서 AI 선정 결과를 코드가 재검사해 규칙 위반이면 다른 후보로 자동 교체한다.
+
+const FOREIGN_KEYWORDS_TOP3 = ['미국', '美', '연준', 'Fed', '중국', '中 ', '일본', '日 ', '유럽', '월가', '나스닥', '다우', 'S&P', '뉴욕증시', 'ECB']
+
+// 단순 지수·환율 시황 / 시세 전망 / 시황 모음 태그 / 사설·칼럼 = TOP3 부적합
+function isSituationNews(title: string): boolean {
+  // [마켓 브리핑]·[오늘의 증시]·[글로벌 머니플로우] 같은 시황 모음 태그
+  if (/\[[^\]]*(마켓|증시|시황|머니플로우|글로벌|브리핑|오늘의)[^\]]*\]/.test(title)) return true
+  // 코스피·코스닥·환율·지수의 단순 등락/시세 전망
+  if (/(코스피|코스닥|환율|원\/?달러|원달러|증시|지수)/.test(title) &&
+      /(출발|마감|전망|돌파|폭등|급락|급등|강세|약세|반등|출렁|치솟|미끄러|하락세|상승세)/.test(title)) return true
+  // 신문 사설·칼럼·오피니언·데스크칼럼
+  if (/사설|칼럼|오피니언|데스크/.test(title)) return true
+  return false
+}
+
+// 해외 단독 뉴스(한국 각도 아님) 판별 — 한국·국내·정부 등이 안 걸리는 순수 외신
+function isForeignOnly(title: string): boolean {
+  if (!FOREIGN_KEYWORDS_TOP3.some(k => title.includes(k))) return false
+  return !/한국|국내|한은|한국은행|코스피|코스닥|정부|기재부|우리|국채/.test(title)
+}
+
+function isUnfitForTop3(title: string): boolean {
+  return isSituationNews(title) || isForeignOnly(title)
+}
+
+// AI가 준 top3 인덱스를 검문·교정해 항상 3개(중복·시황 없는) 인덱스를 돌려준다.
+export function enforceTop3Rules(
+  aiIndices: number[],
+  candidates: { id: string; title: string }[]
+): number[] {
+  // 최종 3개끼리는 좁은 집합이라 후보풀(0.5)보다 엄격히 본다 — '같은 기업 다른 각도'(겹침 0.375)까지 잡되,
+  // 넓은 후보풀 임계(0.5)는 그대로 둬 오판 위험은 키우지 않는다.
+  const FINAL_DUP_THRESHOLD = 0.35
+  const chosen: number[] = []
+  const chosenTokens: Set<string>[] = []
+
+  const tryAccept = (idx: number): boolean => {
+    const art = candidates[idx]
+    if (!art || chosen.includes(idx)) return false
+    if (isUnfitForTop3(art.title)) return false
+    const tokens = titleTokenSet(art.title)
+    if (isNearDuplicate(tokens, chosenTokens, FINAL_DUP_THRESHOLD)) return false
+    chosen.push(idx)
+    chosenTokens.push(tokens)
+    return true
+  }
+
+  // 1) AI가 고른 순서대로, 규칙 통과분만 채택
+  for (const idx of aiIndices) {
+    if (chosen.length >= 3) break
+    tryAccept(idx)
+  }
+  // 2) 빈자리는 후보 목록(한국 우선·중복 제거된) 앞에서부터 규칙 통과분으로 채움
+  for (let idx = 0; idx < candidates.length && chosen.length < 3; idx++) {
+    tryAccept(idx)
+  }
+  // 3) 그래도 3개가 안 되면(후보 부족·전부 시황인 극단적 날) AI 원안으로 빈자리만 메워 항상 3개 반환(빈 브리핑 방지)
+  for (const idx of aiIndices) {
+    if (chosen.length >= 3) break
+    if (candidates[idx] && !chosen.includes(idx)) chosen.push(idx)
+  }
+  return chosen.slice(0, 3)
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 interface BriefingAIResult {
   headline: string
   summary: string
@@ -110,6 +179,8 @@ ${titleList}
   })
 
   const parsed = JSON.parse(res.choices[0].message.content ?? '{}') as BriefingAIResult
+  // B안: AI가 고른 TOP3를 코드가 재검문 — 같은 사건·시황·해외면 다른 후보로 자동 교체
+  parsed.top3Indices = enforceTop3Rules(parsed.top3Indices ?? [], candidateArticles)
   return { ...parsed, candidateArticles }
 }
 
