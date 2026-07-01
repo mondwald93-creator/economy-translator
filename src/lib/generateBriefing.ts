@@ -16,8 +16,8 @@ function isSituationNews(title: string): boolean {
   // 코스피·코스닥·환율·지수·통화의 단순 등락/시세 전망 (엔저·위안화 등 해외 FX 시황 포함)
   if (/(코스피|코스닥|환율|원\/?달러|원달러|증시|지수|엔저|엔화|위안화|원화|달러화)/.test(title) &&
       /(출발|마감|전망|돌파|폭등|급락|급등|강세|약세|반등|출렁|치솟|미끄러|하락세|상승세|방어선|개입|어디까지)/.test(title)) return true
-  // 신문 사설·칼럼·오피니언·데스크칼럼
-  if (/사설|칼럼|오피니언|데스크/.test(title)) return true
+  // 신문 사설·칼럼·오피니언·데스크칼럼·논평/기고(뉴스가 아닌 의견글). [thebell note] 등 note 칼럼 포함
+  if (/사설|칼럼|오피니언|데스크|기고|논평|시론|톺아|\bnote\b/i.test(title)) return true
   return false
 }
 
