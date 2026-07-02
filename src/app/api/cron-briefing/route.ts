@@ -15,8 +15,11 @@ export async function GET(request: Request) {
   waitUntil(
     (async () => {
       try {
-        await runDailyBriefing()
-        await sendDailyNewsletter().catch(() => ({ sent: 0, skipped: '발송 오류' }))
+        const briefingResult = await runDailyBriefing()
+        // 이번 실행이 실제로 브리핑을 새로 만들었을 때만 뉴스레터 발송 (하루 한 번 보장)
+        if (briefingResult.generated) {
+          await sendDailyNewsletter().catch(() => ({ sent: 0, skipped: '발송 오류' }))
+        }
       } catch (error) {
         await notifyFailure('브리핑 생성', String(error))
       }

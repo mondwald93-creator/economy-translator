@@ -4,7 +4,8 @@ import { runDailyBriefing } from '@/lib/runBriefing'
 
 export async function POST() {
   try {
-    const result = await runDailyBriefing()
+    // 수동 실행은 항상 강제로 다시 만든다 (오늘치 고칠 때 쓰는 경로)
+    const result = await runDailyBriefing({ regenerate: true })
     return NextResponse.json({ success: true, ...result })
   } catch (error) {
     const message = (error as Error).message

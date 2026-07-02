@@ -13,7 +13,10 @@ export async function GET(request: Request) {
   try {
     const collectResult = await collectAndSaveNews()
     const briefingResult = await runDailyBriefing()
-    const newsletter = await sendDailyNewsletter().catch(() => ({ sent: 0, skipped: '발송 오류' }))
+    // 이번 실행이 실제로 브리핑을 새로 만들었을 때만 뉴스레터 발송 (하루 한 번 보장)
+    const newsletter = briefingResult.generated
+      ? await sendDailyNewsletter().catch(() => ({ sent: 0, skipped: '발송 오류' }))
+      : { sent: 0, skipped: '이미 발행돼 재발송 안 함' }
 
     return NextResponse.json({
       success: true,
