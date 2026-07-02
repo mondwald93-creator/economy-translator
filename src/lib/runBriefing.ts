@@ -7,8 +7,22 @@ import {
   buildTop3AnalysisData,
 } from './generateBriefing'
 
-export async function runDailyBriefing() {
+export async function runDailyBriefing({ regenerate = false }: { regenerate?: boolean } = {}) {
   const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+  // 하루 한 번만 발행: 오늘 브리핑이 이미 완성돼 있으면 다시 만들지 않고 그대로 둔다.
+  // (아침에 두 번 도는 구조에서 나중 실행이 먼저 것을 덮어써 내용이 바뀌던 문제 방지)
+  // 수동 재생성(regenerate:true)일 때만 이 잠금을 건너뛴다.
+  if (!regenerate) {
+    const { data: existing } = await supabase
+      .from('briefings')
+      .select('headline')
+      .eq('date', today)
+      .maybeSingle()
+    if (existing?.headline) {
+      return { date: today, generated: false, skipped: '오늘 브리핑이 이미 있어 재생성하지 않음' }
+    }
+  }
 
   const { data: articles, error: fetchError } = await supabase
     .from('news_articles')
@@ -125,6 +139,7 @@ export async function runDailyBriefing() {
 
   return {
     date: today,
+    generated: true,
     articlesTotal: articles.length,
     categoryNewsCount: categoryNews.length,
     indicatorsCollected: indicators.length,
