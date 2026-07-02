@@ -5,11 +5,14 @@
 - 실서비스: https://economy-translator.vercel.app
 - GitHub: https://github.com/mondwald93-creator/economy-translator
 - 배포: git push → Vercel 자동 재배포
-- 자동 업데이트(2026-06-17 구조 확정):
-  - **주력 = Vercel Cron** `/api/cron` = `30 23`(UTC) = **KST 8:30** (수집+브리핑 통합). ※무료 플랜이라 정각 보장 없이 그 언저리에 돎.
-  - **백업 = cron-job.org** 9:00 수집 / 9:07 브리핑 — **폐기하지 말 것(유지).** 주력이 가끔 시간초과로 죽는 날 받쳐줌(2026-06-17 실제로 받침).
-  - 목적 = "9시 전에 브리핑이 완성돼 떠 있기". 발행 시각 정확도는 중요치 않고 9시 전 완성만 보장하면 됨.
-  - (옛 기록의 "8시 정각/9시 폐기 예정"은 폐기된 계획임)
+- 자동 업데이트(2026-07-02 구조 개편 — 하루 한 번 발행 보장):
+  - **브리핑 생성은 하루 딱 한 번, 9시 뉴스 수집 이후.** `runDailyBriefing`이 멱등(오늘 브리핑이 이미 있으면 재생성 안 하고 그대로 둠) → 아침에 여러 번 돌아도 내용이 안 바뀜. 수동 재생성(`/api/generate-briefing` POST)만 `regenerate:true`로 강제.
+  - **실질 주 생성자 = cron-job.org** 9:00 수집 / 9:07 브리핑. 시각이 정확하고 이 무렵 재료(뉴스)가 꽉 차서 품질이 좋음. **폐기하지 말 것(유지).**
+  - **보험 = Vercel Cron** `/api/cron` = `20 0`(UTC) = **KST 9:20** (수집+브리핑 통합, 멱등). 무료 플랜이라 시각이 늦을 수 있으나 "9:07이 죽은 날만 대신 생성"하는 보험이라 무방. (`/api/cron`이 죽는 날은 9:07이 커버 = 양방향 이중화)
+  - 뉴스레터(구독 메일)는 **실제로 브리핑을 새로 만든 실행만 발송** → 하루 한 번.
+  - 목적 = "9시 무렵 재료 꽉 찬 브리핑이 완성돼, 하루 종일 안 바뀌게." (품질 우선 → 완성 ≈9:10, 8:30 얇은 재료로 만들던 옛 방식 폐기)
+  - **왜 바꿨나(2026-07-02):** 옛 주력(8:30)이 재료 절반(그날 434건 vs 9시 870건)으로 만들어 비경제 기사가 섞였고, 9:07 백업이 좋은 재료로 다시 만들어 **덮어써서 같은 날 내용이 바뀌고 메일이 두 번 나갔음.** 원인=수집 로그로 규명, 커밋 `4155c76`.
+  - (옛 기록의 "주력=Vercel 8:30 / 8시 정각·9시 폐기 예정"은 폐기된 계획임)
 
 ---
 
@@ -45,19 +48,21 @@
 ## 자동화 흐름
 
 ```
-[주력 · 매일 오전 8:30 KST 언저리] Vercel Cron → GET /api/cron
-  → POST /api/collect-news   (RSS + 네이버 랭킹 + 키워드 검색)
-  → POST /api/generate-briefing  (OpenAI GPT-4o-mini × 3회)
-  → Supabase upsert 저장
+[실질 주 생성 · 매일 9:00/9:07 KST] cron-job.org → /api/cron-news, /api/cron-briefing
+  → 9:00 뉴스 수집(재료 꽉 참) → 9:07 브리핑 생성(멱등: 이미 있으면 skip)
+  → 새로 만들었으면 뉴스레터 1회 발송
 
-[백업 · 매일 9:00/9:07 KST] cron-job.org → /api/cron-news, /api/cron-briefing
-  → 주력이 죽은 날만 사실상 사용됨(평소엔 덮어쓰기라 무해). 폐기 금지.
+[보험 · 매일 9:20 KST 언저리] Vercel Cron → GET /api/cron
+  → POST /api/collect-news → runDailyBriefing(멱등) → Supabase upsert 저장
+  → 평소엔 9:07이 이미 만들어 skip. 9:07이 죽은 날만 대신 생성(+메일).
 
 [오후 1시·5시·10시 KST] Vercel Cron → GET /api/cron-news
   → POST /api/collect-news   (뉴스 수집만, 브리핑 생성 없음)
 ```
 
-수집 실패 또는 0건 시 브리핑 생성을 건너뜀 (실패 감지 로직 있음).
+- 멱등성: 오늘 briefings에 headline 있으면 `runDailyBriefing`이 재생성 없이 반환 → 같은 날 내용 안 바뀜. 저장은 그대로 `upsert(onConflict:date)`.
+- 수집 실패 또는 0건 시 브리핑 생성을 건너뜀 (실패 감지 로직 있음).
+- ⚠️ 8:30 Vercel 수집을 뺐으므로, 아주 드물게 9:00 수집까지 실패하면 브리핑이 9:20 보험까지 지연될 수 있음(복구는 됨). 더 튼튼히 하려면 8:30 수집전용 크론 추가 검토(무료 플랜 크론 개수 확인 필요).
 
 ---
 
@@ -70,12 +75,15 @@
 | TOP3 선정 | 인덱스 번호 기반 (`top3Indices`) | UUID 방식 복귀 시 항상 빈 배열 |
 | 날짜 처리 | `+9h` 또는 `timeZone: 'Asia/Seoul'` 중 하나만 사용 | 둘 다 쓰면 날짜가 하루 앞으로 밀림 |
 | briefings 저장 | `upsert({ onConflict: 'date' })` | delete+insert 복귀 시 저장 실패 → 당일 브리핑 유실 |
+| 브리핑 하루 1회 발행 | `runDailyBriefing`이 멱등(오늘 headline 있으면 재생성 skip), 수동 POST만 `regenerate:true` | 멱등성 제거 시 아침에 두 번 돌아 같은 날 내용이 바뀌고 메일 2회 발송(2026-07-02 수정) |
+| 뉴스레터 발송 | cron·cron-briefing에서 `briefingResult.generated`일 때만 `sendDailyNewsletter` | 무조건 발송 복귀 시 주력·백업이 각각 보내 구독자에게 하루 2회 발송 |
 | GNB 레이아웃 | `grid-cols-[1fr_auto_1fr]` | flex-1 방식 복귀 시 메뉴 중앙 정렬 깨짐 |
 | 뉴스 중복 제거 | URL + 제목 앞 20자 기준 (코드 레벨) | DB constraint에 의존하면 upsert 에러로 전체 수집 실패 |
 | 뉴스 저장 방식 | `naverNews.ts` — 기존 URL 선조회 후 `insert` | upsert 복귀 시 DB constraint 없으면 전체 에러 |
 | 기준금리 | 네이버 금융 자동 수집 | 하드코딩 금지 |
 | vercel.json maxDuration | cron 300s, generate-briefing 300s | 삭제 시 타임아웃으로 크론 매일 실패 |
-| cron-job.org 9시 백업 | 9:00 수집 / 9:07 브리핑 유지 | 폐기 시 주력(Vercel)이 시간초과로 죽는 날 브리핑 통째 유실 (2026-06-17 실제로 백업이 받음) |
+| Vercel `/api/cron` 시각 | `20 0`(UTC)=KST 9:20, 보험용 | 8:30으로 되돌리면 재료 절반으로 브리핑 만들어 비경제 기사 혼입(2026-07-02 개편으로 옮김) |
+| cron-job.org 9시 | 9:00 수집 / 9:07 브리핑 = **실질 주 생성자**, 유지 | 폐기 시 브리핑 통째 유실(이제 Vercel은 9:20 보험이라 주 생성이 여기임 — 2026-07-02 역할 재정의) |
 | 외부 호출 기다림 한도 | OpenAI 60초+재시도 1회(요약만 100초), 시세 fetch 10초 (openai.ts·generateBriefing.ts·marketData.ts) | 제거 시 외부 지연 1건이 5분 예산 전체 소진 → 브리핑 미생성 (2026-06-12 장애 원인) |
 | Supabase briefings.date | unique constraint 적용됨 | 삭제 시 중복 행 문제 재발 |
 | cron-briefing 응답 방식 | 즉시 `accepted` 응답 + `waitUntil` 백그라운드 실행 | 동기 대기로 복귀 시 cron-job.org 30초 timeout이 매일 실패로 기록 → 연속 25회면 크론잡 자동 비활성화(2026-06-12 발견) |
@@ -101,7 +109,7 @@
 | AI | OpenAI GPT-4o-mini |
 | DB | Supabase PostgreSQL (테이블: briefings, news_articles, terms) |
 | 뉴스 | RSS 4개 + 네이버 경제탭 스크래핑 + 네이버 검색 API |
-| 자동화 | 주력=Vercel Cron(UTC 23:30=KST 8:30), 백업=cron-job.org 9시 — 2026-06-17 확정 |
+| 자동화 | 주 생성=cron-job.org 9:00 수집/9:07 브리핑, 보험=Vercel Cron(UTC 0:20=KST 9:20). 브리핑은 멱등이라 하루 1회 — 2026-07-02 개편 |
 | 배포 | Vercel (git push → 자동 재배포) |
 
 ---
