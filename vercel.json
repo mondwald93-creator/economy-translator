@@ -9,6 +9,7 @@
     "src/app/api/cron/route.ts":              { "maxDuration": 300 },
     "src/app/api/cron-briefing/route.ts":     { "maxDuration": 300 },
     "src/app/api/generate-briefing/route.ts": { "maxDuration": 300 },
-    "src/app/api/collect-news/route.ts":      { "maxDuration": 60  }
+    "src/app/api/collect-news/route.ts":      { "maxDuration": 60  },
+    "src/app/api/grade-briefing/route.ts":    { "maxDuration": 120 }
   }
 }
