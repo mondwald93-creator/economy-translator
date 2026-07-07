@@ -3,7 +3,8 @@
     { "path": "/api/cron",      "schedule": "20 0 * * *"  },
     { "path": "/api/cron-news", "schedule": "0 4 * * *"  },
     { "path": "/api/cron-news", "schedule": "0 8 * * *"  },
-    { "path": "/api/cron-news", "schedule": "0 13 * * *" }
+    { "path": "/api/cron-news", "schedule": "0 13 * * *" },
+    { "path": "/api/grade-briefing", "schedule": "0 1 * * *" }
   ],
   "functions": {
     "src/app/api/cron/route.ts":              { "maxDuration": 300 },
