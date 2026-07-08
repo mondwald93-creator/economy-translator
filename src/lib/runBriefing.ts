@@ -75,7 +75,7 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
 
   // TOP3 먼저 저장 → 분야 대표와 겹치는 기사가 있으면 아래에서 category까지 덮어쓰도록 순서 보장
   if (top3Analyses.length > 0) {
-    await Promise.all(
+    const results = await Promise.all(
       top3Analyses.map(a =>
         supabase.from('news_articles').update({
           full_analysis: {
@@ -89,11 +89,16 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
         }).eq('id', a.id)
       )
     )
+    // 조용한 실패 방지: update 오류를 그냥 넘기지 않고 로그로 드러낸다 (발행 흐름은 막지 않음)
+    const failed = results.filter(r => r.error)
+    if (failed.length > 0) {
+      console.error(`[runBriefing] TOP3 기사 상세(full_analysis) 저장 실패 ${failed.length}/${top3Analyses.length}건:`, failed.map(r => r.error?.message))
+    }
   }
 
   // 분야별 대표 기사: full_analysis에 category 꼬리표 포함 저장 (홈 목록이 이걸로 골라 뿌림)
   if (categoryNews.length > 0) {
-    await Promise.all(
+    const results = await Promise.all(
       categoryNews.map(a =>
         supabase.from('news_articles').update({
           full_analysis: {
@@ -108,6 +113,11 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
         }).eq('id', a.id)
       )
     )
+    // 조용한 실패 방지: 분야별 대표 기사 저장 오류도 로그로 드러낸다 (발행 흐름은 막지 않음)
+    const failed = results.filter(r => r.error)
+    if (failed.length > 0) {
+      console.error(`[runBriefing] 분야별 대표 기사(full_analysis) 저장 실패 ${failed.length}/${categoryNews.length}건:`, failed.map(r => r.error?.message))
+    }
   }
 
   const top3AnalysisData = buildTop3AnalysisData(top3Analyses, articleInputs)
