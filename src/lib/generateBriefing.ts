@@ -128,8 +128,8 @@ ${titleList}
 다음 JSON 형식으로만 응답하세요 (다른 텍스트 없이):
 {
   "headline": "오늘 가장 큰 구체적 경제 이슈 한 줄\\n그 영향 한 줄 (두 줄을 \\n으로 구분, 구어체 ~했어요 형식. 첫 줄은 반드시 18자 이내 짧게. 아래 '이슈 범위'에서 그날 가장 큰 것을 고르고 단순 지수·환율 시황은 쓰지 마세요. 형식 예시일 뿐 내용은 따라하지 말 것: '정부, 전기요금 동결했어요\\n물가 부담을 덜어주려는 거예요' / '주요 기업들이 하반기 채용 늘려요\\n일자리에 숨통이 트일 전망이에요')",
-  "summary": "오늘 경제 전체를 초보자 언어로 정리한 3~5문단 요약 글",
-  "shareCard": "경제를 전혀 모르는 친구에게 카카오톡으로 보내는 오늘의 한 줄 (20~40자, 숫자보다 의미 중심, headline과 다른 내용. 예: '오늘 주식이 올랐어요 — 외국인들이 올해 들어 가장 많이 산 날이에요')",
+  "summary": "오늘 경제 전체를 초보자 언어로 정리한 요약 글. 반드시 3~5개 문단으로 나누고, 각 문단 사이는 빈 줄(\\n\\n)로 구분하세요 (한 덩어리로 쓰지 말 것)",
+  "shareCard": "경제를 전혀 모르는 친구에게 카카오톡으로 보내는 오늘의 한 줄 (공백 포함 반드시 40자 이내로 짧게, 숫자보다 의미 중심, headline과 다른 내용. 예: '오늘 주식이 많이 올랐대요, 외국인들이 사들였거든요')",
   "dailyTerm": {
     "term": "오늘 뉴스와 관련 있는 경제 용어 1개${avoidTerms}",
     "category": "금리|환율|주식|부동산|무역|경기|소비|통화 중 하나",
@@ -181,6 +181,21 @@ ${titleList}
   const parsed = JSON.parse(res.choices[0].message.content ?? '{}') as BriefingAIResult
   // B안: AI가 고른 TOP3를 코드가 재검문 — 같은 사건·시황·해외면 다른 후보로 자동 교체
   parsed.top3Indices = enforceTop3Rules(parsed.top3Indices ?? [], candidateArticles)
+  // shareCard 40자 초과 방지(형식 채점 기준=40자 이내). 프롬프트로도 유도하되, 넘치면 코드가 마지막 안전망으로 자른다.
+  // '—'/',' 앞 절만으로 완결되면 그 절만 남기고(문장이 안 끊김), 아니면 40자 이내 단어 경계에서 자른다.
+  if (parsed.shareCard) {
+    let sc = parsed.shareCard.trim()
+    if (sc.length > 40) {
+      const m = sc.match(/^(.{15,40}?)(?:\s—\s|,\s)/)
+      if (m) {
+        sc = m[1].trim()
+      } else {
+        const sp = sc.lastIndexOf(' ', 40)
+        sc = (sp > 20 ? sc.slice(0, sp) : sc.slice(0, 40)).trim()
+      }
+    }
+    parsed.shareCard = sc
+  }
   return { ...parsed, candidateArticles }
 }
 
