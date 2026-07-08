@@ -84,6 +84,15 @@ export function runFormatChecks(briefing: Record<string, unknown>): FormatCheck[
     pass: top3.length === 3,
     detail: `${top3.length}개`,
   })
+  // 2026-07-08 사고: AI가 UUID를 한 글자 빠뜨려 제목이 ''로 저장됨 — 빈 제목을 형식 탈락으로 잡는다
+  const emptyTitles = top3.filter(
+    (t: { title?: string }) => !String(t?.title ?? '').trim()
+  ).length
+  checks.push({
+    name: 'TOP3 제목 빈칸 없음',
+    pass: top3.length > 0 && emptyTitles === 0,
+    detail: emptyTitles === 0 ? '빈 제목 0개' : `빈 제목 ${emptyTitles}개`,
+  })
   const healthCheck = Array.isArray(briefing.health_check) ? briefing.health_check : []
   const filledHealth = healthCheck.filter(
     (h: { category?: string; summary?: string }) => h?.category && String(h?.summary ?? '').trim()

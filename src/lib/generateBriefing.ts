@@ -220,7 +220,9 @@ export async function generateTop3Analysis(
 ): Promise<(ArticleFullAnalysis & { id: string })[]> {
   if (articles.length === 0) return []
 
-  const articleList = articles.map(a => `{"id":"${a.id}","title":"${a.title}"}`).join('\n')
+  // ⚠️ AI에게 UUID를 되받아 쓰게 하면 가끔 글자를 빠뜨려 기사 매칭이 깨짐(2026-07-08 TOP3 빈 제목 사고)
+  // → TOP3 선정과 동일한 인덱스 번호 방식. id는 코드가 인덱스로 복원한다.
+  const articleList = articles.map((a, i) => `{"index":${i},"title":"${a.title}"}`).join('\n')
 
   const prompt = `다음 경제 뉴스 기사들을 경제 과외 선생님처럼 6단계로 깊이 설명해주세요.
 
@@ -239,7 +241,7 @@ ${articleList}
 {
   "articles": [
     {
-      "id": "기사id",
+      "index": 위 목록의 기사 인덱스 숫자,
       "oneline": "한 마디 요약",
       "whatHappened": "무슨 일 설명",
       "whyHappened": "원인 설명",
@@ -261,7 +263,24 @@ ${articleList}
   })
 
   const parsed = JSON.parse(res.choices[0].message.content ?? '{"articles":[]}')
-  return (parsed.articles ?? []) as (ArticleFullAnalysis & { id: string })[]
+  const rows = (parsed.articles ?? []) as Array<{ index: number } & ArticleFullAnalysis>
+
+  // 인덱스 → 실제 기사 id 복원 (AI가 쓴 식별자를 신뢰하지 않는다)
+  const result: (ArticleFullAnalysis & { id: string })[] = []
+  for (const r of rows) {
+    const art = articles[r.index]
+    if (!art) continue
+    result.push({
+      id: art.id,
+      oneline: r.oneline,
+      whatHappened: r.whatHappened,
+      whyHappened: r.whyHappened,
+      myImpact: r.myImpact,
+      outlook: r.outlook,
+      conclusion: r.conclusion,
+    })
+  }
+  return result
 }
 
 // B5: 분야별(6개) 대표 기사 1개씩 선정 + 6단계 분석 (홈 뉴스 목록용)
