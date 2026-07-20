@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>경제번역기 데일리 카드 샘플</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:#E5E7EB;
+    font-family:'Apple SD Gothic Neo','Pretendard','Malgun Gothic',sans-serif;
+    display:flex; justify-content:center; align-items:flex-start;
+    padding:40px 20px; gap:40px; flex-wrap:wrap;
+  }
+  .wrap { text-align:center; }
+  .wrap > .cap { margin-bottom:12px; font-size:13px; color:#374151; font-weight:600; }
+
+  /* 인스타 세로 4:5 = 1080 x 1350, 화면용 0.4배 = 432 x 540 */
+  .card {
+    width:432px; height:540px;
+    background:linear-gradient(150deg,#0F172A 0%,#1E293B 55%,#064E3B 100%);
+    border-radius:22px; position:relative; overflow:hidden;
+    padding:38px 34px; color:#fff; box-shadow:0 10px 30px rgba(0,0,0,.18);
+    display:flex; flex-direction:column;
+  }
+  .blob1 { position:absolute; top:-60px; right:-60px; width:200px; height:200px; border-radius:50%; background:rgba(34,197,94,.13); }
+  .blob2 { position:absolute; bottom:-50px; left:-50px; width:140px; height:140px; border-radius:50%; background:rgba(34,197,94,.08); }
+
+  .top { display:flex; align-items:center; gap:8px; margin-bottom:26px; position:relative; z-index:1; }
+  .pill { background:#22C55E; color:#fff; font-size:11px; font-weight:700; padding:4px 11px; border-radius:20px; letter-spacing:.5px; }
+  .date { color:rgba(255,255,255,.5); font-size:12px; }
+
+  .kicker { color:#22C55E; font-size:13px; font-weight:700; margin-bottom:10px; position:relative; z-index:1; }
+  .headline { font-size:30px; font-weight:800; line-height:1.32; letter-spacing:-.5px; position:relative; z-index:1; }
+  .headline .em { color:#FCA5A5; }  /* 상승=빨강 계열 강조 */
+
+  .desc { color:rgba(248,250,252,.86); font-size:15.5px; line-height:1.7; margin-top:18px; position:relative; z-index:1; }
+
+  /* 지표 박스 */
+  .metric {
+    margin-top:auto; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+    border-radius:14px; padding:14px 16px; display:flex; align-items:center; justify-content:space-between;
+    position:relative; z-index:1;
+  }
+  .metric .label { font-size:13px; color:rgba(255,255,255,.7); }
+  .metric .val { font-size:20px; font-weight:800; }
+  .metric .chg { font-size:13px; font-weight:700; color:#F87171; margin-left:8px; }  /* 빨강=상승(한국식) */
+
+  /* 왜 중요 */
+  .why { margin-top:14px; font-size:13.5px; line-height:1.55; color:#D1FAE5; position:relative; z-index:1; }
+
+  /* footer */
+  .foot { margin-top:16px; border-top:1px solid rgba(255,255,255,.12); padding-top:13px;
+    display:flex; align-items:center; justify-content:space-between; position:relative; z-index:1; }
+  .foot .l { color:rgba(255,255,255,.4); font-size:11px; }
+  .foot .r { color:#22C55E; font-size:11px; font-weight:700; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="cap">▼ 데일리 카드 샘플 (인스타 세로 4:5) · 내용은 예시</div>
+    <div class="card">
+      <div class="blob1"></div><div class="blob2"></div>
+
+      <div class="top">
+        <span class="pill">경제번역기</span>
+        <span class="date">2026년 6월 26일 (금)</span>
+      </div>
+
+      <div class="kicker">오늘 꼭 알아야 할 한 가지</div>
+      <div class="headline">원·달러 환율<br><span class="em">1,390원</span> 돌파</div>
+
+      <div class="desc">달러가 강해지면서 환율이 9개월 만에 최고로 뛰었어요. 환율이 오르면 수입 물가가 따라 올라, 장바구니·기름값에 영향이 옵니다.</div>
+
+      <div class="metric">
+        <span class="label">원/달러 환율</span>
+        <span><span class="val">1,392.5원</span><span class="chg">▲ 8.3</span></span>
+      </div>
+
+      <div class="why">💡 해외직구·여행 계획 중이라면 지금 환율을 한번 확인해 보세요.</div>
+
+      <div class="foot">
+        <span class="l">매일 아침 경제 5분</span>
+        <span class="r">@econ.5min</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

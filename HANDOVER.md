@@ -1,7 +1,7 @@
 # 경제번역기 — 인수인계 문서
 
 > 다음 세션에서 이 파일을 **먼저 읽고** 시작하세요.
-> 마지막 업데이트: 2026-06-09 (Phase 4 항목 2 이메일 구독 코드 완성·보류 결정)
+> 마지막 업데이트: 2026-06-16 (발행 시각 8시 확정 확인 + 9시 cron-job.org 중복 발견, 끄기 예정)
 
 ---
 
@@ -19,13 +19,31 @@
 |------|------|
 | 실서비스 주소 | **https://economy-translator.vercel.app** |
 | GitHub | https://github.com/mondwald93-creator/economy-translator |
-| 자동 업데이트 | 매일 한국시간 **오전 9:00** 뉴스 수집 + **오전 9:10** 브리핑 생성 + **오후 1시·5시·10시** 뉴스 수집 |
+| 자동 업데이트 | 매일 한국시간 **오전 8시** Vercel 통합작업(`/api/cron`, vercel.json `0 23`=UTC23=KST8) 수집+브리핑+뉴스레터 한 번에 + **오후 1시·5시·10시** 뉴스 수집. ⚠️cron-job.org의 9:00·9:07 작업은 8시와 중복이라 끌 예정(6/17) |
 | 로컬 개발 | `npm run dev` → http://localhost:3000 |
 | 배포 방식 | git push → Vercel 자동 재배포 |
 
 ---
 
 ## 다음 세션 시작점 ← 여기서 시작
+
+**📊 2026-07-08 — 채점 점수 → 구글 시트 자동 기록판 구축 (A 완료)**
+
+자동 채점기(briefing_scores) 점수를 **구글 시트에 매일 쌓아 추세를 눈으로 보는 판**을 만듦. 코드는 이 repo가 아니라 바깥(`클로드 자료/`)에 있음 — 서비스 계정 방식 학습 겸.
+
+- **데이터 출처**: Supabase `briefing_scores` 표 (date/total/scores(항목별 이해도·사실·선정·다양성·톤 각 0~2)/format_pass/disqualified/issue_note). anon key로 읽음(economy-translator/.env.local의 `NEXT_PUBLIC_SUPABASE_URL`+`NEXT_PUBLIC_SUPABASE_ANON_KEY`).
+- **로봇(구글 서비스 계정) 이메일**: `claude-writer@claude-semina-bot.iam.gserviceaccount.com` — 어떤 구글 시트든 이 이메일을 **편집자로 초대**하면 클로드가 읽고 씀.
+- **열쇠 파일**: `/Users/ninaj/Documents/claude-code-test/클로드 자료/claude-semina-bot-a67bbb6b4243.json` (바깥 repo의 .gitignore로 백업 제외 처리, 유출 방지).
+- **실행 스크립트**: `/Users/ninaj/Documents/claude-code-test/클로드 자료/경제번역기_점수_시트동기화.py` (Supabase 전체 읽어 시트 전체 덮어쓰기 = 멱등, 여러 번 돌려도 행 안 겹침).
+- **결과 시트**: https://docs.google.com/spreadsheets/d/12mqGTUd9QNGg_e4f9CL-1fezqIOvpwp872T2FyTTa6Y/edit — `경제번역기_점수` 탭. (지금은 사용자 개인 테스트 시트. 스터디 공용 시트 정해지면 SHEET_ID 교체+공유만 하면 됨.)
+- **실행법**: 세션에서 "점수 시트 갱신해줘" → `python3 -W ignore "/Users/ninaj/Documents/claude-code-test/클로드 자료/경제번역기_점수_시트동기화.py"`.
+- **스케줄 현황**: 지금은 **㉮ 세션마다 수동 실행**. 완전 자동(㉰ = Vercel 크론에 통합, 맥 안 켜도 매일 자동)은 **퇴사 후 클라우드/폰 세팅 때** 묶어서 하기로 보류. gspread 로컬 설치됨(python3.9 --user).
+- (같이 검토한 B=약국세무 블로그 지표 시트는 퇴사라 버림. C=대시보드 폰 보기는 폰 클로드 계획과 겹쳐 접음.)
+
+**🔧 2026-06-17 아침 — 9시 중복 발행 끄기 (8시 단독 발행으로 정리)**
+- 배경: 발행 시각을 6/15에 아침 8시로 확정(`/api/cron` UTC23=KST8). 그런데 cron-job.org의 9:00(수집)·9:07(브리핑) 작업이 아직 살아서 매일 또 돎 = 순수 중복(6/16 Vercel 로그로 확정, 덮어쓰기라 데이터 무해·AI 비용만 헛소비).
+- 할 일: ①아침 8:30쯤 Vercel 로그에서 `/api/cron`이 8시대 200으로 돈 걸 확인(무료플랜은 1시간만 보여 8:28 이전 안 보임→8시 직후 필수) → ②cron-job.org에서 9:00·9:07 작업 2개 끄기.
+- 못 하면 다음날로 이월. 끄고 나면 8시 단독 발행 = 안전망 없는 첫날이니 그날 8시 발행 정상인지 한 번 확인.
 
 **✅ 2026-06-10 — Phase 4 전체 완료 + 고도화 1단계(측정 기반) 완료. 다음 = 고도화 2단계 (AI 품질 자동 점검 체계).**
 

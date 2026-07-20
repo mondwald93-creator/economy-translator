@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRD — 경제번역기</title>
+<style>
+  :root{
+    --ivory:#F7F4EC; --paper:#FFFFFF; --navy:#1B2A4A; --navy-soft:#2C3E63;
+    --ink:#26303F; --muted:#6A7385; --line:#E3DECF; --green:#1E9E5A;
+    --green-bg:#EAF6EE; --amber-bg:#FBF3E2; --amber-line:#E8CF9A;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--ivory); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic",sans-serif;
+    line-height:1.72; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:820px; margin:0 auto; padding:56px 28px 96px;}
+
+  /* header */
+  header.doc{
+    background:var(--navy); color:#fff; border-radius:18px;
+    padding:38px 40px; margin-bottom:40px;
+    box-shadow:0 18px 40px -22px rgba(27,42,74,.55);
+  }
+  header.doc .kicker{
+    font-size:12.5px; letter-spacing:.14em; text-transform:uppercase;
+    color:#A9B7D6; font-weight:700; margin-bottom:14px;
+  }
+  header.doc h1{margin:0 0 12px; font-size:30px; letter-spacing:-.01em; line-height:1.25;}
+  header.doc .lede{margin:0; color:#D6DEEC; font-size:15.5px; max-width:60ch;}
+  header.doc .meta{
+    margin-top:22px; padding-top:18px; border-top:1px solid rgba(255,255,255,.16);
+    display:flex; flex-wrap:wrap; gap:8px 22px; font-size:13.5px; color:#B9C4DC;
+  }
+  header.doc .meta b{color:#fff; font-weight:600;}
+  header.doc a{color:#8FE3B0; text-decoration:none;}
+  header.doc a:hover{text-decoration:underline;}
+
+  /* sections */
+  section{
+    background:var(--paper); border:1px solid var(--line); border-radius:14px;
+    padding:28px 32px; margin-bottom:20px;
+  }
+  h2{
+    margin:0 0 18px; font-size:20px; color:var(--navy); letter-spacing:-.01em;
+    display:flex; align-items:baseline; gap:12px;
+  }
+  h2 .num{
+    flex:none; width:30px; height:30px; border-radius:50%;
+    background:var(--navy); color:#fff; font-size:14px; font-weight:700;
+    display:inline-flex; align-items:center; justify-content:center; line-height:1;
+    position:relative; top:2px;
+  }
+  h3{font-size:15.5px; color:var(--navy-soft); margin:22px 0 8px; letter-spacing:-.01em;}
+  h3:first-of-type{margin-top:4px;}
+  p{margin:0 0 12px;}
+  ul,ol{margin:0 0 12px; padding-left:22px;}
+  li{margin:5px 0;}
+  strong{color:var(--navy); font-weight:600;}
+  a{color:var(--green);}
+  hr{border:none; border-top:1px solid var(--line); margin:24px 0;}
+
+  blockquote{
+    margin:0 0 16px; padding:12px 18px; background:var(--ivory);
+    border-left:3px solid var(--navy); border-radius:0 8px 8px 0;
+    color:var(--navy-soft); font-size:14.5px;
+  }
+  blockquote p{margin:0;}
+  blockquote p+p{margin-top:6px;}
+
+  .vp{
+    text-align:center; font-size:19px; font-weight:700; color:var(--navy);
+    background:var(--green-bg); border:1px solid #CDE9D6; border-radius:12px;
+    padding:18px; margin:6px 0 16px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:6px 0 16px; font-size:14.5px;}
+  th,td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{background:var(--ivory); color:var(--navy); font-weight:700; font-size:13px; letter-spacing:.01em;}
+  tr:last-child td{border-bottom:none;}
+  td strong{color:var(--navy);}
+  .tbl-wrap{overflow-x:auto;}
+
+  .note{
+    background:var(--amber-bg); border:1px solid var(--amber-line); border-radius:10px;
+    padding:14px 18px; font-size:14px; color:#6b551f; margin:4px 0 4px;
+  }
+  .note b{color:#5a4715;}
+
+  .appendix{background:var(--navy); color:#D6DEEC; border:none;}
+  .appendix h2{color:#fff;}
+  .appendix h2 .num{background:#fff; color:var(--navy);}
+  .appendix strong{color:#8FE3B0;}
+
+  .footer{
+    text-align:center; color:var(--muted); font-size:12.5px; margin-top:34px;
+  }
+
+  @media (max-width:620px){
+    .wrap{padding:32px 16px 64px;}
+    header.doc{padding:28px 22px;}
+    header.doc h1{font-size:24px;}
+    section{padding:22px 20px;}
+    h2{font-size:18px;}
+  }
+  @media print{
+    body{background:#fff;}
+    .wrap{max-width:none; padding:0;}
+    header.doc{box-shadow:none; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+    section{break-inside:avoid; border-color:#ddd;}
+    header.doc,th,.vp,.note,.appendix{-webkit-print-color-adjust:exact; print-color-adjust:exact;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="doc">
+    <div class="kicker">Product Requirements Document</div>
+    <h1>경제번역기 (Economy Translator)</h1>
+    <p class="lede">매일 아침 한국 경제 뉴스를 경제 입문자의 언어로 번역해 자동 발행하는 웹 서비스.</p>
+    <div class="meta">
+      <span><b>작성</b> 이정현 · 2026-07-09</span>
+      <span><b>실서비스</b> <a href="https://economy-translator.vercel.app">economy-translator.vercel.app</a></span>
+      <span><b>문서</b> 운영 중인 서비스를 표준 PRD 포맷으로 정리</span>
+    </div>
+  </header>
+
+  <section>
+    <h2><span class="num">1</span>한 줄 요약</h2>
+    <p>경제 뉴스는 매일 쏟아지지만, 입문자에게는 용어부터가 벽이다. 경제번역기는 매일 아침 그날의 한국 경제 뉴스를 수집해 <strong>"무슨 일인지 → 왜 중요한지 → 내 지갑에 무슨 영향인지"</strong>를 쉬운 말로 풀어 자동 발행한다. 사람이 매일 쓰지 않아도 되도록 <strong>수집–생성–품질 채점을 자동 파이프라인</strong>으로 운영한다.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">2</span>문제 정의 · 타겟 유저 · 페인포인트</h2>
+    <h3>타겟 유저</h3>
+    <p>경제에 관심은 생겼지만 <strong>어디서부터 시작할지 막막한 입문자.</strong> (사회초년생, 재테크를 막 시작한 사람, 뉴스를 봐도 무슨 뜻인지 몰라 넘겨온 사람.)</p>
+    <h3>페인포인트</h3>
+    <ul>
+      <li>경제 뉴스는 <strong>용어·맥락 전제가 많아</strong> 입문자가 읽어도 남는 게 없다.</li>
+      <li>하루에 기사가 수백~수천 건 쏟아져 <strong>뭐가 중요한지 스스로 못 고른다.</strong></li>
+      <li>"쉽게 설명해준다"는 콘텐츠는 많지만 <strong>매일·정시에 나오지 않거나</strong> 정확도가 들쭉날쭉하다.</li>
+    </ul>
+    <h3>이 제품이 미는 지점</h3>
+    <p>"쉽게" + "매일 정시에" + "그날 진짜 중요한 것만 골라서" — 세 개를 동시에 만족시키는 것. 특히 <strong>선정(그날 뭘 다룰지)</strong>과 <strong>정시성</strong>을 자동화의 핵심 과제로 본다.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">3</span>핵심 가설 · 가치 제안</h2>
+    <div class="vp">"어려운 경제를 쉬운 말로 번역한다."</div>
+    <p>제품 이름 자체가 이 가치를 담는다. 기능 목록이 아니라 "왜 쓰는가"를 한 문장으로 못 박고, 모든 구성 결정을 여기에 맞춘다.</p>
+    <h3>핵심 가설</h3>
+    <ol>
+      <li>입문자는 기사 원문이 아니라 <strong>"번역된 해설"</strong>을 원한다 → 개별 뉴스마다 5단 해설 구조로 검증.</li>
+      <li>입문자는 <strong>선정을 대신 해주기를</strong> 원한다 → 그날 가장 중요한 이슈를 골라주는 TOP3·헤드라인이 핵심 가치.</li>
+      <li>진짜 가치가 있다면 <strong>다시 온다</strong> → 성공을 조회수가 아니라 재방문율로 측정.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2><span class="num">4</span>성공 지표</h2>
+    <p>측정 원칙: <strong>"서비스가 잘 도는가(건강 지표)"와 "서비스가 목적을 이루는가(북극성 지표)"를 분리해서 본다.</strong> 건강 지표가 다 초록불이어도 북극성이 안 움직이면 "잘 돌지만 의미 없는" 상태로 판정한다.</p>
+    <h3>북극성 지표 (North Star Metric)</h3>
+    <p><strong>재방문율(리텐션).</strong> 신규 유입은 광고로 살 수 있지만 재방문은 못 산다 → 가장 정직한 가치 신호. 호기심 1회가 아니라 "진짜 도움이 됐나"를 대표.</p>
+    <h3>건강 지표 (Health Metric)</h3>
+    <ul>
+      <li><strong>발행 완료 시각</strong> — 매일 아침 9시대에 브리핑이 완성되는가.</li>
+      <li><strong>발행 실패율</strong> — 자동 발행이 누락된 날이 있는가.</li>
+      <li><strong>콘텐츠 품질 점수</strong> — 채점기가 매기는 일일 점수(7장).</li>
+    </ul>
+    <h3>SLA (스스로 건 운영 약속)</h3>
+    <ul>
+      <li><strong>매일 아침 9시대 발행 완료.</strong> 이 약속을 지키는지 매주 추적한다.</li>
+    </ul>
+    <div class="note">⚠️ <b>트레이드오프 기록:</b> 초기 목표는 "9시 정각 전 완성"이었으나, 뉴스 재료가 오전 8→9시 사이에 쏟아진다는 것을 수집 로그로 확인(8시대 434건 vs 9시대 870건)하고, <b>완벽한 정시성보다 재료가 꽉 찬 품질을 택해</b> 생성 시점을 9시 이후로 옮겼다. "완벽함보다 매일 지켜지고 품질이 보장되는 기준"을 택한 결정.</div>
+  </section>
+
+  <section>
+    <h2><span class="num">5</span>핵심 요구사항 <span style="font-size:14px;color:var(--muted);font-weight:400;">(무엇을 · 왜)</span></h2>
+
+    <h3>5-1. 콘텐츠 구조 — 입문자용 번역 포맷</h3>
+    <div class="tbl-wrap"><table>
+      <tr><th>구성</th><th>역할</th></tr>
+      <tr><td>헤드라인 2줄</td><td>오늘 가장 중요한 한 가지</td></tr>
+      <tr><td>전체 요약 (3~5문단)</td><td>오늘의 큰 그림</td></tr>
+      <tr><td>오늘의 한 줄 (공유 카드, 20~40자)</td><td>SNS 공유·핵심 압축</td></tr>
+      <tr><td>오늘의 용어</td><td>입문자 벽인 용어 1개 해설</td></tr>
+      <tr><td>TOP3 뉴스</td><td>그날 가장 중요한 3건</td></tr>
+      <tr><td>분야별 건강진단</td><td>6개 분야별 핵심 뉴스</td></tr>
+      <tr><td>핵심 흐름</td><td>뉴스 간 연결 맥락</td></tr>
+      <tr><td>개별 뉴스 5단 해설</td><td>무슨 기사 / 쉽게 / 왜 중요 / 한국 영향 / 핵심 포인트</td></tr>
+    </table></div>
+    <p><strong>왜 이 구조인가</strong>: 입문자는 "요약"만으로는 맥락을 못 잡고, "원문"은 어렵다. 그 사이에서 <em>선정(TOP3) → 큰 그림(요약) → 낱개 해설(5단)</em>의 계층으로 소화 난이도를 낮춘다.</p>
+
+    <h3>5-2. 자동 발행 파이프라인</h3>
+    <ul>
+      <li><strong>수집 → 생성 2단계 분리.</strong> 한 함수에 다 넣으면 실행 시간 한도를 넘겨 죽는다(실측). 단계를 쪼개 매일 무인 발행되게 함.</li>
+      <li><strong>이중화(폴백).</strong> 주 생성(cron-job.org, 9:07)이 실패해도 보험 경로(Vercel, 9:20)가 대신 발행 → 발행 누락 자체를 구조적으로 차단.</li>
+      <li><strong>멱등성(하루 1회 고정).</strong> 두 경로가 같은 날 각각 생성해 내용이 바뀌거나 뉴스레터가 두 번 나가는 것을 방지 — "이미 오늘 발행됐으면 손대지 않는다".</li>
+      <li><strong>타임아웃·재시도.</strong> 모든 외부 호출에 대기 한도와 1회 재시도 → "남의 서버는 늦을 수 있다"를 전제로 설계.</li>
+    </ul>
+
+    <h3>5-3. 선정 품질 — "그날 진짜 중요한 것"만</h3>
+    <ul>
+      <li><strong>이슈 우선 선정.</strong> 단순 지수 시황·환율 전망·신문 사설·해외 단독 뉴스는 제외하고, "보통 사람이 체감할 이슈"를 고르게 함.</li>
+      <li><strong>같은 사건 중복 제거(이중 방어).</strong> 기계 규칙(제목 토큰 겹침 계수로 near-duplicate 탐지) + AI 규칙(프롬프트로 "TOP3는 서로 다른 사건") 두 겹.</li>
+      <li><strong>코드 후처리 가드.</strong> AI가 고른 TOP3를 코드가 한 번 더 검문해 시황·중복이면 다른 후보로 자동 교체 → 확률적 모델을 코드가 최종 보증.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="num">6</span>범위 밖 (스코프 컷)</h2>
+    <blockquote><p><strong>안 만들기로 한 결정도 기획이다.</strong> 만들 수 있다고 다 만들면 빌드 트랩(검증 안 된 기능을 계속 찍어내는 함정)에 빠진다.</p></blockquote>
+    <div class="tbl-wrap"><table>
+      <tr><th>안 만든 것</th><th>이유</th></tr>
+      <tr><td><strong>실패 알림 이메일</strong></td><td>운영자가 메일함을 잘 안 본다 → 알림을 만들어도 못 본다. 대신 "매일 아침 사이트를 직접 확인"하는 일간 루틴으로 감지(고장 나면 날짜가 안 바뀜). 채널을 운영자 습관에 맞춘 결정.</td></tr>
+      <tr><td><strong>완전 자동 채점 조치</strong></td><td>채점 AI도 틀릴 수 있어, 신뢰가 검증되기 전 자동 조치는 멀쩡한 결과물을 망칠 위험. "기록만 → 자동 재생성 → 무인 운영" 3단계로 나누고 진입에 조건을 걸어 미룸.</td></tr>
+      <tr><td><strong>TOP3 long-tail 완벽 필터링</strong></td><td>모델 무작위성 때문에 매번 다른 경계선 기사가 샘. 핵심 실패 부류(같은 사건·시황·칼럼)는 코드로 잡되, 나머지를 100% 쫓으면 무한 튜닝 → 여기서 종료로 명시적 결정.</td></tr>
+      <tr><td><strong>카드뉴스 완전 자동 발행</strong></td><td>인스타 업로드가 어차피 수동이라 완전 자동은 과투자 → 반자동(열기→저장→업로드)으로 결정.</td></tr>
+    </table></div>
+  </section>
+
+  <section>
+    <h2><span class="num">7</span>리스크 · 대응</h2>
+    <p>리스크를 <strong>종류별로 나눠</strong> 각각 다른 장치로 막는다. (시간 누락 ≠ 내용 오류 — 다른 문제이므로 다른 장치.)</p>
+    <div class="tbl-wrap"><table>
+      <tr><th>리스크</th><th>대응 장치</th></tr>
+      <tr><td><strong>발행 시간 누락</strong></td><td>이중화(폴백) — 주 생성 실패 시 보험이 대신 발행.</td></tr>
+      <tr><td><strong>숫자 할루시네이션</strong></td><td>프롬프트에 "원문에 없는 숫자 금지" 규칙 + 채점기 사실 항목 감시.</td></tr>
+      <tr><td><strong>식별자 왕복 결함</strong></td><td>AI에게 UUID를 되받아 쓰게 하지 않고 짧은 인덱스만 고르게 함 — 데이터 연결은 코드가 책임(확률적 결함이라 테스트로 안 잡히고 운영 중 드물게 터짐).</td></tr>
+      <tr><td><strong>선정 오류</strong></td><td>이슈 우선 규칙 + 코드 후처리 가드.</td></tr>
+      <tr><td><strong>채점기 자체의 오판</strong></td><td>원문·후보풀(ground truth) 첨부 필수 + 항목별 독립 채점(오판 전염 차단) + 사람 보정 단계(P3)를 로드맵에 둠.</td></tr>
+    </table></div>
+
+    <h3>품질 채점기 상세 (LLM-as-a-Judge)</h3>
+    <p>매일 자동 발행되는 콘텐츠라 사람이 다 검수할 수 없다 → 다른 AI가 매일 채점.</p>
+    <ul>
+      <li><strong>기준표 v2.1</strong>: 총 10점 = 5항목(이해도·사실·선정·다양성·톤) × 0~2점. 재현성을 위해 앵커 고정, temperature 0.</li>
+      <li><strong>채점 방법 분리</strong>: 형식(글자 수·개수)은 코드로 검사(LLM은 글자 수 세기를 자주 틀림), 투자조언·지어냄은 실격(안전선), 나머지 5항목만 LLM 채점.</li>
+      <li><strong>ground truth 첨부 필수</strong>: 사실·선정 채점에 원문·후보풀을 반드시 줌. 없으면 '판정 불가'.</li>
+      <li><strong>경로 분리</strong>: 채점은 발행과 완전 분리(비동기) — 채점이 죽어도 발행은 안 막힘.</li>
+      <li><strong>점진적 자동화</strong>: P0 기준표 → P1 자동 채점(완료) → P2 경보선 → P3 사람 보정 → P4 독자 신호와 대조.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="num">8</span>이후 학습 (출시 후 배운 것)</h2>
+    <p>"배포=완료"가 아니라 며칠간 실제 출력을 모아 튜닝하는 것이 운영이라는 걸 확인한 사례.</p>
+    <ul>
+      <li><strong>첫 장애(6/12)</strong>: 자동 발행 실패를 17분 만에 발견 → 원인이 외부 호출 지연임을 당일 재현 → 근본 수정까지 하루에. 이후 모든 외부 호출에 타임아웃·재시도. 포스트모템 기록.</li>
+      <li><strong>"두 번째 판이 더 낫다"(7/2)</strong>: 사용자 관찰을 수집 로그(434 vs 870건)로 규명 → 겉 증상이 아니라 "언제·몇 번 발행하나"를 재설계(멱등성).</li>
+      <li><strong>채점기 오판(7/9)</strong>: 채점기가 대조 자료 시점 어긋남으로 정상 브리핑을 오판 → 후보 풀을 발행 시점 기준으로 고정. <strong>"채점 AI도 틀린다"는 것 자체가 사람 보정(P3)의 존재 이유</strong>임을 실증.</li>
+    </ul>
+    <div class="note"><b>핵심 교훈:</b> 돈 되는 능력은 "최신 모델을 아는 것"이 아니라 "모델이 실무에서 사고 안 치도록 검증·통제 구조를 짜는 것". 경제번역기의 모든 결정이 이 한 줄로 수렴한다.</div>
+  </section>
+
+  <section class="appendix">
+    <h2><span class="num">＋</span>이 PRD가 증명하는 것</h2>
+    <p>0→1로 만든 것을 넘어, <strong>매일 굴러가는 AI 서비스를 "운영 기획"의 언어로 설계·측정·개선한</strong> 사례. 타겟·가치 정의(기획)부터 파이프라인 안정성(운영), 품질 채점 체계(AI 품질 관리), 스코프 컷(우선순위 판단)까지 한 서비스 안에 담겨 있다.</p>
+  </section>
+
+  <div class="footer">이정현 · AI 서비스 운영 기획 포트폴리오 · 경제번역기 PRD</div>
+
+</div>
+</body>
+</html>

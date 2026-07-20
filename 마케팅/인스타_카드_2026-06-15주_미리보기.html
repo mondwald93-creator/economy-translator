@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>경제번역기 인스타 카드 · 2026-06-15주 (피드 카드묶음 4:5)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{ --green:#22C55E; --green-dark:#16A34A; --up:#DC2626; --upDark:#F87171; --down:#2563EB; --downDark:#60A5FA; --ink:#111827; --muted:#6B7280; }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:'Noto Sans KR',sans-serif; background:#1A1F2B; color:#fff; padding:40px 20px; letter-spacing:-0.01em;
+       word-break:keep-all; overflow-wrap:break-word; line-break:strict;}
+  h1{font-size:24px; font-weight:900; text-align:center; margin-bottom:6px;}
+  .sub{text-align:center; color:#9CA3AF; font-size:14px; margin-bottom:30px;}
+  .grid{display:flex; gap:28px 28px; justify-content:center; flex-wrap:wrap; max-width:1320px; margin:0 auto;}
+  .item{width:300px;}
+  .cap{text-align:center; font-size:12px; color:#6B7280; font-weight:700; margin-bottom:8px;}
+  .cap b{color:#9CA3AF;}
+
+  /* 4:5 피드 카드 (1080x1350 비율) */
+  .frame{width:300px; height:375px; border-radius:22px; overflow:hidden; position:relative;
+         box-shadow:0 10px 30px rgba(0,0,0,.32); padding:26px 24px; display:flex; flex-direction:column;}
+  .z{position:relative; z-index:1;}
+  .top{margin-bottom:4px;}
+  .zone{flex:1; display:flex; flex-direction:column; justify-content:center; position:relative; z-index:1;}
+  .foot{position:relative; z-index:1; margin-top:auto; padding-top:13px; display:flex; justify-content:space-between; align-items:center;}
+  .foot .l{font-size:9.5px; white-space:nowrap;} .foot .r{font-size:9.5px; font-weight:700; white-space:nowrap;}
+
+  .badge{display:inline-block; font-weight:900; font-size:13px; padding:5px 13px; border-radius:999px; letter-spacing:.2px;}
+  .h{font-weight:900; line-height:1.42;} .h em{font-style:normal;}
+  .b{font-weight:500; line-height:1.62;}
+  .h + .b{margin-top:10px;}
+  .b + .b{margin-top:9px;}
+  .accent{font-size:30px; margin-top:16px;}
+  .stat{color:var(--green-dark); font-weight:900;}
+
+  /* ── 다크 ── */
+  .dark{background:linear-gradient(135deg,#0F172A 0%,#1E293B 60%,#064E3B 100%);}
+  .dark::before{content:''; position:absolute; top:-60px; right:-60px; width:180px; height:180px; border-radius:50%; background:rgba(34,197,94,.13);}
+  .dark::after{content:''; position:absolute; bottom:-46px; left:-44px; width:130px; height:130px; border-radius:50%; background:rgba(34,197,94,.08);}
+  .dark .badge{background:var(--green); color:#fff;}
+  .dark .label{color:var(--green); font-size:12.5px; font-weight:800; letter-spacing:.06em;}
+  .dark .h{color:#F8FAFC;} .dark .h em{color:var(--green);}
+  .dark .b{color:rgba(255,255,255,.66); font-size:14px;}
+  .dark .b .stat{color:#5EEAD4;}
+  .dark .foot{border-top:1px solid rgba(255,255,255,.13);}
+  .dark .foot .l{color:rgba(255,255,255,.42);} .dark .foot .r{color:var(--green);}
+  .dark .row{display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,.07); border-radius:12px; padding:12px 15px; margin-bottom:8px;}
+  .dark .row .n{color:rgba(255,255,255,.62); font-size:14px; font-weight:500;} .dark .row .v{font-size:16px; font-weight:900;} .dark .row .v.up{color:var(--upDark);} .dark .row .v.down{color:var(--downDark);}
+  .dark .date{color:rgba(255,255,255,.45); font-size:12px; margin-left:8px;}
+
+  /* ── 라이트 (흰-연초록 풀블리드, 빈 공간 제거 + 브랜드 푸터) ── */
+  .light{background:linear-gradient(160deg,#FFFFFF 0%,#ECFDF3 100%);}
+  .light::before{content:''; position:absolute; top:-50px; right:-50px; width:150px; height:150px; border-radius:50%; background:rgba(34,197,94,.10);}
+  .light .badge{background:#DCFCE7; color:var(--green-dark);}
+  .light .h{color:var(--ink);} .light .h em{color:var(--green-dark);}
+  .light .b{color:#4B5563; font-size:13.5px;}
+  .light .foot{border-top:1px solid rgba(17,24,39,.10);}
+  .light .foot .l{color:#9CA3AF;} .light .foot .r{color:var(--green-dark);}
+  .light .btn{margin-top:20px; background:var(--green); color:#fff; font-weight:900; font-size:15px; padding:14px; border-radius:14px; text-align:center; line-height:1.5;}
+  .light .sub2{margin-top:10px; font-size:13.5px; color:var(--muted); font-weight:500;}
+
+  .note{max-width:1300px; margin:34px auto 0; background:#111827; border:1px solid #1F2937; border-radius:14px; padding:20px 24px; font-size:13px; color:#9CA3AF; line-height:1.75;}
+  .note b{color:#fff;}
+</style>
+</head>
+<body>
+  <h1>경제번역기 인스타 · 이번 주 정리 (6/15~21)</h1>
+  <p class="sub">📐 피드 카드묶음 4:5 (1080×1350) · 일요일 6/21 발행용 · 숫자는 6/19 라이브 사이트 기준</p>
+
+  <div class="grid">
+
+    <!-- 1. 커버 (다크) -->
+    <div class="item">
+      <div class="cap">슬라이드 1 · 커버 <b>(다크)</b></div>
+      <div class="frame dark">
+        <div class="top z"><span class="pill" style="display:inline-block;background:var(--green);color:#fff;font-size:11px;font-weight:800;padding:4px 11px;border-radius:20px;">주간 정리</span><span class="date">2026.6.15~21</span></div>
+        <div class="zone">
+          <div class="h" style="font-size:25px;">코스피는 9천피<br>'잔치' 🎉<br>근데 왜 내 살림은<br><em>더 빠듯할까?</em> 📉</div>
+        </div>
+        <div class="foot"><span class="l">이번 주 경제, 4가지로 정리 →</span><span class="r">@econ.5min</span></div>
+      </div>
+    </div>
+
+    <!-- 2. 증시 (라이트) -->
+    <div class="item">
+      <div class="cap">슬라이드 2 · 💹 증시 <b>(라이트)</b></div>
+      <div class="frame light">
+        <div class="top z"><span class="badge">① 증시</span></div>
+        <div class="zone">
+          <div class="h" style="font-size:21px;">코스피<br><em>사상 첫 9,000 돌파</em> <span style="font-size:15px;color:var(--muted);">(6/18)</span></div>
+          <div class="b">미국·이란 종전 합의로 불안이 걷히고, 반도체가 급등했어요.</div>
+          <div class="b">외국인은 하루 <span class="stat">1.3조 원</span>어치를 사들였죠.</div>
+          <div class="accent">🚀</div>
+        </div>
+        <div class="foot"><span class="l">한국 증시 역사 새로 씀</span><span class="r">경제번역기 · @econ.5min</span></div>
+      </div>
+    </div>
+
+    <!-- 3. 물가·살림 (다크 — 반전) -->
+    <div class="item">
+      <div class="cap">슬라이드 3 · 🛒 물가·살림 <b>(다크 · 반전)</b></div>
+      <div class="frame dark">
+        <div class="top z"><span class="label">② 물가·살림</span></div>
+        <div class="zone">
+          <div class="h" style="font-size:22px;">주식은 올랐는데<br><em>살림은 더 빠듯</em> 😮‍💨</div>
+          <div class="b">생활물가는 계속 오르는 중이에요.<br><span class="stat" style="white-space:nowrap;">(5월 +3.1%)</span></div>
+          <div class="b">게다가 일자리는 <span class="stat">1년 5개월 만에</span> 줄었어요.</div>
+        </div>
+        <div class="foot"><span class="l">시장 분위기와 내 지갑은 따로</span><span class="r">경제번역기 · @econ.5min</span></div>
+      </div>
+    </div>
+
+    <!-- 4. 부동산 (라이트) -->
+    <div class="item">
+      <div class="cap">슬라이드 4 · 🏠 부동산 <b>(라이트)</b></div>
+      <div class="frame light">
+        <div class="top z"><span class="badge">③ 부동산</span></div>
+        <div class="zone">
+          <div class="h" style="font-size:21px;">서울 집값·전월세가<br><em>다시 들썩</em></div>
+          <div class="b">매매·전월세가 함께 오르고 거래량도 늘었어요.</div>
+          <div class="b">'집 살까 말까' 고민이 다시 느는 분위기.</div>
+          <div class="accent">🏠</div>
+        </div>
+        <div class="foot"><span class="l">전셋값이 집값보다 더 빨리 올라</span><span class="r">경제번역기 · @econ.5min</span></div>
+      </div>
+    </div>
+
+    <!-- 5. 정책 변수 (라이트) -->
+    <div class="item">
+      <div class="cap">슬라이드 5 · 🏛 정책 변수 <b>(라이트)</b></div>
+      <div class="frame light">
+        <div class="top z"><span class="badge">④ 정책 변수</span></div>
+        <div class="zone">
+          <div class="h" style="font-size:20px;">'세금 제도 바뀔까'가<br><em>새 변수</em>로 떠올라</div>
+          <div class="b">지방선거 뒤 세제 개편 논의가 커질 수 있어요.</div>
+          <div class="b">세금이 바뀌면 부동산·투자 셈법도 달라지죠.</div>
+          <div class="accent">⚖️</div>
+        </div>
+        <div class="foot"><span class="l">아직 '논의' 단계 — 지켜보는 변수</span><span class="r">경제번역기 · @econ.5min</span></div>
+      </div>
+    </div>
+
+    <!-- 6. 숫자 (다크) -->
+    <div class="item">
+      <div class="cap">슬라이드 6 · 📊 이번 주 숫자 <b>(다크)</b></div>
+      <div class="frame dark">
+        <div class="top z"><span class="label">📊 이번 주 숫자 (6/19 기준)</span></div>
+        <div class="zone">
+          <div class="row"><span class="n">코스피</span><span class="v up">9,289 ▲2.49%</span></div>
+          <div class="row"><span class="n">코스닥</span><span class="v down">993 ▼0.78%</span></div>
+          <div class="row"><span class="n">환율</span><span class="v">1,539원</span></div>
+          <div class="row"><span class="n">기준금리</span><span class="v">2.50% 동결</span></div>
+        </div>
+        <div class="foot"><span class="l">사상 첫 9,000대 · 생활물가 상승세</span><span class="r">경제번역기 · @econ.5min</span></div>
+      </div>
+    </div>
+
+    <!-- 7. CTA (라이트) -->
+    <div class="item">
+      <div class="cap">슬라이드 7 · CTA <b>(라이트)</b></div>
+      <div class="frame light">
+        <div class="top z"><span class="badge">매일 5분</span></div>
+        <div class="zone" style="text-align:center; align-items:center;">
+          <div class="accent" style="margin-top:0; font-size:38px;">☕</div>
+          <div class="h" style="font-size:21px; margin-top:10px;">매일 아침 <em>5분</em>이면<br>경제가 쉬워져요</div>
+          <div class="sub2">👇 팔로우하면 내일 브리핑이 와요</div>
+          <div class="btn">프로필 링크에서<br>오늘 브리핑 보기 →</div>
+        </div>
+        <div class="foot"><span class="l">경제 왕초보 환영</span><span class="r">@econ.5min</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="note">
+    <b>📐 피드 카드묶음(4:5) 버전 — 전면 재정비.</b>
+    ① 비율을 릴스(9:16)→<b>피드 표준 4:5</b>로 변경 · ② 라이트 카드를 <b>풀블리드</b>로 바꿔 빈 공간 제거 ·
+    ③ <b>모든 장에 브랜드 마크(@econ.5min)</b> 추가(슬라이드만 캡처돼 퍼져도 출처 남음) ·
+    ④ 다크/라이트 리듬 개선 — <b>슬라이드 3(살림 빠듯)을 다크로</b> 바꿔 커버 훅의 '반전'을 시각적으로 강조 ·
+    ⑤ 이모지를 본문 아래 <b>액센트</b>로 정리.<br>
+    <b>내용·숫자는 6/19 사실검증 반영본 그대로</b>(기준금리 2.50%, 코스피 9,000=6/18, 고용 감소). 상승=빨강·하락=파랑.
+  </div>
+</body>
+</html>
