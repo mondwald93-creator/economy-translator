@@ -16,7 +16,7 @@ import { titleTokenSet, isNearDuplicate } from './titleSimilarity'
 //    대조 근거 = 그날 기사 제목 풀 + 실측 지표 값이다. 제목·지표로 확인 불가한 서술은
 //    감점하지 않고 reason에 '확인 불가'로 남기게 했다. inputs.factualBasis에 박제.
 
-export const RUBRIC_VERSION = 'v2.4'
+export const RUBRIC_VERSION = 'v2.5'
 
 function todayKST(): string {
   return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -253,14 +253,22 @@ ${outputSpec}`,
     gradeOne(
       `② 사실 정확성 — 숫자·오르내림 방향·인과가 위 [대조 자료]와 맞는가 (2=대조 가능한 것 모두 정확 / 1=사소하게 부정확·모호 / 0=숫자 틀림·방향 반대·대조 자료에 전혀 근거 없는 사실 서술)
    ⚠️ 대조 자료(제목·지표)로 확인할 수 없는 서술은 감점하지 말고 reason에 "확인 불가: ..."로만 남기세요. "~할 전망", "~로 보여요" 같은 전망·예측·해석 서술은 사실 오류로 처리하지 마세요(확인 불가로만).
-   ⚠️ **시제 검사(필수)**: 후보 기사가 "오늘 ○○ 여부를 결정한다 / 결정 예정 / 전망"인데 브리핑이 그 결과를 "○○했어요 / ○○로 결정됐어요"처럼 **이미 일어난 일로 단정**했다면, 아직 발생하지 않은 사실을 단정한 것이므로 **사실 0점**이고 fabrication도 검토하세요. 실측 지표가 아직 옛 값이라는 것은 "브리핑이 맞다"는 근거가 **아닙니다**(발표 전이라 안 바뀐 것일 수 있음). 특히 금융통화위원회 기준금리 결정처럼 브리핑 발행(오전 9시경) 이후에 발표되는 사안에 주의하세요.
+   ⚠️ **시제 검사** — 아래 **세 조건을 모두** 만족할 때만 적용합니다(하나라도 아니면 시제 위반이 아닙니다):
+     (a) 후보 기사 풀에 그 사안을 "오늘 결정한다 / 결정 예정 / 발표 앞두고 / 여부 주목"처럼 **아직 안 정해진 일**로 쓴 제목이 실제로 있고,
+     (b) 브리핑이 그 결과를 "○○했어요 / ○○로 결정됐어요"처럼 **완료형으로 단정**했고,
+     (c) **실측 지표가 아직 그 변화를 반영하지 않았다.**
+     → 세 조건이 다 맞으면 사실 0점 + fabrication 검토, tenseViolation을 true로 하고 tenseEvidence를 채우세요.
+     ⛔ **지표가 이미 그 변화를 반영하고 있으면(예: 기준금리가 이미 2.75%로 인상 표시) 그 사건은 이미 일어난 것이므로 시제 위반이 아닙니다.** 어제 일어난 일을 오늘 브리핑이 서술하는 것은 정상입니다.
+     ⛔ "대조 자료로 확인이 안 된다"는 것은 시제 위반의 근거가 **아닙니다**. 확인 불가는 감점 사유가 아니라 '확인 불가'로만 남깁니다.
    ⚠️ **내부 일관성 검사(필수)**: 헤드라인·요약·shareCard와 [TOP3 해설 요지]가 서로 반대로 말하고 있으면(예: 윗칸은 "동결", 해설은 "또 올랐다") 둘 중 하나는 반드시 틀린 것이므로 **1점 이하**로 채점하고 reason에 모순 지점을 그대로 적으세요.
+
+   ⚠️ **감점(1점 이하) 시 근거 지목 필수**: 브리핑의 어느 서술이(claim) 대조 자료의 무엇과(evidence) 어긋나는지 적으세요. evidence는 **실측 지표의 이름·값** 또는 **후보 기사 제목을 그대로** 인용해야 하며, 코드가 대조 자료와 맞춰 검증합니다. 지목하지 못하면 감점하지 말고 2점을 주세요(확인 불가는 감점 사유가 아닙니다).
 
 ## 안전선 (점수와 무관, 하나라도 true면 그날 브리핑 실격)
 - investmentAdvice: "사라/팔아라/투자해라" 같은 투자 조언·권유 문구가 있는가
 - fabrication: 대조 자료 어디에도 근거가 없는 구체적 사실(수치·사건)을 지어낸 정황이 뚜렷한가 (쉬운 비유는 해당 없음. 뚜렷한 정황이 없으면 false)
 - 실격을 true로 하면 issueNote에도 그 사유를 한 줄로 쓰세요.`,
-      `{"score": 0, "reason": "대조한 항목과 결과를 구체적으로", "disqualify": {"investmentAdvice": false, "fabrication": false, "reason": ""}, "issueNote": "오늘 브리핑에서 눈에 띈 문제 한 줄 (없으면 '특이사항 없음')"}`
+      `{"score": 0, "reason": "대조한 항목과 결과를 구체적으로", "claim": "감점 시 문제가 된 브리핑 서술 그대로, 감점 아니면 null", "evidence": "감점 시 그와 어긋나는 대조 자료(지표 이름·값 또는 후보 기사 제목)를 그대로, 감점 아니면 null", "tenseViolation": false, "tenseEvidence": "시제 위반이면 '아직 안 정해진 일'로 쓴 후보 기사 제목 그대로, 아니면 null", "disqualify": {"investmentAdvice": false, "fabrication": false, "reason": ""}, "issueNote": "오늘 브리핑에서 눈에 띈 문제 한 줄 (없으면 '특이사항 없음')"}`
     ),
     gradeOne(
       `③ 선정 판단 — 후보 풀에서 그날 가장 중요한 이슈를 헤드라인·TOP3로 골랐는가. 판단 축: 파급(영향받는 사람 수)·체감(내 지갑에 닿는 정도)·사건성(오늘 새로 터졌나)·규모(변화 크기)를 종합 (2=가장 중요한 이슈를 1등으로 / 1=무난하나 더 중요한 걸 놓침 / 0=사소한 것을 1등으로, 또는 단순 시황·해외 단독을 올림)
@@ -278,7 +286,42 @@ ${outputSpec}`,
   ])
 
   const comprehension = asItem(rawComprehension)
+
+  // ── 사실 감점 근거 검증 가드 (v2.5) ────────────────────────────────────────
+  // v2.4에서 시제 검사를 넣자 심사위원이 이를 "지표로 확인 안 되면 0점"으로 뭉개 적용해
+  // 13일 중 9일이 사실 0점이 됐다(7/17·7/18은 이미 일어난 인상을 '발표 전 단정'이라 하고,
+  // 7/12는 전망 서술을, 7/15는 확인 불가를 0점 처리 — 전부 프롬프트가 금지한 것).
+  // → 선정·다양성에 쓴 원칙을 사실에도 적용: **감점에는 코드가 대조 가능한 지목이 따라야 한다.**
   const factual = asItem(rawFactual)
+  if (factual.score !== null && factual.score < 2) {
+    const evidence = String((rawFactual as { evidence?: unknown })?.evidence ?? '').trim()
+    // 대조 자료 원문(지표 + 후보 제목)에 evidence의 핵심 단어가 실제로 있는지 확인
+    const haystack = [
+      ...indicators.map(i => `${i.name} ${i.value} ${i.change}`),
+      ...candidates.map(c => c.title),
+    ].join(' ')
+    const hayTokens = titleTokenSet(haystack)
+    const evTokens = [...titleTokenSet(evidence)]
+    const hit = evTokens.length > 0 && evTokens.filter(t => hayTokens.has(t)).length / evTokens.length >= 0.6
+
+    const tenseClaimed = Boolean((rawFactual as { tenseViolation?: unknown })?.tenseViolation)
+    const tenseTitle = String((rawFactual as { tenseEvidence?: unknown })?.tenseEvidence ?? '').trim()
+    // 시제 위반 주장은 ⓐ지목한 제목이 후보 풀에 실제로 있고 ⓑ그 제목이 '아직 안 정해진 일'
+    // 어투일 때만 인정한다. (7/17·7/18 오판 = 지목 없이 시제 위반을 주장한 경우)
+    const tenseTitleInPool = Boolean(tenseTitle) && candidates.some(c => norm(c.title) === norm(tenseTitle))
+    const tenseWordOk = /결정|예정|전망|여부|앞두고|주목|앞둔|열린다|연다/.test(tenseTitle)
+    const tenseOk = tenseClaimed && tenseTitleInPool && tenseWordOk
+
+    if (tenseClaimed && !tenseOk) {
+      factual.reason = `[시제 위반 주장 무효 → 판정 불가] 후보 풀에서 '아직 안 정해진 일'로 쓴 기사를 지목하지 못함${tenseTitle ? ` (지목: "${tenseTitle}")` : ''} (원 사유: ${factual.reason})`
+      factual.score = null
+    } else if (!hit) {
+      factual.reason = `[근거 지목 실패 → 판정 불가] 어긋나는 대조 자료를 지목하지 못함${evidence ? ` (지목: "${evidence}")` : ''} (원 사유: ${factual.reason})`
+      factual.score = null
+    } else {
+      factual.reason = `근거 지목: "${evidence}" — ${factual.reason}`
+    }
+  }
 
   // ── 지목 검증 가드 (v2.3, 2026-07-20 오판 3·4호 리뷰 결정) ────────────────
   // v2.2에서 "감점에는 코드가 검증 가능한 지목이 따라야 한다"를 도입했으나 양방향으로 뚫려 있었다:
