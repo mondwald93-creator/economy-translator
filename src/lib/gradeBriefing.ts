@@ -296,6 +296,9 @@ ${outputSpec}`,
 
   const comprehension = asItem(rawComprehension)
 
+  // 제목 비교용 정규화 (사실·선정 가드가 모두 쓰므로 맨 위에서 선언 — 선언 전 사용 시 런타임 TDZ 에러)
+  const norm = (s: string) => s.replace(/\s+/g, '')
+
   // ── 사실 감점 근거 검증 가드 (v2.5) ────────────────────────────────────────
   // v2.4에서 시제 검사를 넣자 심사위원이 이를 "지표로 확인 안 되면 0점"으로 뭉개 적용해
   // 13일 중 9일이 사실 0점이 됐다(7/17·7/18은 이미 일어난 인상을 '발표 전 단정'이라 하고,
@@ -338,7 +341,6 @@ ${outputSpec}`,
   //   ⓑ 지목 성공 시 내용 무검증 → 이미 TOP3에 있는 기사를 "놓쳤다"고 지목해도 통과 (7/20)
   // 원칙 수정: 지목을 못 하거나 지목이 무효면 그건 '잘했다'가 아니라 '판정 불가(null)'다.
   // 모르는 것을 잘한 것으로 적으면 데이터가 쌓일수록 판단이 나빠진다.
-  const norm = (s: string) => s.replace(/\s+/g, '')
   const top3Titles = new Set(top3.map(t => norm(String(t.title ?? ''))))
 
   const selection = asItem(rawSelection)
