@@ -16,7 +16,7 @@ import { titleTokenSet, isNearDuplicate } from './titleSimilarity'
 //    대조 근거 = 그날 기사 제목 풀 + 실측 지표 값이다. 제목·지표로 확인 불가한 서술은
 //    감점하지 않고 reason에 '확인 불가'로 남기게 했다. inputs.factualBasis에 박제.
 
-export const RUBRIC_VERSION = 'v2.7'
+export const RUBRIC_VERSION = 'v2.8'
 
 function todayKST(): string {
   return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -169,7 +169,8 @@ function clampScore(v: unknown): number | null {
 
 async function gradeWithAI(
   briefing: Record<string, unknown>,
-  candidates: { title: string }[]
+  candidates: { title: string }[],
+  rateNote = ''
 ): Promise<AIGradeResult> {
   const dailyTerm = (() => {
     try {
@@ -187,6 +188,7 @@ async function gradeWithAI(
   const context = `## 대조 자료 (ground truth)
 ### 실측 지표 (직전 거래일 마감, 코드가 시세 API에서 수집한 실제 값)
 ${indicators.map(i => `- ${i.name}: ${i.value} (전일 대비 ${i.change})`).join('\n') || '- 없음'}
+${rateNote}
 
 ### 그날 후보 기사 제목 풀 (브리핑 생성에 쓰인 후보 ${candidates.length}건)
 ${candidates.map((a, i) => `${i}. ${a.title}`).join('\n') || '- 없음'}
@@ -252,7 +254,12 @@ ${outputSpec}`,
 
   const [rawComprehension, rawFactual, rawSelection, rawDiversity] = await Promise.all([
     gradeOne(
-      `① 이해도 — 경제 초보자가 바로 이해되는가 (요약·용어 설명 기준. 2=중학생도 이해, 어려운 말은 풀어씀 / 1=일부 용어가 설명 없이 나옴 / 0=전문용어를 그대로 써서 어려움)
+      `① 이해도 — 경제 초보자가 바로 이해되는가 (요약·용어 설명 기준)
+   **채점 눈금 (사람 정답지 기준으로 보정 — 2026-07-20):**
+   - **2점 = 기본값.** 요약이 '~해요'체로 쉽게 풀어써 있고, 어려운 용어가 나와도 그 자리에서 설명되거나 '오늘의 용어'로 보완되면 2점입니다. 전문 용어가 한두 개 등장하는 것만으로는 감점하지 마세요.
+   - 1점 = 설명 없이 등장한 용어 때문에 **초보자가 문단 전체의 뜻을 놓칠 정도**일 때만.
+   - 0점 = 전문 용어를 그대로 나열해 무슨 말인지 모를 때.
+   ⚠️ 사람 채점자는 13일 중 11일을 2점으로 봤습니다. **"일부 용어가 설명 없이 나옴"을 이유로 습관적으로 1점을 주지 마세요** — 그 용어 때문에 실제로 이해가 막히는지를 보고 판단하세요.
    ⚠️ 문장이 읽기 쉬운가만 보세요. 내용이 사실인지·중요한 기사를 골랐는지는 **다른 심사위원이 따로 채점하므로 절대 고려하지 마세요.**`,
       `{"score": 0, "reason": "한두 문장 근거"}`
     ),
@@ -280,14 +287,15 @@ ${outputSpec}`,
       'gpt-4o'
     ),
     gradeOne(
-      `③ 선정 판단 — 후보 풀에서 그날 가장 중요한 이슈를 헤드라인·TOP3로 골랐는가. 판단 축: 파급(영향받는 사람 수)·체감(내 지갑에 닿는 정도)·사건성(오늘 새로 터졌나)·규모(변화 크기)를 종합 (2=가장 중요한 이슈를 1등으로 / 1=무난하나 더 중요한 걸 놓침 / 0=사소한 것을 1등으로, 또는 단순 시황·해외 단독을 올림)
+      `③ 선정 판단 (⚠️ 이 항목은 현재 **관측 전용** — 점수는 총점에 반영되지 않습니다. 판단 근거를 남기는 게 목적이니 평소대로 채점하세요) — 후보 풀에서 그날 가장 중요한 이슈를 헤드라인·TOP3로 골랐는가. 판단 축: 파급(영향받는 사람 수)·체감(내 지갑에 닿는 정도)·사건성(오늘 새로 터졌나)·규모(변화 크기)를 종합 (2=가장 중요한 이슈를 1등으로 / 1=무난하나 더 중요한 걸 놓침 / 0=사소한 것을 1등으로, 또는 단순 시황·해외 단독을 올림)
    ⚠️ 감점(1점 이하) 조건: 위 [후보 기사 제목 풀]에서 브리핑이 놓친 더 중요한 기사를 찾아 missedTitle에 **제목을 한 글자도 바꾸지 말고 그대로** 적으세요. 구체적으로 지목할 기사가 없으면 감점하지 말고 2점을 주세요 ("놓쳤을 여지가 있다" 같은 막연한 감점 금지). 단순 시황 기사(지수·환율이 올랐다/내렸다 자체)와 해외 단독 기사는 선정 금지 대상이므로 "놓친 기사"로 지목할 수 없습니다. **이미 TOP3에 선정된 기사는 "놓친 기사"가 아니므로 지목할 수 없습니다**(브리핑이 고른 걸 놓쳤다고 할 수 없음).
    ⚠️ 글이 쉬운지·문체가 어떤지는 다른 심사위원 몫이니 고려하지 마세요.`,
       `{"score": 0, "reason": "판단 근거", "missedTitle": "감점 시 후보 풀 제목 그대로, 감점 아니면 null"}`
     ),
     gradeOne(
       `④ 다양성 — TOP3가 서로 다른 사건·주제이고 분야가 고른가 (2=3개 모두 다른 주제, 시황·해외 단독 없음 / 1=주제 하나가 겹침 / 0=같은 사건 중복 또는 시황·해외로 채움)
-   ⚠️ 감점(1점 이하) 조건: TOP3 중 어느 두 개가 겹치는지 overlapPair에 번호(0~2) 두 개, overlapTopic에 공통 주제를 적으세요. 어느 둘이 겹치는지 특정하지 못하면 감점하지 말고 2점을 주세요 ("일부가 비슷한 주제" 같은 막연한 감점 금지).
+   ⚠️ 감점(1점 이하) 조건: TOP3 중 어느 두 개가 겹치는지 overlapPair에 번호(0~2) 두 개를 적으세요(overlapTopic은 있으면 좋지만 필수는 아닙니다). 어느 둘이 겹치는지 특정하지 못하면 감점하지 말고 2점을 주세요.
+   ⚠️ **판단을 미루지 마세요.** 사람 채점자는 같은 자료로 13일 전부 판단했습니다. 제목 3개를 읽고 "서로 다른 사건인가"만 보면 되는 일이므로, 확신이 부족해도 번호를 지목해 판단을 내리세요.
    ⚠️ **"금융"·"경제"·"주식 시장"처럼 넓은 범주로 묶지 마세요.** 겹친다고 하려면 **같은 사건·같은 주체·같은 통계**를 다루고 있어야 합니다(예: 둘 다 '증권사 2분기 실적'). 서로 다른 사건이면 같은 분야라도 겹침이 아닙니다.
    ⚠️ 사실 정확성·글의 쉬움은 다른 심사위원 몫이니 고려하지 마세요.`,
       `{"score": 0, "reason": "", "overlapPair": null, "overlapTopic": "감점 시 겹치는 주제, 감점 아니면 null"}`
@@ -367,9 +375,9 @@ ${outputSpec}`,
     const validPair = Array.isArray(pair) && pair.length === 2
       && pair.every((n: unknown) => Number.isInteger(n) && Number(n) >= 0 && Number(n) < top3.length)
       && pair[0] !== pair[1]
-    if (validPair && topic) {
+    if (validPair) { // v2.8: topic은 선택 — 번호 지목만 되면 인정 (사람은 13일 전부 판단하는데 AI만 8일 기권)
       const [a, b] = pair as [number, number]
-      diversity.reason = `겹침 지목: TOP3 ${a + 1}번 "${top3[a]?.title ?? ''}" ↔ ${b + 1}번 "${top3[b]?.title ?? ''}" (주제: ${topic}) — ${diversity.reason}`
+      diversity.reason = `겹침 지목: TOP3 ${a + 1}번 "${top3[a]?.title ?? ''}" ↔ ${b + 1}번 "${top3[b]?.title ?? ''}"${topic ? ` (주제: ${topic})` : ''} — ${diversity.reason}`
     } else {
       diversity.reason = `[지목 실패 → 판정 불가] 어느 두 개가 겹치는지 특정하지 못함 (원 사유: ${diversity.reason})`
       diversity.score = null
@@ -388,6 +396,40 @@ ${outputSpec}`,
       reason: String(dq?.reason ?? ''),
     },
     issueNote: String((rawFactual as { issueNote?: unknown })?.issueNote ?? ''),
+  }
+}
+
+// ── 기준금리 표시 보정 (v2.8) ────────────────────────────────────────────────
+// 지표의 '▲ 인상'/'— 동결'은 직전 변경 기준일 뿐 "오늘 바뀌었다"는 뜻이 아니다.
+// 과거 브리핑의 기준금리 값을 거슬러 올라가 '며칠째 같은 값인지'를 계산해 붙인다.
+async function buildRateNote(targetDate: string, briefing: Record<string, unknown>): Promise<string> {
+  const getRate = (row: Record<string, unknown>): string | null => {
+    const list = Array.isArray(row.indicators) ? row.indicators : []
+    const hit = (list as { name?: string; value?: string }[]).find(i => i.name === '기준금리')
+    return hit?.value ?? null
+  }
+  const today = getRate(briefing)
+  if (!today) return ''
+  try {
+    const { data } = await supabase
+      .from('briefings')
+      .select('date, indicators')
+      .lt('date', targetDate)
+      .order('date', { ascending: false })
+      .limit(40)
+    let sameSince = targetDate
+    let days = 1
+    for (const row of (data ?? []) as Record<string, unknown>[]) {
+      if (getRate(row) !== today) break
+      sameSince = String(row.date)
+      days++
+    }
+    if (days <= 1) {
+      return `※ 기준금리 ${today}: 직전 브리핑과 값이 다릅니다(이번에 바뀐 값).`
+    }
+    return `※ 기준금리 ${today}는 ${sameSince}부터 ${days}일째 **같은 값**입니다. 지표의 '인상/동결' 표시는 **직전 변경 기준**이며 "오늘 인상/동결이 결정됐다"는 뜻이 아닙니다. 따라서 브리핑이 이미 반영된 금리 변화를 서술하는 것은 사실 오류가 아닙니다.`
+  } catch {
+    return ''
   }
 }
 
@@ -473,8 +515,12 @@ export async function gradeDailyBriefing({
   // AI 채점 — 기준표 3원칙 ①: 대조 자료 없으면 사실·선정은 '판정 불가'
   const inputsAvailable = candidates.length > 0
   const top3ForSim = (Array.isArray(briefing.top3_analysis) ? briefing.top3_analysis : []) as { title?: string }[]
+  // 기준금리 '▲ 인상' 표시는 **직전 변경 기준**이라 "오늘 인상했다"로 오독된다.
+  // 사람 채점자도 AI도 같은 지점에서 헷갈렸으므로(2026-07-20 정답지, 7/17 최대 불일치),
+  // 심사위원에게 "이 값이 며칠째 같은 값인지"를 명시해 준다. (라이브 화면 표기는 안 건드림)
+  const rateNote = await buildRateNote(targetDate, briefing)
   const [ai, topicSimilarity] = await Promise.all([
-    gradeWithAI(briefing, candidates),
+    gradeWithAI(briefing, candidates, rateNote),
     measureTopicSimilarity(top3ForSim.map(t => String(t.title ?? ''))),
   ])
   if (!inputsAvailable) {
@@ -486,7 +532,12 @@ export async function gradeDailyBriefing({
   // 옛 방식은 "하나라도 판정 불가면 총점 null"이라, 판정 불가를 정직하게 표시하는 순간
   // 추세 데이터가 통째로 사라졌다. 대신 분모를 줄이고 몇 점 만점인지를 남긴다.
   // ⚠️ 날짜별 총점을 비교할 때는 반드시 scoreDenominator를 같이 볼 것 (6/10과 6/8은 다른 점수).
-  const scoreValues = [ai.comprehension, ai.factual, ai.selection, ai.diversity].map(s => s.score)
+  // v2.8: 선정은 '관측 전용'으로 강등 — 총점·분모·경보에서 제외한다.
+  //   근거(2026-07-20 사람 정답지): 사람 채점자가 13일 **전부 1점**을 줬다 = 변별력 0.
+  //   AI와 100% 일치했지만 그건 "둘 다 항상 1점"이라 의미 없는 일치다(톤 항목과 같은 상태).
+  //   항목 자체를 버리진 않는다 — 편집력은 서비스의 핵심이라 근거는 계속 기록한다.
+  ai.selection.reason = `[관측 전용 · 총점 미반영] ${ai.selection.reason}`
+  const scoreValues = [ai.comprehension, ai.factual, ai.diversity].map(s => s.score)
   const gradedValues = scoreValues.filter((s): s is number => s !== null)
   const scoreDenominator = gradedValues.length * 2
   const ungradedCount = scoreValues.length - gradedValues.length
