@@ -16,7 +16,7 @@ import { titleTokenSet, isNearDuplicate } from './titleSimilarity'
 //    대조 근거 = 그날 기사 제목 풀 + 실측 지표 값이다. 제목·지표로 확인 불가한 서술은
 //    감점하지 않고 reason에 '확인 불가'로 남기게 했다. inputs.factualBasis에 박제.
 
-export const RUBRIC_VERSION = 'v2.9'
+export const RUBRIC_VERSION = 'v3.0'
 
 function todayKST(): string {
   return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -147,9 +147,14 @@ export function runFormatChecks(briefing: Record<string, unknown>): FormatCheck[
 }
 
 // ── AI 채점 (기준표 2. 점수 항목) ─────────────────────────────────────────────
-// v2.4: 톤을 점수 항목에서 제외 → AI 채점은 4항목(이해도·사실·선정·다양성), 만점 8점.
-//   근거: 톤은 7/13~7/20 8일 내내 2점 고정으로 변별력이 0이었고, 총점만 2점씩 올려
-//   "점수가 높다"는 착시를 만들었다. 존댓말 일관성은 코드 소프트 검사로 이동(runFormatChecks).
+// v3.0 최종 구성 — **점수 항목은 이해도·사실 2개(만점 4점)뿐이다.**
+//   2026-07-20 사람 정답지(13일×4항목) 대조로 항목별 신뢰도를 실측한 결과:
+//     이해도 69% · 사실 75~88%  → 점수로 관리 (사람 판단과 맞음)
+//     선정   사람이 13일 전부 1점(변별력 0)        → 관측 전용
+//     다양성 눈금을 양쪽 끝으로 다 잡아봐도 38%   → 관측 전용
+//     톤     8일 내내 2점(변별력 0)               → 폐기, 존댓말만 코드 검사
+//   원칙: **AI가 잘하는 것만 AI에게 시킨다.** 못 재는 항목을 점수에 넣으면 총점이 부풀어
+//   "좋아 보이지만 틀린 숫자"가 된다 — 2026-07-16 오보가 10점 만점을 받은 게 그 결과였다.
 interface ItemScore { score: number | null; reason: string }
 interface AIGradeResult {
   comprehension: ItemScore
@@ -293,7 +298,7 @@ ${outputSpec}`,
       `{"score": 0, "reason": "판단 근거", "missedTitle": "감점 시 후보 풀 제목 그대로, 감점 아니면 null"}`
     ),
     gradeOne(
-      `④ 다양성 — TOP3가 서로 다른 **사건**인가
+      `④ 다양성 (⚠️ 이 항목은 현재 **관측 전용** — 점수는 총점에 반영되지 않습니다. 판단 근거를 남기는 게 목적이니 평소대로 채점하세요) — TOP3가 서로 다른 **사건**인가
    **채점 눈금 (사람 정답지 기준으로 보정 — 2026-07-20):**
    - **2점 = 기본값.** 세 기사가 서로 다른 사건이면 2점입니다. **같은 분야(둘 다 증시·둘 다 정부 정책·둘 다 금융)라는 이유로는 절대 감점하지 마세요.**
    - 1점 = 두 기사가 **같은 사건·같은 주체·같은 통계**를 다룰 때만. (예: 1번 "증권사 2분기 실적 역대급" ↔ 2번 "증권사 영업이익 5조 돌파" = 둘 다 증권사 2분기 실적 = 1점)
@@ -542,8 +547,15 @@ export async function gradeDailyBriefing({
   //   근거(2026-07-20 사람 정답지): 사람 채점자가 13일 **전부 1점**을 줬다 = 변별력 0.
   //   AI와 100% 일치했지만 그건 "둘 다 항상 1점"이라 의미 없는 일치다(톤 항목과 같은 상태).
   //   항목 자체를 버리진 않는다 — 편집력은 서비스의 핵심이라 근거는 계속 기록한다.
+  // v3.0: 다양성도 '관측 전용'으로 강등 (선정과 같은 처리).
+  //   근거(2026-07-20 사람 정답지 대조): 눈금을 짜게 잡아도(8일 감점) 후하게 잡아도(12일 만점)
+  //   사람과의 일치율이 **양쪽 다 38%**였다. 1점/2점을 찍기만 해도 나오는 수준보다 낮다.
+  //   이해도·사실은 눈금 보정만으로 46→69%, 62→75~88%로 올라간 것과 대조된다.
+  //   → 눈금 문제가 아니라 **이 구분을 AI가 못 하는 것**이므로 튜닝을 멈추고 점수에서 뺀다.
+  //   버리지는 않는다 — 근거는 계속 기록해 사람이 주간 리뷰에서 눈으로 본다.
   ai.selection.reason = `[관측 전용 · 총점 미반영] ${ai.selection.reason}`
-  const scoreValues = [ai.comprehension, ai.factual, ai.diversity].map(s => s.score)
+  ai.diversity.reason = `[관측 전용 · 총점 미반영] ${ai.diversity.reason}`
+  const scoreValues = [ai.comprehension, ai.factual].map(s => s.score)
   const gradedValues = scoreValues.filter((s): s is number => s !== null)
   const scoreDenominator = gradedValues.length * 2
   const ungradedCount = scoreValues.length - gradedValues.length
