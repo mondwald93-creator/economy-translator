@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>경제번역기 릴스 · 에디토리얼(오늘의 한 문장 카드 기반)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --green:#22C55E; --up:#F87171; /* 다크 배경 가독용 빨강(상승) */
+    --white:#F8FAFC;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:'Noto Sans KR',sans-serif; background:#0B1220; color:#fff; padding:40px 20px; letter-spacing:-0.01em;}
+  h1{font-size:24px; font-weight:900; text-align:center; margin-bottom:6px;}
+  .sub{text-align:center; color:#9CA3AF; font-size:14px; margin-bottom:30px;}
+  .grid{display:flex; gap:26px 30px; justify-content:center; flex-wrap:wrap; max-width:1000px; margin:0 auto;}
+  .item{width:270px;}
+  .cap{text-align:center; font-size:12px; color:#6B7280; font-weight:700; margin-bottom:8px;}
+
+  /* 공통 프레임 — 사이트 '오늘의 한 문장' 카드 그라데이션 그대로 */
+  .frame{width:270px; height:480px; border-radius:24px; overflow:hidden; position:relative;
+         background:linear-gradient(135deg,#0F172A 0%,#1E293B 60%,#064E3B 100%);
+         box-shadow:0 10px 34px rgba(0,0,0,.4); padding:30px 26px; display:flex; flex-direction:column;}
+  /* 초록 원형 장식 */
+  .frame::before{content:''; position:absolute; top:-60px; right:-60px; width:180px; height:180px;
+                 border-radius:50%; background:rgba(34,197,94,.12);}
+  .frame::after{content:''; position:absolute; bottom:-40px; left:-40px; width:120px; height:120px;
+                border-radius:50%; background:rgba(34,197,94,.08);}
+  .z{position:relative; z-index:1;}
+
+  .pill{display:inline-block; background:var(--green); color:#fff; font-size:11px; font-weight:700;
+        padding:4px 11px; border-radius:20px; letter-spacing:.5px;}
+  .date{color:rgba(255,255,255,.45); font-size:12px; margin-left:8px;}
+  .label{color:var(--green); font-size:12px; font-weight:700; letter-spacing:.1em;}
+  .quote{position:absolute; top:46px; left:18px; color:rgba(34,197,94,.18); font-size:130px;
+         line-height:1; font-family:Georgia,serif; user-select:none;}
+  .foot{margin-top:auto; border-top:1px solid rgba(255,255,255,.12); padding-top:14px;
+        display:flex; justify-content:space-between; align-items:center;}
+  .foot .l{color:rgba(255,255,255,.4); font-size:10px;}
+  .foot .r{color:var(--green); font-size:10px; font-weight:600;}
+
+  .head{color:var(--white); font-weight:900; line-height:1.4;}
+
+  /* 슬라이드별 개별 스타일 */
+  /* 1 커버 */
+  .s1 .top{display:flex; align-items:center; margin-bottom:auto;}
+  .s1 .h{font-size:25px; margin-top:90px;}
+  .s1 .h em{font-style:normal; color:var(--green);}
+  /* 2 이유1 — 왼쪽 초록 바 */
+  .s2 .bar{border-left:4px solid var(--green); padding-left:16px; margin:auto 0;}
+  .s2 .h{font-size:22px;} .s2 .h em{font-style:normal;color:var(--green);}
+  .s2 .em{font-size:30px; margin-top:16px;}
+  /* 3 이유2 — 큰 스탯 */
+  .s3 .mid{margin:auto 0;}
+  .s3 .stat{font-size:52px; font-weight:900; color:var(--green); line-height:1;}
+  .s3 .stat span{font-size:22px;}
+  .s3 .h{font-size:19px; margin-top:14px; font-weight:700;}
+  .s3 .b{color:rgba(255,255,255,.6); font-size:14px; margin-top:8px; font-weight:500; line-height:1.55;}
+  /* 4 결과 — 중앙 선언 */
+  .s4 .mid{margin:auto 0; text-align:center;}
+  .s4 .h{font-size:24px;} .s4 .h em{font-style:normal; color:var(--green);}
+  .s4 .b{color:rgba(255,255,255,.55); font-size:14px; margin-top:12px; font-weight:500;}
+  /* 5 지표 — 데이터 패널 */
+  .s5 .mid{margin:auto 0;}
+  .s5 .row{display:flex; justify-content:space-between; align-items:center;
+           background:rgba(255,255,255,.06); border-radius:12px; padding:13px 15px; margin-bottom:9px;}
+  .s5 .row .n{color:rgba(255,255,255,.6); font-size:14px; font-weight:500;}
+  .s5 .row .v{font-size:17px; font-weight:900; color:#fff;}
+  .s5 .row .v.up{color:var(--up);}
+  /* 6 CTA */
+  .s6 .mid{margin:auto 0; text-align:center;}
+  .s6 .e{font-size:34px;}
+  .s6 .h{font-size:22px; margin-top:12px;} .s6 .h em{font-style:normal; color:var(--green);}
+  .s6 .btn{margin-top:20px; background:var(--green); color:#fff; font-weight:900; font-size:15px;
+           padding:14px; border-radius:14px; text-align:center;}
+
+  .note{max-width:980px; margin:32px auto 0; background:#111827; border:1px solid #1F2937;
+        border-radius:14px; padding:20px 24px; font-size:13px; color:#9CA3AF; line-height:1.7;}
+  .note b{color:#fff;}
+</style>
+</head>
+<body>
+  <h1>경제번역기 릴스 · 에디토리얼 버전</h1>
+  <p class="sub">사이트 '오늘의 한 문장' 공유 카드 디자인 그대로 · 슬라이드마다 레이아웃 다르게 · 숫자 절제</p>
+
+  <div class="grid">
+
+    <!-- 1. 커버 -->
+    <div class="item">
+      <div class="cap">슬라이드 1 · 커버</div>
+      <div class="frame s1">
+        <div class="quote">&ldquo;</div>
+        <div class="z top"><span class="pill">경제번역기</span><span class="date">2026.6.13 · 주간</span></div>
+        <div class="z head h">코스피 <em>8000선 회복</em><br>오늘 시장에<br>무슨 일이?</div>
+        <div class="z foot"><span class="l">매일 5분 경제 입문 브리핑</span><span class="r">economy-translator.vercel.app</span></div>
+      </div>
+    </div>
+
+    <!-- 2. 이유1 -->
+    <div class="item">
+      <div class="cap">슬라이드 2 · 이유 ①</div>
+      <div class="frame s2">
+        <div class="z"><span class="label">왜 올랐나 ①</span></div>
+        <div class="z bar">
+          <div class="head h"><em>중동 전쟁</em>이<br>끝날 거란 기대</div>
+          <div class="em">🛒</div>
+        </div>
+        <div class="z foot"><span class="l">불안하면 팔고, 안심되면 산다</span><span class="r">경제번역기</span></div>
+      </div>
+    </div>
+
+    <!-- 3. 이유2 -->
+    <div class="item">
+      <div class="cap">슬라이드 3 · 이유 ②</div>
+      <div class="frame s3">
+        <div class="z"><span class="label">왜 올랐나 ②</span></div>
+        <div class="z mid">
+          <div class="stat">25<span>거래일</span></div>
+          <div class="head h">만에 외국인이 돌아왔어요</div>
+          <div class="b">한 달 넘게 팔기만 하던 외국인이 다시 한국 주식을 사기 시작 🌍</div>
+        </div>
+        <div class="z foot"><span class="l">외국인 = 시장 분위기 가늠자</span><span class="r">경제번역기</span></div>
+      </div>
+    </div>
+
+    <!-- 4. 결과 -->
+    <div class="item">
+      <div class="cap">슬라이드 4 · 결과</div>
+      <div class="frame s4">
+        <div class="z"><span class="label">그래서</span></div>
+        <div class="z mid">
+          <div class="head h">네이버도<br><em>26만 원 돌파</em> 📈</div>
+          <div class="b">분위기가 한 번에<br>좋아진 하루였어요</div>
+        </div>
+        <div class="z foot"><span class="l">매일 5분 경제 입문 브리핑</span><span class="r">economy-translator.vercel.app</span></div>
+      </div>
+    </div>
+
+    <!-- 5. 지표 -->
+    <div class="item">
+      <div class="cap">슬라이드 5 · 오늘의 숫자</div>
+      <div class="frame s5">
+        <div class="z"><span class="label">📊 오늘의 숫자</span></div>
+        <div class="z mid">
+          <div class="row"><span class="n">코스피</span><span class="v up">8,123 ▲4.6%</span></div>
+          <div class="row"><span class="n">환율</span><span class="v">1,517원</span></div>
+          <div class="row"><span class="n">기준금리</span><span class="v">3.50% 동결</span></div>
+        </div>
+        <div class="z foot"><span class="l">환율은 높고, 금리는 지켜보는 중</span><span class="r">경제번역기</span></div>
+      </div>
+    </div>
+
+    <!-- 6. CTA -->
+    <div class="item">
+      <div class="cap">슬라이드 6 · CTA</div>
+      <div class="frame s6">
+        <div class="z" style="text-align:center"><span class="pill">경제번역기</span></div>
+        <div class="z mid">
+          <div class="e">☕</div>
+          <div class="head h">매일 아침 <em>5분</em>이면<br>경제가 쉬워져요</div>
+          <div class="btn">프로필 링크 → 보러가기</div>
+        </div>
+        <div class="z foot"><span class="l">경제 왕초보 환영</span><span class="r">economy-translator.vercel.app</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="note">
+    <b>이번엔 슬라이드마다 짜임을 다르게 했어요.</b> 1번=큰 따옴표 커버, 2번=왼쪽 초록 바, 3번="25거래일" 큰 스탯, 4번=중앙 선언, 5번=데이터 패널, 6번=브랜드+버튼.
+    같은 다크 에디토리얼 언어 안에서 레이아웃만 바꿔, 6장을 넘겨도 심심하지 않아요.<br>
+    거대 숫자(+4.6%)는 뺐고, 숫자는 지표 슬라이드와 "25거래일" 한 곳에만 절제해서 썼어요. 전부 사이트 '오늘의 한 문장' 카드 토큰(그라데이션·초록 배지·따옴표·원형 장식) 그대로예요.
+  </div>
+</body>
+</html>

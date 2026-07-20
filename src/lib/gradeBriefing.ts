@@ -16,7 +16,7 @@ import { titleTokenSet, isNearDuplicate } from './titleSimilarity'
 //    대조 근거 = 그날 기사 제목 풀 + 실측 지표 값이다. 제목·지표로 확인 불가한 서술은
 //    감점하지 않고 reason에 '확인 불가'로 남기게 했다. inputs.factualBasis에 박제.
 
-export const RUBRIC_VERSION = 'v2.2'
+export const RUBRIC_VERSION = 'v2.3'
 
 function todayKST(): string {
   return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -163,7 +163,7 @@ async function gradeWithAI(
   const indicators = (Array.isArray(briefing.indicators) ? briefing.indicators : []) as
     { name?: string; value?: string; change?: string }[]
   const top3 = (Array.isArray(briefing.top3_analysis) ? briefing.top3_analysis : []) as
-    { title?: string }[]
+    { title?: string; steps?: { oneline?: string; conclusion?: string; whatHappened?: string } }[]
   const healthCheck = Array.isArray(briefing.health_check) ? briefing.health_check : []
   const connections = Array.isArray(briefing.connections) ? briefing.connections : []
 
@@ -182,14 +182,19 @@ ${candidates.map((a, i) => `${i}. ${a.title}`).join('\n') || '- 없음'}
 - 오늘의 한 줄(shareCard): ${JSON.stringify(String(briefing.share_card ?? ''))}
 - 오늘의 용어: ${JSON.stringify(dailyTerm)}
 - TOP3 기사 제목: ${JSON.stringify(top3.map(t => t.title ?? ''))}
+- TOP3 해설 요지(윗칸과 모순되는지 대조용): ${JSON.stringify(
+    top3.map((t, i) => `${i + 1}번: ${t.steps?.oneline ?? ''} / ${t.steps?.conclusion ?? ''} / ${t.steps?.whatHappened ?? ''}`)
+  )}
 - 분야별 건강진단: ${JSON.stringify(healthCheck)}
 - 핵심 흐름(connections): ${JSON.stringify(connections)}
 
 ## 채점 기준 (각 0~2점: 2=충족, 1=보통, 0=미달)
 ① comprehension 이해도 — 경제 초보자가 바로 이해되는가 (요약·용어 설명 기준. 2=중학생도 이해, 어려운 말은 풀어씀 / 1=일부 용어가 설명 없이 나옴 / 0=전문용어를 그대로 써서 어려움)
 ② factual 사실 정확성 — 숫자·오르내림 방향·인과가 위 [대조 자료]와 맞는가 (2=대조 가능한 것 모두 정확 / 1=사소하게 부정확·모호 / 0=숫자 틀림·방향 반대·대조 자료에 전혀 근거 없는 사실 서술). ⚠️ 대조 자료(제목·지표)로 확인할 수 없는 서술은 감점하지 말고 reason에 "확인 불가: ..."로만 남기세요. "~할 전망", "~로 보여요" 같은 전망·예측·해석 서술은 사실 오류로 처리하지 마세요(확인 불가로만). 지어낸 정보가 의심되면 disqualify.fabrication을 검토하세요.
+   ⚠️ **시제 검사(필수)**: 후보 기사가 "오늘 ○○ 여부를 결정한다 / 결정 예정 / 전망"인데 브리핑이 그 결과를 "○○했어요 / ○○로 결정됐어요"처럼 **이미 일어난 일로 단정**했다면, 이는 아직 발생하지 않은 사실을 단정한 것이므로 **사실 0점**이고 disqualify.fabrication도 검토하세요. 실측 지표가 아직 옛 값이라는 것은 "브리핑이 맞다"는 근거가 **아닙니다**(발표 전이라 안 바뀐 것일 수 있음). 특히 금융통화위원회 기준금리 결정처럼 브리핑 발행(오전 9시경) 이후에 발표되는 사안에 주의하세요.
+   ⚠️ **내부 일관성 검사(필수)**: 헤드라인·요약·shareCard와 [TOP3 해설 요지]가 서로 반대로 말하고 있으면(예: 윗칸은 "동결", 해설은 "또 올랐다") 둘 중 하나는 반드시 틀린 것이므로 **사실 1점 이하**로 채점하고 reason에 모순 지점을 그대로 적으세요.
 ③ selection 선정 판단 — 후보 풀에서 그날 가장 중요한 이슈를 헤드라인·TOP3로 골랐는가. 판단 축: 파급(영향받는 사람 수)·체감(내 지갑에 닿는 정도)·사건성(오늘 새로 터졌나)·규모(변화 크기)를 종합 (2=가장 중요한 이슈를 1등으로 / 1=무난하나 더 중요한 걸 놓침 / 0=사소한 것을 1등으로, 또는 단순 시황·해외 단독을 올림)
-   ⚠️ 감점(1점 이하) 조건: 위 [후보 기사 제목 풀]에서 브리핑이 놓친 더 중요한 기사를 찾아 missedTitle에 **제목을 한 글자도 바꾸지 말고 그대로** 적으세요. 구체적으로 지목할 기사가 없으면 감점하지 말고 2점을 주세요 ("놓쳤을 여지가 있다" 같은 막연한 감점 금지). 단순 시황 기사(지수·환율이 올랐다/내렸다 자체)와 해외 단독 기사는 선정 금지 대상이므로 "놓친 기사"로 지목할 수 없습니다.
+   ⚠️ 감점(1점 이하) 조건: 위 [후보 기사 제목 풀]에서 브리핑이 놓친 더 중요한 기사를 찾아 missedTitle에 **제목을 한 글자도 바꾸지 말고 그대로** 적으세요. 구체적으로 지목할 기사가 없으면 감점하지 말고 2점을 주세요 ("놓쳤을 여지가 있다" 같은 막연한 감점 금지). 단순 시황 기사(지수·환율이 올랐다/내렸다 자체)와 해외 단독 기사는 선정 금지 대상이므로 "놓친 기사"로 지목할 수 없습니다. **이미 TOP3에 선정된 기사는 "놓친 기사"가 아니므로 지목할 수 없습니다**(브리핑이 고른 걸 놓쳤다고 할 수 없음).
 ④ diversity 다양성 — TOP3가 서로 다른 사건·주제이고 분야가 고른가 (2=3개 모두 다른 주제, 시황·해외 단독 없음 / 1=주제 하나가 겹침 / 0=같은 사건 중복 또는 시황·해외로 채움)
    ⚠️ 감점(1점 이하) 조건: TOP3 중 어느 두 개가 겹치는지 overlapPair에 번호(0~2) 두 개, overlapTopic에 공통 주제를 적으세요. 어느 둘이 겹치는지 특정하지 못하면 감점하지 말고 2점을 주세요 ("일부가 비슷한 주제" 같은 막연한 감점 금지).
 ⑤ tone 톤 — 존댓말·따뜻한 문체 일관, 짧고 명확한 문장, 이모지 적정 (2=일관 / 1=일부 딱딱하거나 이모지 과함 / 0=반말 혼입·문체 들쭉날쭉·이모지 남발)
@@ -230,21 +235,29 @@ ${candidates.map((a, i) => `${i}. ${a.title}`).join('\n') || '- 없음'}
     reason: String(parsed?.[k]?.reason ?? ''),
   })
 
-  // ── 지목 검증 가드 (v2.2, 2026-07-12 첫 주 리뷰 결정) ──────────────────────
-  // 선정·다양성이 5일 내내 근거 없는 헤지("놓쳤을 여지"·"일부 겹침")로 1점 고정이던 것 차단.
-  // 원칙: 감점에는 코드가 검증 가능한 지목이 따라야 한다. 지목이 없거나 대조 실패면 감점 무효(2점).
-  // (7/8 교훈과 같은 계열 — AI가 쓴 식별 정보는 믿지 않고 코드가 대조한다)
+  // ── 지목 검증 가드 (v2.3, 2026-07-20 오판 3·4호 리뷰 결정) ────────────────
+  // v2.2에서 "감점에는 코드가 검증 가능한 지목이 따라야 한다"를 도입했으나 양방향으로 뚫려 있었다:
+  //   ⓐ 지목 실패 → 자동 2점 = 판정 불가가 '만점'으로 기록됨 (7/12·7/19)
+  //   ⓑ 지목 성공 시 내용 무검증 → 이미 TOP3에 있는 기사를 "놓쳤다"고 지목해도 통과 (7/20)
+  // 원칙 수정: 지목을 못 하거나 지목이 무효면 그건 '잘했다'가 아니라 '판정 불가(null)'다.
+  // 모르는 것을 잘한 것으로 적으면 데이터가 쌓일수록 판단이 나빠진다.
   const norm = (s: string) => s.replace(/\s+/g, '')
+  const top3Titles = new Set(top3.map(t => norm(String(t.title ?? ''))))
 
   const selection = item('selection')
   if (selection.score !== null && selection.score < 2) {
     const missed = String(parsed?.selection?.missedTitle ?? '').trim()
-    const matched = missed && candidates.some(c => norm(c.title) === norm(missed))
-    if (matched) {
+    const inPool = Boolean(missed) && candidates.some(c => norm(c.title) === norm(missed))
+    const alreadyPicked = Boolean(missed) && top3Titles.has(norm(missed))
+    if (inPool && !alreadyPicked) {
       selection.reason = `놓친 기사 지목: "${missed}" — ${selection.reason}`
+    } else if (alreadyPicked) {
+      // 심사위원이 브리핑이 이미 고른 기사를 "놓쳤다"고 지목한 경우 = 지목 자체가 무효
+      selection.reason = `[지목 무효 → 판정 불가] 지목한 "${missed}"는 이미 TOP3에 선정된 기사임 (원 사유: ${selection.reason})`
+      selection.score = null
     } else {
-      selection.reason = `[지목 실패 → 감점 무효] 후보 풀에서 놓친 기사를 지목하지 못함 (원 사유: ${selection.reason})`
-      selection.score = 2
+      selection.reason = `[지목 실패 → 판정 불가] 후보 풀에서 놓친 기사를 지목하지 못함 (원 사유: ${selection.reason})`
+      selection.score = null
     }
   }
 
@@ -259,8 +272,8 @@ ${candidates.map((a, i) => `${i}. ${a.title}`).join('\n') || '- 없음'}
       const [a, b] = pair as [number, number]
       diversity.reason = `겹침 지목: TOP3 ${a + 1}번 "${top3[a]?.title ?? ''}" ↔ ${b + 1}번 "${top3[b]?.title ?? ''}" (주제: ${topic}) — ${diversity.reason}`
     } else {
-      diversity.reason = `[지목 실패 → 감점 무효] 어느 두 개가 겹치는지 특정하지 못함 (원 사유: ${diversity.reason})`
-      diversity.score = 2
+      diversity.reason = `[지목 실패 → 판정 불가] 어느 두 개가 겹치는지 특정하지 못함 (원 사유: ${diversity.reason})`
+      diversity.score = null
     }
   }
 
@@ -334,9 +347,16 @@ export async function gradeDailyBriefing({
     ai.selection = { score: null, reason: '판정 불가 — 그날 후보 기사 풀이 없어 대조 근거 없음' }
   }
 
+  // 총점 = 판정된 항목만 합산, 분모도 같이 기록 (v2.3)
+  // 옛 방식은 "하나라도 판정 불가면 총점 null"이라, 판정 불가를 정직하게 표시하는 순간
+  // 추세 데이터가 통째로 사라졌다. 대신 분모를 줄이고 몇 점 만점인지를 남긴다.
+  // ⚠️ 날짜별 총점을 비교할 때는 반드시 scoreDenominator를 같이 볼 것 (6/10과 6/8은 다른 점수).
   const scoreValues = [ai.comprehension, ai.factual, ai.selection, ai.diversity, ai.tone].map(s => s.score)
-  const total = scoreValues.every((s): s is number => s !== null)
-    ? scoreValues.reduce((a, b) => a + b, 0)
+  const gradedValues = scoreValues.filter((s): s is number => s !== null)
+  const scoreDenominator = gradedValues.length * 2
+  const ungradedCount = scoreValues.length - gradedValues.length
+  const total = gradedValues.length > 0
+    ? gradedValues.reduce((a, b) => a + b, 0)
     : null
   const disqualified = ai.disqualify.investmentAdvice || ai.disqualify.fabrication
 
@@ -350,11 +370,19 @@ export async function gradeDailyBriefing({
     const failedHard = formatChecks.filter(c => c.severity === 'hard' && !c.pass).map(c => c.name)
     alertReasons.push(`하드 형식 탈락(${failedHard.join('·')})`)
   }
-  if (total !== null && total <= 5) alertReasons.push(`총점 ${total}점(경보선 5점 이하)`)
+  // 경보선은 비율로 판정 — 분모가 줄어든 날(판정 불가 발생)에도 같은 기준이 적용되게.
+  // 분모 10일 때 total<=5 = 옛 기준과 동일.
+  if (total !== null && total <= scoreDenominator * 0.5) {
+    alertReasons.push(`총점 ${total}/${scoreDenominator}점(경보선 절반 이하)`)
+  }
+  // 판정 불가가 절반 이상이면 "이상 없음"이 아니라 "재지 못했음" — 이것도 이상 신호다 (v2.3)
+  if (ungradedCount >= 3) alertReasons.push(`판정 불가 ${ungradedCount}항목(채점기가 대부분을 재지 못함)`)
   const alert = alertReasons.length > 0
   // 경보·소프트 경고는 사용자가 실제로 보는 곳(점수 행 → 시트)에 박제. 메일은 보조 채널.
   const warnNote = formatWarnings.length > 0 ? ` | ⚠️ 형식 경고: ${formatWarnings.join(', ')}` : ''
-  const issueNote = (alert ? `🚨 경보: ${alertReasons.join(' · ')} | ${ai.issueNote}` : ai.issueNote) + warnNote
+  // 총점을 볼 때 분모가 다르다는 걸 시트에서 바로 알 수 있게 박제 (v2.3)
+  const denomNote = ungradedCount > 0 ? ` | ⚖️ ${total}/${scoreDenominator}점 만점 (판정 불가 ${ungradedCount}항목)` : ''
+  const issueNote = (alert ? `🚨 경보: ${alertReasons.join(' · ')} | ${ai.issueNote}` : ai.issueNote) + warnNote + denomNote
   if (alert) {
     await notifyFailure(
       '브리핑 품질 경보 (P2)',
@@ -379,6 +407,8 @@ export async function gradeDailyBriefing({
     disqualify_reason: disqualified ? ai.disqualify.reason : null,
     issue_note: issueNote,
     inputs: {
+      scoreDenominator, // 총점의 만점 — 판정 불가 항목이 있으면 10보다 작다 (v2.3, 날짜 비교 시 필수)
+      ungradedCount,
       candidateCount: candidates.length,
       candidateTitles: candidates.map(c => c.title),
       indicators: briefing.indicators ?? [],

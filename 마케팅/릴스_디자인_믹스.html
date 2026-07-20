@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>경제번역기 릴스 · 믹스(내용에 맞춰 다크/라이트 혼용)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{ --green:#22C55E; --green-dark:#16A34A; --up:#DC2626; --upDark:#F87171; --ink:#111827; --muted:#6B7280; }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:'Noto Sans KR',sans-serif; background:#1A1F2B; color:#fff; padding:40px 20px; letter-spacing:-0.01em;}
+  h1{font-size:24px; font-weight:900; text-align:center; margin-bottom:6px;}
+  .sub{text-align:center; color:#9CA3AF; font-size:14px; margin-bottom:30px;}
+  .grid{display:flex; gap:26px 30px; justify-content:center; flex-wrap:wrap; max-width:1000px; margin:0 auto;}
+  .item{width:270px;}
+  .cap{text-align:center; font-size:12px; color:#6B7280; font-weight:700; margin-bottom:8px;}
+  .cap b{color:#9CA3AF;}
+
+  .frame{width:270px; height:480px; border-radius:24px; overflow:hidden; position:relative;
+         box-shadow:0 10px 34px rgba(0,0,0,.35); padding:30px 26px; display:flex; flex-direction:column;}
+  .z{position:relative; z-index:1;}
+
+  /* ════ 다크 에디토리얼 (사이트 '오늘의 한 문장' 카드) ════ */
+  .dark{background:linear-gradient(135deg,#0F172A 0%,#1E293B 60%,#064E3B 100%);}
+  .dark::before{content:''; position:absolute; top:-60px; right:-60px; width:180px; height:180px; border-radius:50%; background:rgba(34,197,94,.12);}
+  .dark::after{content:''; position:absolute; bottom:-40px; left:-40px; width:120px; height:120px; border-radius:50%; background:rgba(34,197,94,.08);}
+  .dark .pill{display:inline-block; background:var(--green); color:#fff; font-size:11px; font-weight:700; padding:4px 11px; border-radius:20px; letter-spacing:.5px;}
+  .dark .date{color:rgba(255,255,255,.45); font-size:12px; margin-left:8px;}
+  .dark .label{color:var(--green); font-size:12px; font-weight:700; letter-spacing:.1em;}
+  .dark .quote{position:absolute; top:46px; left:18px; color:rgba(34,197,94,.18); font-size:130px; line-height:1; font-family:Georgia,serif;}
+  .dark .head{color:#F8FAFC; font-weight:900; line-height:1.4;}
+  .dark .head em{font-style:normal; color:var(--green);}
+  .dark .b{color:rgba(255,255,255,.6); font-size:14px; font-weight:500; line-height:1.55;}
+  .dark .foot{margin-top:auto; border-top:1px solid rgba(255,255,255,.12); padding-top:14px; display:flex; justify-content:space-between; align-items:center;}
+  .dark .foot .l{color:rgba(255,255,255,.4); font-size:9.5px; white-space:nowrap;} .dark .foot .r{color:var(--green); font-size:9.5px; font-weight:600; white-space:nowrap;}
+  .dark .row{display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,.06); border-radius:12px; padding:13px 15px; margin-bottom:9px;}
+  .dark .row .n{color:rgba(255,255,255,.6); font-size:14px; font-weight:500;} .dark .row .v{font-size:17px; font-weight:900;} .dark .row .v.up{color:var(--upDark);}
+
+  /* ════ 라이트 프렌들리 (흰 카드 + 연초록) ════ */
+  .light{background:linear-gradient(160deg,#F0FDF4 0%,#DCFCE7 100%); justify-content:center;}
+  .light .card{background:#fff; border-radius:20px; padding:26px 22px; box-shadow:0 8px 22px rgba(34,197,94,.18);}
+  .light .badge{display:inline-block; background:#DCFCE7; color:var(--green-dark); font-weight:900; font-size:13px; padding:4px 12px; border-radius:999px; margin-bottom:12px;}
+  .light .h{font-size:21px; font-weight:900; color:var(--ink); line-height:1.34;} .light .h em{font-style:normal; color:var(--green-dark);}
+  .light .b{margin-top:11px; font-size:14px; color:var(--muted); font-weight:500; line-height:1.6;}
+  .light .em{font-size:26px; margin-top:14px;}
+  .light .stat{color:var(--green-dark); font-weight:900;}
+  .light .cta-e{font-size:34px;} .light .btn{margin-top:18px; background:var(--green); color:#fff; font-weight:900; font-size:15px; padding:14px; border-radius:14px; text-align:center;}
+  .light .sub2{margin-top:9px; font-size:14px; color:var(--muted); font-weight:500;}
+
+  .note{max-width:980px; margin:32px auto 0; background:#111827; border:1px solid #1F2937; border-radius:14px; padding:20px 24px; font-size:13px; color:#9CA3AF; line-height:1.7;}
+  .note b{color:#fff;}
+</style>
+</head>
+<body>
+  <h1>경제번역기 릴스 · 믹스 버전</h1>
+  <p class="sub">내용·역할에 맞춰 다크/라이트를 골라 씀 (기계적 번갈음 ❌) · 숫자 절제</p>
+
+  <div class="grid">
+
+    <!-- 1. 커버 — 다크 -->
+    <div class="item">
+      <div class="cap">슬라이드 1 · 커버 <b>(다크)</b></div>
+      <div class="frame dark">
+        <div class="quote">&ldquo;</div>
+        <div class="z"><span class="pill">경제번역기</span><span class="date">2026.6.13 · 주간</span></div>
+        <div class="z head" style="font-size:25px; margin-top:90px;">코스피 <em>8000선 회복</em><br>오늘 시장에<br>무슨 일이?</div>
+        <div class="z foot"><span class="l">주간 브리핑</span><span class="r">economy-translator.vercel.app</span></div>
+      </div>
+    </div>
+
+    <!-- 2. 이유1 — 라이트 -->
+    <div class="item">
+      <div class="cap">슬라이드 2 · 이유① <b>(라이트)</b></div>
+      <div class="frame light">
+        <div class="card">
+          <div class="badge">왜 올랐나 ①</div>
+          <div class="h"><em>중동 전쟁</em>이<br>끝날 거란 기대</div>
+          <div class="b">불안하면 팔고, 안심되면 사요. 안정될 거란 기대에 다시 주식을 샀어요.</div>
+          <div class="em">🛒</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. 이유2 — 라이트 -->
+    <div class="item">
+      <div class="cap">슬라이드 3 · 이유② <b>(라이트)</b></div>
+      <div class="frame light">
+        <div class="card">
+          <div class="badge">왜 올랐나 ②</div>
+          <div class="h"><span class="stat">외국인</span>이 25거래일<br>만에 돌아왔어요</div>
+          <div class="b">한 달 넘게 팔던 외국인이 다시 사기 시작 — 시장엔 좋은 신호예요.</div>
+          <div class="em">🌍</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. 결과 — 다크 -->
+    <div class="item">
+      <div class="cap">슬라이드 4 · 결과 <b>(다크)</b></div>
+      <div class="frame dark">
+        <div class="z"><span class="label">그래서</span></div>
+        <div class="z head" style="font-size:24px; margin:auto 0; text-align:center;">네이버도<br><em>26만 원 돌파</em> 📈</div>
+        <div class="z foot"><span class="l">분위기가 한 번에 좋아진 하루</span><span class="r">경제번역기</span></div>
+      </div>
+    </div>
+
+    <!-- 5. 지표 — 다크 -->
+    <div class="item">
+      <div class="cap">슬라이드 5 · 지표 <b>(다크)</b></div>
+      <div class="frame dark">
+        <div class="z"><span class="label">📊 오늘의 숫자</span></div>
+        <div class="z" style="margin:auto 0;">
+          <div class="row"><span class="n">코스피</span><span class="v up">8,123 ▲4.6%</span></div>
+          <div class="row"><span class="n">환율</span><span class="v">1,517원</span></div>
+          <div class="row"><span class="n">기준금리</span><span class="v">3.50% 동결</span></div>
+        </div>
+        <div class="z foot"><span class="l">환율은 높고, 금리는 지켜보는 중</span><span class="r">경제번역기</span></div>
+      </div>
+    </div>
+
+    <!-- 6. CTA — 라이트 -->
+    <div class="item">
+      <div class="cap">슬라이드 6 · CTA <b>(라이트)</b></div>
+      <div class="frame light">
+        <div class="card" style="text-align:center;">
+          <div class="cta-e">☕</div>
+          <div class="h" style="margin-top:8px;">매일 아침 <em>5분</em>이면<br>경제가 쉬워져요</div>
+          <div class="sub2">경제 왕초보 환영 👌</div>
+          <div class="btn">프로필 링크 → 보러가기</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="note">
+    <b>다크와 라이트를 내용에 맞춰 섞었어요.</b> 임팩트·데이터가 필요한 <b>커버(1)·결과(4)·지표(5)</b>는 다크 에디토리얼,
+    쉽게 풀어주는 <b>이유 설명(2·3)</b>과 따뜻한 <b>초대(6)</b>는 라이트 프렌들리.
+    설명 슬라이드 2·3은 역할이 같아 톤도 같이 둬서, 기계적 번갈음이 아니라 흐름이 생겨요.<br>
+    거대 숫자는 빼고, 두 스타일 모두 같은 초록(#22C55E)·Noto Sans KR을 써서 섞여도 한 브랜드로 읽혀요.
+  </div>
+</body>
+</html>

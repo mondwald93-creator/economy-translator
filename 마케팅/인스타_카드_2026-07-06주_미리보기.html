@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>경제번역기 인스타 카드 · 2026-07-06주 (피드 카드묶음 4:5)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{ --green:#22C55E; --green-dark:#16A34A; --up:#DC2626; --upDark:#F87171; --down:#2563EB; --downDark:#60A5FA; --ink:#111827; --muted:#6B7280; }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:'Noto Sans KR',sans-serif; background:#1A1F2B; color:#fff; padding:40px 20px; letter-spacing:-0.01em;
+       word-break:keep-all; overflow-wrap:break-word; line-break:strict;}
+  h1{font-size:24px; font-weight:900; text-align:center; margin-bottom:6px;}
+  .sub{text-align:center; color:#9CA3AF; font-size:14px; margin-bottom:30px;}
+  .grid{display:flex; gap:28px 28px; justify-content:center; flex-wrap:wrap; max-width:1320px; margin:0 auto;}
+  .item{width:300px;}
+  .cap{text-align:center; font-size:12px; color:#6B7280; font-weight:700; margin-bottom:8px;}
+  .cap b{color:#9CA3AF;}
+
+  /* 4:5 피드 카드 (1080x1350 비율) */
+  .frame{width:300px; height:375px; border-radius:22px; overflow:hidden; position:relative;
+         box-shadow:0 10px 30px rgba(0,0,0,.32); padding:26px 24px; display:flex; flex-direction:column;}
+  .z{position:relative; z-index:1;}
+  .top{margin-bottom:4px;}
+  .zone{flex:1; display:flex; flex-direction:column; justify-content:center; position:relative; z-index:1;}
+  .foot{position:relative; z-index:1; margin-top:auto; padding-top:13px; display:flex; justify-content:space-between; align-items:center;}
+  .foot .l{font-size:9.5px; white-space:nowrap;} .foot .r{font-size:9.5px; font-weight:700; white-space:nowrap;}
+
+  .badge{display:inline-block; font-weight:900; font-size:13px; padding:5px 13px; border-radius:999px; letter-spacing:.2px;}
+  .h{font-weight:900; line-height:1.42;} .h em{font-style:normal;}
+  .b{font-weight:500; line-height:1.62;}
+  .h + .b{margin-top:10px;}
+  .b + .b{margin-top:9px;}
+  .accent{font-size:30px; margin-top:16px;}
+  .stat{color:var(--green-dark); font-weight:900;}
+  .statdown{color:var(--down); font-weight:900;}
+
+  /* ── 다크 ── */
+  .dark{background:linear-gradient(135deg,#0F172A 0%,#1E293B 60%,#064E3B 100%);}
+  .dark::before{content:''; position:absolute; top:-60px; right:-60px; width:180px; height:180px; border-radius:50%; background:rgba(34,197,94,.13);}
+  .dark::after{content:''; position:absolute; bottom:-46px; left:-44px; width:130px; height:130px; border-radius:50%; background:rgba(34,197,94,.08);}
+  .dark .badge{background:var(--green); color:#fff;}
+  .dark .label{color:var(--green); font-size:12.5px; font-weight:800; letter-spacing:.06em;}
+  .dark .h{color:#F8FAFC;} .dark .h em{color:var(--green);}
+  .dark .h em.red{color:var(--upDark);}
+  .dark .b{color:rgba(255,255,255,.66); font-size:14px;}
+  .dark .b .stat{color:#5EEAD4;}
+  .dark .foot{border-top:1px solid rgba(255,255,255,.13);}
+  .dark .foot .l{color:rgba(255,255,255,.42);} .dark .foot .r{color:var(--green);}
+  .dark .row{display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,.07); border-radius:12px; padding:12px 15px; margin-bottom:8px;}
+  .dark .row .n{color:rgba(255,255,255,.62); font-size:14px; font-weight:500;} .dark .row .v{font-size:15px; font-weight:900; color:#F8FAFC;} .dark .row .v.up{color:var(--upDark);} .dark .row .v.down{color:var(--downDark);}
+  .dark .date{color:rgba(255,255,255,.45); font-size:12px; margin-left:8px;}
+
+  /* ── 라이트 ── */
+  .light{background:linear-gradient(160deg,#FFFFFF 0%,#ECFDF3 100%);}
+  .light::before{content:''; position:absolute; top:-50px; right:-50px; width:150px; height:150px; border-radius:50%; background:rgba(34,197,94,.10);}
+  .light .badge{background:#DCFCE7; color:var(--green-dark);}
+  .light .h{color:var(--ink);} .light .h em{color:var(--green-dark);}
+  .light .h em.red{color:var(--up);}
+  .light .b{color:#4B5563; font-size:13.5px;}
+  .light .foot{border-top:1px solid rgba(17,24,39,.10);}
+  .light .foot .l{color:#9CA3AF;} .light .foot .r{color:var(--green-dark);}
+  .light .btn{margin-top:20px; background:var(--green); color:#fff; font-weight:900; font-size:15px; padding:14px; border-radius:14px; text-align:center; line-height:1.5;}
+  .light .sub2{margin-top:10px; font-size:13.5px; color:var(--muted); font-weight:500;}
+
+  .note{max-width:1300px; margin:34px auto 0; background:#111827; border:1px solid #1F2937; border-radius:14px; padding:20px 24px; font-size:13px; color:#9CA3AF; line-height:1.75;}
+  .note b{color:#fff;}
+</style>
+</head>
+<body>
+  <h1>경제번역기 인스타 · 이번 주 정리 (7/6~7/12)</h1>
+  <p class="sub">📐 피드 카드묶음 4:5 (1080×1350) · 7/12(일) 발행용 · 숫자는 7/12 라이브 사이트 + 이번주 보도 교차검증</p>
+
+  <div class="grid">
+
+    <!-- 1. 커버 (다크) -->
+    <div class="item">
+      <div class="cap">슬라이드 1 · 커버 <b>(다크)</b></div>
+      <div class="frame dark">
+        <div class="top z"><span class="pill" style="display:inline-block;background:var(--green);color:#fff;font-size:11px;font-weight:800;padding:4px 11px;border-radius:20px;">주간 정리</span><span class="date">2026.7.6~7.12</span></div>
+        <div class="zone">
+          <div class="h" style="font-size:24px;">지난주 되찾은<br>8000선 📈<br>이번 주 이틀 만에<br><em class="red">-10% '검은 수요일'</em> 📉<br>주말, 반등의 불씨 🔥</div>
+        </div>
+        <div class="foot"><span class="l">이번 주 경제, 4가지로 정리 →</span><span class="r">@econ.5min</span></div>
+      </div>
+    </div>
+
+    <!-- 2. 증시 (라이트) -->
+    <div class="item">
+      <div class="cap">슬라이드 2 · 💹 증시 <b>(라이트)</b></div>
+      <div class="frame light">
+        <div class="top z"><span class="badge">① 증시</span></div>
+        <div class="zone">
+          <div class="h" style="font-size:20px;">코스피, 이틀 만에<br><em class="red">8,088 → 7,246</em> 📉</div>
+          <div class="b">화·수 연속 급락 — 수요일 하루 <span class="statdown">-5.35%</span>, 매도 사이드카(급락 때 매매를 잠시 멈추는 안전장치)까지 발동했어요.</div>
+          <div class="b">지난주 주인공이던 반도체가 진앙 — 삼성전자 하루 <span class="statdown">-6.25%</span>.</div>
+        </div>
+        <div class="foot"><span class="l">지난주 주인공이 이번 주 진앙</span><span class="r">경제번역기 · @econ.5min</span></div>
+      </div>
+    </div>
+
+    <!-- 3. 중동 (다크 — 반전) -->
+    <div class="item">
+      <div class="cap">슬라이드 3 · 🛢️ 중동 <b>(다크 · 반전)</b></div>
+      <div class="frame dark">
+        <div class="top z"><span class="label">② 중동 리스크</span></div>
+        <div class="zone">
+          <div class="h" style="font-size:20px;">폭락의 방아쇠는<br><em>중동</em>이었어요 🛢️</div>
+          <div class="b">미국-이란 충돌이 다시 불붙고, 원유가 지나는 길목 호르무즈 해협이 불안해졌어요.</div>
+          <div class="b">국제유가가 뛰면 물가도, 우리 증시도 같이 흔들려요.</div>
+        </div>
+        <div class="foot"><span class="l">기름길이 흔들리면 지갑도 흔들려요</span><span class="r">경제번역기 · @econ.5min</span></div>
+      </div>
+    </div>
+
+    <!-- 4. 반등 (라이트) -->
+    <div class="item">
+      <div class="cap">슬라이드 4 · 🔥 반등 <b>(라이트)</b></div>
+      <div class="frame light">
+        <div class="top z"><span class="badge">③ 반등</span></div>
+        <div class="zone">
+          <div class="h" style="font-size:21px;">목·금 이틀,<br><em>반등의 불씨</em> 🔥</div>
+          <div class="b">코스피가 <span class="stat">7,475</span>까지 되올라왔고, 코스닥은 금요일 하루 <span class="stat">+6.68%</span> 뛰었어요.</div>
+          <div class="b">다만 떨어진 폭의 4분의 1쯤 되찾은 것 — 아직 갈 길이 남았죠.</div>
+        </div>
+        <div class="foot"><span class="l">회복은 시작, 안심은 일러요</span><span class="r">경제번역기 · @econ.5min</span></div>
+      </div>
+    </div>
+
+    <!-- 5. 금리 (라이트) -->
+    <div class="item">
+      <div class="cap">슬라이드 5 · 💰 금리 <b>(라이트)</b></div>
+      <div class="frame light">
+        <div class="top z"><span class="badge">④ 금리</span></div>
+        <div class="zone">
+          <div class="h" style="font-size:20px;">한국은행,<br><em>16일 금리 올릴 듯</em> 💰</div>
+          <div class="b">물가가 목표보다 높아서, 7/16 회의에서 기준금리를 <span class="stat">2.50 → 2.75%</span>로 올릴 거란 전망이 우세해요.</div>
+          <div class="b">올리면 <span class="stat">3년 6개월 만</span>의 인상 — 예금 이자도, 대출 이자도 같이 움직여요.</div>
+        </div>
+        <div class="foot"><span class="l">다음 주 목요일, 지갑의 분수령</span><span class="r">경제번역기 · @econ.5min</span></div>
+      </div>
+    </div>
+
+    <!-- 6. 숫자 (다크) -->
+    <div class="item">
+      <div class="cap">슬라이드 6 · 📊 이번 주 숫자 <b>(다크)</b></div>
+      <div class="frame dark">
+        <div class="top z"><span class="label">📊 이번 주 숫자 (7/12 기준)</span></div>
+        <div class="zone">
+          <div class="row"><span class="n">코스피</span><span class="v down">7,475 ▼ 주간 -7.6%</span></div>
+          <div class="row"><span class="n">환율</span><span class="v">1,498.9원 · 1,500 아래로</span></div>
+          <div class="row"><span class="n">기준금리</span><span class="v">2.50% · 16일 인상 유력</span></div>
+        </div>
+        <div class="foot"><span class="l">지수는 멀미, 환율은 한숨 돌림</span><span class="r">경제번역기 · @econ.5min</span></div>
+      </div>
+    </div>
+
+    <!-- 7. CTA (라이트) -->
+    <div class="item">
+      <div class="cap">슬라이드 7 · CTA <b>(라이트)</b></div>
+      <div class="frame light">
+        <div class="top z"><span class="badge">매일 5분</span></div>
+        <div class="zone" style="text-align:center; align-items:center;">
+          <div class="accent" style="margin-top:0; font-size:38px;">☕</div>
+          <div class="h" style="font-size:21px; margin-top:10px;">매일 아침 <em>5분</em>이면<br>경제가 쉬워져요</div>
+          <div class="sub2">👇 팔로우하면 내일 브리핑이 와요</div>
+          <div class="btn">프로필 링크에서<br>오늘 브리핑 보기 →</div>
+        </div>
+        <div class="foot"><span class="l">경제 왕초보 환영</span><span class="r">@econ.5min</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="note">
+    <b>📐 2026-07-06주 (7/6~7/12) · 7/12 발행용.</b>
+    지난주 커버("롤러코스터 끝 8000선 회복")와 <b>이어지는 시리즈</b> — 이번 주는 회복한 8000선을 이틀 만에 반납한 '검은 수요일'과 반등의 불씨.
+    ① 코스피 이틀 -10%(수 -5.35%·사이드카·반도체 진앙) · ② 방아쇠는 중동(미-이란 충돌 재개·호르무즈) · ③ 목·금 반등 7,475·코스닥 +6.68% · ④ 한은 16일 인상 유력(2.50→2.75%, 3년 6개월 만).<br>
+    <b>숫자는 7/12 라이브 사이트(7/10 금 마감) + 이번 주 보도 교차검증 반영본.</b> 상승=빨강·하락=파랑.
+  </div>
+</body>
+</html>
