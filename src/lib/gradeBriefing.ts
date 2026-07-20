@@ -16,7 +16,7 @@ import { titleTokenSet, isNearDuplicate } from './titleSimilarity'
 //    대조 근거 = 그날 기사 제목 풀 + 실측 지표 값이다. 제목·지표로 확인 불가한 서술은
 //    감점하지 않고 reason에 '확인 불가'로 남기게 했다. inputs.factualBasis에 박제.
 
-export const RUBRIC_VERSION = 'v2.5'
+export const RUBRIC_VERSION = 'v2.6'
 
 function todayKST(): string {
   return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -208,9 +208,15 @@ ${candidates.map((a, i) => `${i}. ${a.title}`).join('\n') || '- 없음'}
   // 2026-07-09 사고 때 "항목별 독립 채점" 지시를 프롬프트에 넣었지만 7/20 검증에서
   // 사실 0점이 나오자 이해도·톤이 동반 하락 — 지시만으로는 안 지켜짐이 실증됐다.
   // → 아예 호출을 분리해 심사위원이 다른 항목의 판단을 볼 수 없게 한다(구조로 차단).
-  async function gradeOne(criterion: string, outputSpec: string): Promise<Record<string, unknown>> {
+  // ⚠️ 항목별 모델 (v2.6): 사실 정확성만 상위 모델을 쓴다.
+  //   근거(2026-07-20 13일치 실측): gpt-4o-mini는 인용은 시키면 하지만 추론이 헛돈다 —
+  //   "기준금리 2.75% ▲인상"을 근거로 인용해놓고 "인상 서술이 대조 자료와 불일치"라 하고
+  //   (7/17), "하락한 것이 맞음에도 불구하고 일치하지 않음"(7/20)처럼 자기모순 문장을 쓴다.
+  //   코드 가드는 "인용이 실제로 존재하는가"까지만 검증할 수 있고 추론의 타당성은 못 본다.
+  //   → 판단 난이도가 가장 높은 사실 항목만 모델을 올린다. 하루 1회 호출이라 비용 영향 미미.
+  async function gradeOne(criterion: string, outputSpec: string, model = 'gpt-4o-mini'): Promise<Record<string, unknown>> {
     const res = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model,
       messages: [
         {
           role: 'system',
@@ -268,7 +274,8 @@ ${outputSpec}`,
 - investmentAdvice: "사라/팔아라/투자해라" 같은 투자 조언·권유 문구가 있는가
 - fabrication: 대조 자료 어디에도 근거가 없는 구체적 사실(수치·사건)을 지어낸 정황이 뚜렷한가 (쉬운 비유는 해당 없음. 뚜렷한 정황이 없으면 false)
 - 실격을 true로 하면 issueNote에도 그 사유를 한 줄로 쓰세요.`,
-      `{"score": 0, "reason": "대조한 항목과 결과를 구체적으로", "claim": "감점 시 문제가 된 브리핑 서술 그대로, 감점 아니면 null", "evidence": "감점 시 그와 어긋나는 대조 자료(지표 이름·값 또는 후보 기사 제목)를 그대로, 감점 아니면 null", "tenseViolation": false, "tenseEvidence": "시제 위반이면 '아직 안 정해진 일'로 쓴 후보 기사 제목 그대로, 아니면 null", "disqualify": {"investmentAdvice": false, "fabrication": false, "reason": ""}, "issueNote": "오늘 브리핑에서 눈에 띈 문제 한 줄 (없으면 '특이사항 없음')"}`
+      `{"score": 0, "reason": "대조한 항목과 결과를 구체적으로", "claim": "감점 시 문제가 된 브리핑 서술 그대로, 감점 아니면 null", "evidence": "감점 시 그와 어긋나는 대조 자료(지표 이름·값 또는 후보 기사 제목)를 그대로, 감점 아니면 null", "tenseViolation": false, "tenseEvidence": "시제 위반이면 '아직 안 정해진 일'로 쓴 후보 기사 제목 그대로, 아니면 null", "disqualify": {"investmentAdvice": false, "fabrication": false, "reason": ""}, "issueNote": "오늘 브리핑에서 눈에 띈 문제 한 줄 (없으면 '특이사항 없음')"}`,
+      'gpt-4o'
     ),
     gradeOne(
       `③ 선정 판단 — 후보 풀에서 그날 가장 중요한 이슈를 헤드라인·TOP3로 골랐는가. 판단 축: 파급(영향받는 사람 수)·체감(내 지갑에 닿는 정도)·사건성(오늘 새로 터졌나)·규모(변화 크기)를 종합 (2=가장 중요한 이슈를 1등으로 / 1=무난하나 더 중요한 걸 놓침 / 0=사소한 것을 1등으로, 또는 단순 시황·해외 단독을 올림)
