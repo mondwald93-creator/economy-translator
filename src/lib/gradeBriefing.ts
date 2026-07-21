@@ -16,7 +16,7 @@ import { titleTokenSet, isNearDuplicate } from './titleSimilarity'
 //    대조 근거 = 그날 기사 제목 풀 + 실측 지표 값이다. 제목·지표로 확인 불가한 서술은
 //    감점하지 않고 reason에 '확인 불가'로 남기게 했다. inputs.factualBasis에 박제.
 
-export const RUBRIC_VERSION = 'v3.0'
+export const RUBRIC_VERSION = 'v3.1'
 
 function todayKST(): string {
   return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -565,25 +565,24 @@ export async function gradeDailyBriefing({
     : null
   const disqualified = ai.disqualify.investmentAdvice || ai.disqualify.fabrication
 
-  // ── P2 경보선 (v2.2, 2026-07-12 첫 주 리뷰에서 확정) ─────────────────────────
-  // 신뢰하는 신호만 조건으로 쓴다 — 선정·다양성은 신뢰 보류 중(2026-07-11 결정)이라 제외.
-  // 첫 주 점수가 6~7점이라 경보선 5점 = 관측 바닥 아래(평소엔 안 울리고 진짜 이상만 잡음).
+  // ── 경보선 (v3.1, 2026-07-21 — 역할 재설계 'A') ──────────────────────────────
+  // LLM 채점 항목(이해도·사실)을 '관측 전용'으로 강등하고 자동 경보 권한을 회수한다.
+  //   근거: 2026-07-20 사람 정답지 재검증에서 사실 88%·이해도 77% — 자동 '경보/실격'을 낼
+  //   만큼 믿을 수준이 아니었다. 결정타 = 2026-07-21 오판 5호: 코스피 '이틀 10% 하락'(사실)을
+  //   하루치 지표(-4.46%)와 대조해 0점 처리 → 멀쩡한 브리핑을 나쁜 날로 찍었다(후보 풀에
+  //   '이틀 새 10% 빠진 코스피' 제목이 있었는데도 못 씀). 오탐 경보는 도구가 없느니만 못하다.
+  //   → 진짜 품질 판정은 매주 사람 리뷰가 맡는다. 자동 경보는 '코드로 확실히 잡히는 것'만.
+  //   이해도·사실 점수는 계속 계산·기록한다(관측 신호 + 주간 리뷰용). 경보 조건에서만 뺀다.
+  //   ⚠️ 금요일 브리핑 세션에서 이 방향 유지 vs 본문 수집(B)으로 전환할지 재검토 예정.
   const alertReasons: string[] = []
-  if (disqualified) alertReasons.push('실격')
-  if (ai.factual.score === 0) alertReasons.push('사실 0점')
+  if (disqualified) alertReasons.push('실격(투자권유·날조)') // 안전선: 놓치는 쪽(false negative)이 더 위험해 유지
   if (!formatPass) {
     const failedHard = formatChecks.filter(c => c.severity === 'hard' && !c.pass).map(c => c.name)
     alertReasons.push(`하드 형식 탈락(${failedHard.join('·')})`)
   }
-  // 경보선은 비율로 판정 — 분모가 줄어든 날(판정 불가 발생)에도 같은 기준이 적용되게.
-  // 분모 10일 때 total<=5 = 옛 기준과 동일.
-  if (total !== null && total <= scoreDenominator * 0.5) {
-    alertReasons.push(`총점 ${total}/${scoreDenominator}점(경보선 절반 이하)`)
-  }
-  // 판정 불가가 절반 이상이면 "이상 없음"이 아니라 "재지 못했음" — 이것도 이상 신호다.
-  // (v2.4: AI 채점 항목이 4개로 줄어 기준도 2개로. 이 경보가 너무 자주 울리면 그건
-  //  브리핑이 아니라 채점기가 고장났다는 뜻이므로, 기준을 올리지 말고 채점기를 고칠 것.)
-  if (ungradedCount >= 2) alertReasons.push(`판정 불가 ${ungradedCount}항목(채점기가 절반 이상을 재지 못함)`)
+  // ⛔ v3.1에서 경보에서 제외: '사실 0점' · '총점 절반 이하' · '판정 불가 2항목' — 전부 LLM 점수 기반.
+  //    이 값들(이해도·사실·총점·분모·판정불가)은 issue_note/시트에 계속 기록돼 사람이 주간 리뷰에서 본다.
+  //    존댓말은 여전히 soft 경고(경보 아님) — 코드 검사지만 오탐이 있어(예: '1,477' 숫자) 승격 보류.
   const alert = alertReasons.length > 0
   // 경보·소프트 경고는 사용자가 실제로 보는 곳(점수 행 → 시트)에 박제. 메일은 보조 채널.
   const warnNote = formatWarnings.length > 0 ? ` | ⚠️ 형식 경고: ${formatWarnings.join(', ')}` : ''
@@ -593,7 +592,7 @@ export async function gradeDailyBriefing({
   if (alert) {
     await notifyFailure(
       '브리핑 품질 경보 (P2)',
-      `${targetDate} 채점 결과가 경보선에 걸렸습니다 — ${alertReasons.join(' · ')}\n총점 ${total ?? '판정 불가'}/10, 상세는 briefing_scores 테이블 또는 점수 시트 확인.`
+      `${targetDate} 자동 경보 — ${alertReasons.join(' · ')}\n(v3.1: 경보는 실격·하드 형식 등 코드 검증 항목만. 이해도·사실은 관측 전용이라 경보에서 제외.) 상세는 briefing_scores 또는 점수 시트 확인.`
     )
   }
 
