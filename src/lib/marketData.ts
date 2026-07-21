@@ -48,7 +48,7 @@ function buildIndicator(
 const FALLBACK_BASE_RATE: Omit<KeyIndicator, 'easyExplanation'> = {
   name: '기준금리',
   value: '2.50%',
-  change: '— 동결',
+  change: '— 유지',
   direction: 'flat',
 }
 
@@ -76,13 +76,13 @@ async function fetchBaseRate(): Promise<Omit<KeyIndicator, 'easyExplanation'>> {
         .filter((v: number) => !isNaN(v))
       if (values.length > 0) {
         const latest = values[values.length - 1]
-        // 최신값과 다른 직전값을 찾아 인상/인하/동결 판정
-        let prev: number | null = null
-        for (let i = values.length - 2; i >= 0; i--) {
-          if (values[i] !== latest) { prev = values[i]; break }
-        }
-        const direction = prev === null ? 'flat' : latest > prev ? 'up' : 'down'
-        const change = direction === 'flat' ? '— 동결' : direction === 'up' ? '▲ 인상' : '▼ 인하'
+        // 바로 전날(직전 거래일) 값과만 비교 — 실제로 오른/내린 날만 인상/인하로,
+        // 이후 같은 값이 이어지는 날은 '유지'로 표기한다.
+        // (옛 방식은 '최신값과 다른 값'을 뒤로 찾아 비교해, 인상 며칠 뒤에도 계속 '인상'으로
+        //  굳어 "오늘 인상"으로 오독됐다 → 2026-07-21 사용자 결정으로 전일 대비 방식으로 교정)
+        const prev = values.length >= 2 ? values[values.length - 2] : null
+        const direction = prev === null || latest === prev ? 'flat' : latest > prev ? 'up' : 'down'
+        const change = direction === 'flat' ? '— 유지' : direction === 'up' ? '▲ 인상' : '▼ 인하'
         return {
           name: '기준금리',
           value: `${latest.toFixed(2)}%`,
