@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { waitUntil } from '@vercel/functions'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { gradeDailyBriefing } from '@/lib/gradeBriefing'
 import { notifyFailure } from '@/lib/notifyAdmin'
 

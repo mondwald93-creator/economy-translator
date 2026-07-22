@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { supabaseAdmin as supabase } from './supabaseAdmin'
 import { openai } from './openai'
 import { notifyFailure } from './notifyAdmin'
 import { titleTokenSet, isNearDuplicate } from './titleSimilarity'
