@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { openai, SYSTEM_PROMPT } from '@/lib/openai'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 
 type Term = { term: string; category: string; explanation: string; example: string }
 

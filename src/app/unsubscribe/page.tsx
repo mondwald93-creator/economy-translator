@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import Link from 'next/link'
 
 interface Props {
@@ -10,10 +10,6 @@ export default async function UnsubscribePage({ searchParams }: Props) {
   let success = false
 
   if (email) {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
     const { error } = await supabase
       .from('subscribers')
       .update({ is_active: false })

@@ -1,15 +1,10 @@
 import { Resend } from 'resend'
-import { createClient } from '@supabase/supabase-js'
+import { supabaseAdmin as supabase } from './supabaseAdmin'
 import { buildNewsletterHtml } from './emailTemplate'
 
 export async function sendDailyNewsletter(): Promise<{ sent: number; skipped: string }> {
   const resendKey = process.env.RESEND_API_KEY
   if (!resendKey) return { sent: 0, skipped: 'RESEND_API_KEY 없음' }
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
 
   const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { openai, SYSTEM_PROMPT } from '@/lib/openai'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 
 export async function POST() {
   const { count } = await supabase.from('terms').select('*', { count: 'exact', head: true })
