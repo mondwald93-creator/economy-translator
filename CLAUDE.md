@@ -89,6 +89,8 @@
 | cron-briefing 응답 방식 | 즉시 `accepted` 응답 + `waitUntil` 백그라운드 실행 | 동기 대기로 복귀 시 cron-job.org 30초 timeout이 매일 실패로 기록 → 연속 25회면 크론잡 자동 비활성화(2026-06-12 발견) |
 | page.tsx Supabase 클라이언트 | 매 렌더마다 `createClient` + `cache: 'no-store'` | 싱글톤 or no-store 제거 시 뉴스 목록 캐시로 빈 채 굳음 |
 | page.tsx 지표 | `getMarketIndicators()` 실시간 호출 + 브리핑 AI 설명 병합 | `briefing.indicators` 단독 사용 복귀 시 9시 스냅샷만 표시 |
+| **RLS(행 수준 보안)** | 5개 테이블 모두 RLS on. 공개 콘텐츠(briefings·news_articles·terms)만 `public read` SELECT 정책. subscribers·briefing_scores는 정책 없음(외부 완전 차단). SQL=`supabase/enable_rls.sql`. **2026-07-22 적용** | RLS 끄면 공개 anon 키로 누구나 구독자 이메일 읽기·전체 삭제 가능(Supabase 보안 경고 원인) |
+| **DB 쓰기·구독자·채점 접근 키** | **서버는 `supabaseAdmin`(service_role 키, `src/lib/supabaseAdmin.ts`)로만.** 모든 write + subscribers + briefing_scores가 여기 의존. 공개 콘텐츠 '읽기'만 anon(`supabase.ts`). env=`SUPABASE_SERVICE_ROLE_KEY`(Vercel Production) | anon 키로 되돌리면 RLS에 막혀 발행·수집·채점·구독이 전부 실패. 새 서버 쓰기 코드도 반드시 `supabaseAdmin` import |
 
 ---
 
