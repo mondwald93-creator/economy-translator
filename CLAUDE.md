@@ -91,6 +91,8 @@
 | page.tsx 지표 | `getMarketIndicators()` 실시간 호출 + 브리핑 AI 설명 병합 | `briefing.indicators` 단독 사용 복귀 시 9시 스냅샷만 표시 |
 | **RLS(행 수준 보안)** | 5개 테이블 모두 RLS on. 공개 콘텐츠(briefings·news_articles·terms)만 `public read` SELECT 정책. subscribers·briefing_scores는 정책 없음(외부 완전 차단). SQL=`supabase/enable_rls.sql`. **2026-07-22 적용** | RLS 끄면 공개 anon 키로 누구나 구독자 이메일 읽기·전체 삭제 가능(Supabase 보안 경고 원인) |
 | **DB 쓰기·구독자·채점 접근 키** | **서버는 `supabaseAdmin`(service_role 키, `src/lib/supabaseAdmin.ts`)로만.** 모든 write + subscribers + briefing_scores가 여기 의존. 공개 콘텐츠 '읽기'만 anon(`supabase.ts`). env=`SUPABASE_SERVICE_ROLE_KEY`(Vercel Production) | anon 키로 되돌리면 RLS에 막혀 발행·수집·채점·구독이 전부 실패. 새 서버 쓰기 코드도 반드시 `supabaseAdmin` import |
+| **news_articles.published_at** | 기사 발행일 원본(RSS·검색 API pubDate). 파싱 실패 시 **null**(오늘로 추측 금지). 랭킹 스크래핑은 발행일이 없어 null. `date` 열(수집일)과 별개. 2026-07-24 신설 | 오늘 날짜로 채우면 오래된 기사가 '오늘 기사'로 둔갑(2026-07-23 7/16 발행 금리기사 재혼입 원인) |
+| **후보 풀 관문(`articleGate.ts`)** | `runBriefing`의 `articleInputs` **상류 1곳**에서 신선도·연성·의견글 기사 제거. 헤드라인·TOP3·분야별 선정 공통 입구. 통과분<30이면 원본 사용(빈 브리핑 방지). 2026-07-24 신설 | 제거·우회 시 연성기사(건조기시트)·과거기사 재혼입, 분야별 목록까지 오염 |
 
 ---
 
