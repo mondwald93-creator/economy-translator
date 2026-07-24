@@ -104,6 +104,16 @@ function toDateString(pubDate: string): string {
   return isNaN(d.getTime()) ? toKSTDateString(new Date()) : toKSTDateString(d)
 }
 
+// 기사 실제 발행 시각. **모르면 오늘로 추측하지 않고 null을 돌려준다.**
+// toDateString(=date 열)은 파싱 실패 시 오늘로 대체하는데, 그게 오래된 기사를
+// '오늘 기사'로 둔갑시킨 원인이었다(2026-07-23 금리 기사 = 7/16 발행분).
+// date 열의 기존 동작은 화면들이 의존하므로 건드리지 않고, 발행일만 따로 보관한다.
+function toPublishedAt(pubDate: string): string | null {
+  if (!pubDate) return null
+  const d = new Date(pubDate)
+  return isNaN(d.getTime()) ? null : d.toISOString()
+}
+
 // ① 주요 언론사 RSS 피드
 const RSS_SOURCES = [
   'https://www.yna.co.kr/rss/economy.xml',
@@ -169,7 +179,11 @@ async function fetchNaverRankingNews(): Promise<NaverNewsItem[]> {
       const title = match[2].trim()
       if (title && !seen.has(url)) {
         seen.add(url)
-        items.push({ title, originallink: url, link: url, description: '', pubDate: new Date().toUTCString() })
+        // 랭킹 페이지는 발행 시각을 주지 않는다. 예전엔 여기에 '지금'을 박아 넣었는데,
+        // 그러면 며칠 전 기사가 랭킹에 다시 뜰 때 오늘 발행된 것처럼 보인다.
+        // → 빈 값으로 두어 published_at이 null(=모름)이 되게 한다.
+        // (date 열은 toDateString이 파싱 실패 시 오늘로 대체하므로 기존과 동일하게 동작)
+        items.push({ title, originallink: url, link: url, description: '', pubDate: '' })
       }
     }
     return items
@@ -240,6 +254,7 @@ export async function collectAndSaveNews(): Promise<{ saved: number; errors: str
       if (!title || !original_url) return null
       return {
         date: toDateString(item.pubDate),
+        published_at: toPublishedAt(item.pubDate),
         title,
         summary: '',
         original_url,
