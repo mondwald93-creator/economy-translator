@@ -8,9 +8,13 @@ interface Props {
   dateLabel?: string | null
   /** 지난 브리핑에서는 "오늘 읽으면 하루치 완료" 응원 배너를 숨긴다. */
   showStreak?: boolean
+  /** 공유할 주소. 안 넘기면 홈 주소를 공유한다. */
+  shareUrl?: string
+  /** 공유할 제목. 안 넘기면 사이트 기본 문구를 쓴다. */
+  shareTitle?: string
 }
 
-export default function HeadlineBanner({ headline, summary, dateLabel, showStreak = true }: Props) {
+export default function HeadlineBanner({ headline, summary, dateLabel, showStreak = true, shareUrl, shareTitle }: Props) {
   if (!headline) return null
 
   const today = new Date()
@@ -78,7 +82,7 @@ export default function HeadlineBanner({ headline, summary, dateLabel, showStrea
       {showStreak && <DailyStreakBanner />}
 
       {/* 공유 버튼 */}
-      <ShareButtons />
+      <ShareButtons url={shareUrl} title={shareTitle} />
     </div>
   )
 }

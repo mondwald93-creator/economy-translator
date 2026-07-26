@@ -32,6 +32,12 @@ function formatDate(date: string): string {
   return `${ymd} (${weekday})`
 }
 
+/** '2026-07-24' → '2026.7.24'. 검색 결과에서 잘리지 않게 제목에 쓰는 짧은 형태. */
+function shortDate(date: string): string {
+  const [y, m, d] = date.split('-')
+  return `${y}.${Number(m)}.${Number(d)}`
+}
+
 async function getAllDates(): Promise<string[]> {
   const { data } = await getDb()
     .from('briefings')
@@ -63,7 +69,7 @@ export async function generateMetadata({ params }: { params: { date: string } })
   if (!briefing?.headline) return { title: '브리핑을 찾을 수 없어요' }
 
   const firstLine = (briefing.headline as string).split('\n')[0].trim()
-  const title = `${formatDate(params.date)} 경제 브리핑: ${firstLine}`
+  const title = `${firstLine} (${shortDate(params.date)} 경제 브리핑)`
   const description = (briefing.summary as string | null)?.slice(0, 150) ?? firstLine
   const url = `${BASE}/briefing/${params.date}`
 
@@ -111,7 +117,7 @@ export default async function BriefingArchivePage({ params }: { params: { date: 
       {
         '@type': 'NewsArticle',
         '@id': url,
-        headline: `${dateLabel} 경제 브리핑: ${firstLine}`,
+        headline: `${firstLine} (${shortDate(params.date)} 경제 브리핑)`,
         description: (briefing.summary as string | null)?.slice(0, 200) ?? firstLine,
         datePublished: briefing.created_at,
         inLanguage: 'ko',
@@ -153,6 +159,8 @@ export default async function BriefingArchivePage({ params }: { params: { date: 
         summary={briefing.summary ?? null}
         dateLabel={dateLabel}
         showStreak={false}
+        shareUrl={url}
+        shareTitle={`${firstLine} (${shortDate(params.date)} 경제 브리핑)`}
       />
       <KeyIndicators
         indicators={indicators}
@@ -160,7 +168,7 @@ export default async function BriefingArchivePage({ params }: { params: { date: 
         briefingAt={dateLabel}
         snapshot
       />
-      <EconomyHealthCheck healthCheck={(briefing.health_check as HealthCheckItem[]) ?? null} />
+      <EconomyHealthCheck healthCheck={(briefing.health_check as HealthCheckItem[]) ?? null} snapshot />
       <Top3NewsSection top3Analysis={(briefing.top3_analysis as Top3AnalysisItem[]) ?? null} snapshot />
       <ConnectionDiagram connections={(briefing.connections as ConnectionItem[]) ?? null} snapshot />
       <EconomyStudy dailyTerm={dailyTerm} snapshot />

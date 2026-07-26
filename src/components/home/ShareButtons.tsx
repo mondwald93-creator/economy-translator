@@ -7,14 +7,24 @@ const SHARE_URL = 'https://economy-translator.vercel.app'
 const SHARE_TITLE = '경제번역기 — 매일 5분 경제 입문 브리핑'
 const SHARE_TEXT = '경제를 전혀 몰라도 OK. 매일 한국 경제 뉴스를 초보자 언어로 쉽게 정리해줘요 📊'
 
-export default function ShareButtons() {
+interface Props {
+  /** 지난 브리핑처럼 홈이 아닌 페이지에서는 그 페이지 주소를 공유해야 한다. */
+  url?: string
+  title?: string
+  text?: string
+}
+
+export default function ShareButtons({ url, title, text }: Props = {}) {
   const [copied, setCopied] = useState(false)
+  const shareUrl = url ?? SHARE_URL
+  const shareTitle = title ?? SHARE_TITLE
+  const shareText = text ?? SHARE_TEXT
 
   async function handleShare() {
     trackEvent('share_click', { method: typeof navigator.share === 'function' ? 'web_share' : 'copy_fallback' })
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
-        await navigator.share({ title: SHARE_TITLE, text: SHARE_TEXT, url: SHARE_URL })
+        await navigator.share({ title: shareTitle, text: shareText, url: shareUrl })
       } catch {
         // 사용자가 취소한 경우
       }
@@ -30,7 +40,7 @@ export default function ShareButtons() {
 
   async function copyToClipboard() {
     try {
-      await navigator.clipboard.writeText(SHARE_URL)
+      await navigator.clipboard.writeText(shareUrl)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {

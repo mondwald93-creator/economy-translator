@@ -12,14 +12,16 @@ const categoryIcons: Record<string, string> = {
 
 interface Props {
   healthCheck: HealthCheckItem[] | null
+  /** 지난 브리핑에서는 '지금'이 아니라 '그날'로 표시한다. */
+  snapshot?: boolean
 }
 
-export default function EconomyHealthCheck({ healthCheck }: Props) {
+export default function EconomyHealthCheck({ healthCheck, snapshot = false }: Props) {
   if (!healthCheck || healthCheck.length === 0) return null
 
   return (
     <section className="space-y-3">
-      <h2 className="text-[11px] font-semibold text-ink-subtle uppercase tracking-widest">지금 한국 경제, 어떤 상태일까?</h2>
+      <h2 className="text-[11px] font-semibold text-ink-subtle uppercase tracking-widest">{snapshot ? '그날' : '지금'} 한국 경제, 어떤 상태일까?</h2>
       <div className="grid grid-cols-3 gap-2">
         {healthCheck.map((item) => {
           const config = statusConfig[item.status] ?? statusConfig.normal
