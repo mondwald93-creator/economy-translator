@@ -29,6 +29,10 @@ export const metadata: Metadata = {
   alternates: {
     canonical: 'https://economy-translator.vercel.app',
   },
+  // 구글 서치 콘솔 소유권 확인 (2026-07-26 등록). 지우면 소유권이 풀린다.
+  verification: {
+    google: 'GFtikU9HkXIaCbjc-P8Ib8PeaBqbiSscJ9sqTs6JKkY',
+  },
 }
 
 export const viewport: Viewport = {
