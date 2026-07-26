@@ -4,15 +4,19 @@ import DailyStreakBanner from './DailyStreakBanner'
 interface Props {
   headline: string | null
   summary: string | null
+  /** 지난 브리핑 페이지용. 넘기면 오늘 날짜 대신 이 날짜를 보여준다. */
+  dateLabel?: string | null
+  /** 지난 브리핑에서는 "오늘 읽으면 하루치 완료" 응원 배너를 숨긴다. */
+  showStreak?: boolean
 }
 
-export default function HeadlineBanner({ headline, summary }: Props) {
+export default function HeadlineBanner({ headline, summary, dateLabel, showStreak = true }: Props) {
   if (!headline) return null
 
   const today = new Date()
   const weekday = today.toLocaleDateString('ko-KR', { weekday: 'long', timeZone: 'Asia/Seoul' })
   const date = today.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' })
-  const dateStr = `${weekday} · ${date}`
+  const dateStr = dateLabel ?? `${weekday} · ${date}`
 
   const lines = headline.split('\n').filter(Boolean)
   const firstLine = lines[0] ?? headline
@@ -39,9 +43,11 @@ export default function HeadlineBanner({ headline, summary }: Props) {
         <span className="bg-[#F3F4F6] text-[#6B7280] text-xs font-medium px-3 py-1 rounded-md">
           {dateStr}
         </span>
-        <span className="flex text-[11px] text-[#9CA3AF] items-center gap-1">
-          <span className="text-[13px]">↻</span> 매일 아침 9시 새 브리핑
-        </span>
+        {showStreak && (
+          <span className="flex text-[11px] text-[#9CA3AF] items-center gap-1">
+            <span className="text-[13px]">↻</span> 매일 아침 9시 새 브리핑
+          </span>
+        )}
       </div>
 
       {/* 헤드라인 */}
@@ -68,8 +74,8 @@ export default function HeadlineBanner({ headline, summary }: Props) {
         </p>
       )}
 
-      {/* 응원 배너 + 연속 방문 카운터 */}
-      <DailyStreakBanner />
+      {/* 응원 배너 + 연속 방문 카운터 (오늘 브리핑에서만) */}
+      {showStreak && <DailyStreakBanner />}
 
       {/* 공유 버튼 */}
       <ShareButtons />

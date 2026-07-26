@@ -31,16 +31,18 @@ function buildChains(connections: ConnectionItem[]): string[][] {
 
 interface Props {
   connections: ConnectionItem[] | null
+  /** 지난 브리핑에서는 '오늘' 대신 '그날'로 표시한다. */
+  snapshot?: boolean
 }
 
-export default function ConnectionDiagram({ connections }: Props) {
+export default function ConnectionDiagram({ connections, snapshot = false }: Props) {
   if (!connections || connections.length === 0) return null
 
   const chains = buildChains(connections)
 
   return (
     <section className="space-y-3">
-      <h2 className="text-[11px] font-semibold text-ink-subtle uppercase tracking-widest">오늘 뉴스, 어떻게 연결되어 있을까?</h2>
+      <h2 className="text-[11px] font-semibold text-ink-subtle uppercase tracking-widest">{snapshot ? '그날' : '오늘'} 뉴스, 어떻게 연결되어 있을까?</h2>
       <div className="bg-white rounded-card border border-line p-4 space-y-3">
         {chains.map((chain, i) => (
           <div key={i} className="flex flex-wrap items-center gap-1.5">

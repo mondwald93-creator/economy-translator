@@ -26,9 +26,11 @@ interface Props {
   indicators: KeyIndicator[] | null
   healthCheck: HealthCheckItem[] | null
   briefingAt?: string | null
+  /** 지난 브리핑은 실시간 시세가 아니라 그날 저장된 값이다. */
+  snapshot?: boolean
 }
 
-export default function KeyIndicators({ indicators, healthCheck, briefingAt }: Props) {
+export default function KeyIndicators({ indicators, healthCheck, briefingAt, snapshot = false }: Props) {
   if (!indicators || indicators.length === 0) return null
 
   const grade = healthCheck && healthCheck.length > 0 ? getGrade(healthCheck) : null
@@ -40,7 +42,7 @@ export default function KeyIndicators({ indicators, healthCheck, briefingAt }: P
       {/* 왼쪽: 경제 컨디션 카드 */}
       {grade && (
         <div className="rounded-[16px] bg-gradient-to-br from-[#ECFDF5] to-[#D1FAE5] border border-[#A7F3D0] p-5 flex flex-col justify-center gap-2">
-          <p className="text-[11px] font-bold text-[#059669] uppercase tracking-wide">오늘 경제 컨디션</p>
+          <p className="text-[11px] font-bold text-[#059669] uppercase tracking-wide">{snapshot ? '그날 경제 컨디션' : '오늘 경제 컨디션'}</p>
           <p className="text-[48px] font-black leading-none text-[#065F46] tracking-tight">{grade}</p>
           {reason && <p className="text-xs text-[#059669] leading-relaxed">{reason}</p>}
         </div>
@@ -70,7 +72,9 @@ export default function KeyIndicators({ indicators, healthCheck, briefingAt }: P
           })}
         </div>
         <p className="text-[11px] text-[#9CA3AF] text-right mt-1">
-          숫자는 실시간 · 헤드라인·해설은 직전 거래일 마감 기준{briefingAt ? ` (${briefingAt} 작성)` : ''}
+          {snapshot
+            ? `${briefingAt ?? '작성 당시'} 기준으로 저장된 숫자예요`
+            : `숫자는 실시간 · 헤드라인·해설은 직전 거래일 마감 기준${briefingAt ? ` (${briefingAt} 작성)` : ''}`}
         </p>
       </div>
     </div>

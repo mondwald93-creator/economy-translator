@@ -13,14 +13,16 @@ const stepDefinitions: { key: StepKey; label: string }[] = [
 
 interface Props {
   top3Analysis: Top3AnalysisItem[] | null
+  /** 지난 브리핑에서는 '오늘의'가 아니라 '그날의'로 표시한다. */
+  snapshot?: boolean
 }
 
-export default function Top3NewsSection({ top3Analysis }: Props) {
+export default function Top3NewsSection({ top3Analysis, snapshot = false }: Props) {
   if (!top3Analysis || top3Analysis.length === 0) return null
 
   return (
     <section className="space-y-3">
-      <h2 className="text-[11px] font-semibold text-ink-subtle uppercase tracking-widest">오늘의 TOP 3 뉴스</h2>
+      <h2 className="text-[11px] font-semibold text-ink-subtle uppercase tracking-widest">{snapshot ? '그날의' : '오늘의'} TOP 3 뉴스</h2>
       <div className="space-y-4">
         {top3Analysis.map((item, idx) => (
           <div key={item.articleId} className="rounded-card bg-white border border-line overflow-hidden">

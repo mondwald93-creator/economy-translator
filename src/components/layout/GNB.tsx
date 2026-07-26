@@ -4,11 +4,17 @@ import { usePathname } from 'next/navigation'
 
 const navItems = [
   { label: '홈', href: '/' },
+  { label: '지난 브리핑', href: '/briefing' },
   { label: '링크분석기', href: '/analyze' },
   { label: '용어사전', href: '/dictionary' },
   { label: '달력', href: '/calendar' },
   { label: '북마크', href: '/bookmarks' },
 ]
+
+/** 하위 페이지(/dictionary/기준금리, /briefing/2026-07-26)에서도 해당 메뉴를 켜둔다. */
+function isActive(pathname: string, href: string): boolean {
+  return href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`)
+}
 
 function UpdateChip({ updatedAt }: { updatedAt?: string | null }) {
   const text = updatedAt ? '오늘 브리핑 완료 ✓' : '매일 아침 9시 브리핑'
@@ -40,7 +46,7 @@ export default function GNB({ updatedAt }: { updatedAt?: string | null }) {
                 key={item.href}
                 href={item.href}
                 className={`flex-shrink-0 px-[14px] py-1.5 rounded-lg text-[13px] font-medium transition-colors whitespace-nowrap ${
-                  pathname === item.href
+                  isActive(pathname, item.href)
                     ? 'bg-[#F0FDF4] text-[#16A34A] font-bold'
                     : 'text-ink-muted hover:text-ink hover:bg-surface'
                 }`}

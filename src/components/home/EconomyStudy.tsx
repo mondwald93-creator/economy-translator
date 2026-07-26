@@ -1,15 +1,17 @@
 interface Props {
   dailyTerm: { term: string; explanation: string } | null
+  /** 지난 브리핑에서는 '오늘' 대신 '그날'로 표시한다. */
+  snapshot?: boolean
 }
 
-export default function EconomyStudy({ dailyTerm }: Props) {
+export default function EconomyStudy({ dailyTerm, snapshot = false }: Props) {
   if (!dailyTerm) return null
 
   return (
     <section>
       <div className="bg-ink rounded-[16px] py-6 px-6 sm:px-7 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <div>
-          <p className="text-[11px] font-bold text-[#6B7280] uppercase tracking-widest mb-2">오늘 알면 좋은 경제 단어</p>
+          <p className="text-[11px] font-bold text-[#6B7280] uppercase tracking-widest mb-2">{snapshot ? '그날' : '오늘'} 알면 좋은 경제 단어</p>
           <p className="text-[20px] font-black text-[#F9FAFB] mb-2">{dailyTerm.term}</p>
           <p className="text-[13px] text-[#9CA3AF] leading-relaxed">{dailyTerm.explanation}</p>
         </div>
