@@ -1,56 +1,38 @@
-'use client'
+import type { Metadata } from 'next'
+import { createClient } from '@supabase/supabase-js'
+import DictionaryList from '@/components/dictionary/DictionaryList'
+import type { Term } from '@/lib/terms'
 
-import { useState, useEffect, useCallback } from 'react'
+// 하루 한 번 갱신. 새 용어가 추가되면 다음 갱신 때 목록에 들어온다.
+export const revalidate = 86400
 
-interface Term {
-  id: string
-  term: string
-  category: string
-  explanation: string
-  example: string | null
+const BASE = 'https://economy-translator.vercel.app'
+
+export const metadata: Metadata = {
+  title: '경제용어 사전',
+  description: '기준금리, 환율, 인플레이션처럼 어렵게 느껴지는 경제 용어를 쉬운 말로 풀어드려요. 경제 뉴스를 읽다 막히는 말이 있으면 여기서 찾아보세요.',
+  alternates: { canonical: `${BASE}/dictionary` },
+  openGraph: {
+    title: '경제용어 사전 | 경제번역기',
+    description: '어렵게 느껴지는 경제 용어를 쉬운 말로 설명해드려요.',
+    url: `${BASE}/dictionary`,
+  },
 }
 
-const CATEGORIES = ['전체', '금리', '환율', '주식', '부동산', '무역', '경기', '소비', '통화', '기타']
-
-const CATEGORY_COLORS: Record<string, string> = {
-  '금리':   'bg-blue-50 text-blue-700',
-  '환율':   'bg-green-50 text-green-700',
-  '주식':   'bg-purple-50 text-purple-700',
-  '부동산': 'bg-orange-50 text-orange-700',
-  '무역':   'bg-cyan-50 text-cyan-700',
-  '경기':   'bg-red-50 text-red-700',
-  '소비':   'bg-pink-50 text-pink-700',
-  '통화':   'bg-yellow-50 text-yellow-700',
-  '기타':   'bg-gray-50 text-gray-600',
+async function getTerms(): Promise<Term[]> {
+  const db = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+  const { data } = await db
+    .from('terms')
+    .select('id, term, category, explanation, example')
+    .order('term')
+  return (data as Term[]) ?? []
 }
 
-export default function DictionaryPage() {
-  const [terms, setTerms] = useState<Term[]>([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('전체')
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300)
-    return () => clearTimeout(timer)
-  }, [search])
-
-  const fetchTerms = useCallback(async () => {
-    setLoading(true)
-    const params = new URLSearchParams()
-    if (debouncedSearch) params.set('q', debouncedSearch)
-    if (selectedCategory !== '전체') params.set('category', selectedCategory)
-
-    const res = await fetch(`/api/terms?${params}`)
-    const data = await res.json()
-    setTerms(data.terms ?? [])
-    setLoading(false)
-  }, [debouncedSearch, selectedCategory])
-
-  useEffect(() => {
-    fetchTerms()
-  }, [fetchTerms])
+export default async function DictionaryPage() {
+  const terms = await getTerms()
 
   return (
     <div className="space-y-6">
@@ -63,91 +45,7 @@ export default function DictionaryPage() {
         </p>
       </div>
 
-      {/* 검색창 */}
-      <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle text-sm">🔎</span>
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="용어 검색 (예: 금리, 환율, 인플레이션...)"
-          className="w-full pl-9 pr-4 py-2.5 text-sm border border-line rounded-[14px] text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green bg-white"
-        />
-      </div>
-
-      {/* 카테고리 필터 */}
-      <div className="flex flex-wrap gap-1.5">
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${
-              selectedCategory === cat
-                ? 'bg-[#F0FDF4] text-[#16A34A] border-[#BBF7D0] font-bold'
-                : 'bg-white text-ink-muted border-line hover:bg-surface'
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
-
-      {/* 결과 카운트 */}
-      {!loading && (
-        <p className="text-xs text-ink-subtle">
-          {debouncedSearch || selectedCategory !== '전체'
-            ? `검색 결과 ${terms.length}개`
-            : `전체 ${terms.length}개`}
-        </p>
-      )}
-
-      {/* 로딩 */}
-      {loading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="border border-line rounded-[14px] p-4 animate-pulse bg-white">
-              <div className="h-4 bg-surface rounded w-1/3 mb-2" />
-              <div className="h-3 bg-surface rounded w-full mb-1.5" />
-              <div className="h-3 bg-surface rounded w-4/5" />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* 결과 없음 */}
-      {!loading && terms.length === 0 && (
-        <div className="border border-line rounded-[14px] p-8 text-center bg-white">
-          <p className="text-ink-subtle text-sm">검색 결과가 없어요</p>
-          <button
-            onClick={() => { setSearch(''); setSelectedCategory('전체') }}
-            className="mt-2 text-xs text-brand-green-dark underline underline-offset-2"
-          >
-            전체 보기
-          </button>
-        </div>
-      )}
-
-      {/* 용어 카드 그리드 */}
-      {!loading && terms.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {terms.map((term) => (
-            <div key={term.id} className="border border-line rounded-[14px] p-4 bg-white hover:bg-surface transition-colors">
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <p className="text-sm font-bold text-ink leading-snug">{term.term}</p>
-                <span className={`flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[term.category] ?? CATEGORY_COLORS['기타']}`}>
-                  {term.category}
-                </span>
-              </div>
-              <p className="text-xs text-ink-muted leading-relaxed mb-2">{term.explanation}</p>
-              {term.example && (
-                <p className="text-[11px] text-ink-subtle leading-relaxed border-l-2 border-line pl-2">
-                  {term.example}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      <DictionaryList terms={terms} />
     </div>
   )
 }
