@@ -125,7 +125,8 @@ npm run build
 
 ### 품질·구독
 - `POST /api/grade-briefing` - 발행분 자동 채점 (LLM-as-judge)
-- `POST /api/subscribe` / `POST /api/unsubscribe` - 뉴스레터 구독/해지
+- `POST /api/subscribe` - 뉴스레터 구독 신청
+- `GET /api/unsubscribe` - 구독 해지 (메일 속 링크 클릭 방식)
 
 ### 조회·분석
 - `POST /api/analyze-link` - 뉴스 링크 분석
@@ -159,7 +160,7 @@ npm run build
 - `subscribers` - 뉴스레터 구독자 (외부 접근 완전 차단)
 - `briefing_scores` - 자동 채점 결과 (외부 접근 완전 차단)
 
-스키마 SQL은 `supabase/` 폴더 참고
+SQL은 `supabase/` 폴더 참고 (초기 스키마 + RLS + 채점 테이블. terms·subscribers 생성문은 운영 중 SQL Editor로 직접 실행돼 파일로는 없음)
 
 ## 🛡️ 품질 관리
 
