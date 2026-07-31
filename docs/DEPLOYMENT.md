@@ -1,3 +1,8 @@
+> ⚠️ **부분유효 (2026-07-31 판정).** Vercel·Supabase 연동 절차의 큰 흐름은 참고할 수 있으나,
+> 여기 적힌 테이블 SQL(economic_terms 등 옛 설계)은 실제 DB와 다르다.
+> 실제 테이블은 5개(briefings, news_articles, terms, subscribers, briefing_scores)이고
+> RLS 구성 포함 정본 = `supabase/` 폴더의 SQL과 `CLAUDE.md`.
+
 # 경제번역기 배포 가이드
 
 ## Vercel 배포

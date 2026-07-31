@@ -1,3 +1,9 @@
+> ⛔ **무효 (2026-07-31 판정): 스캐폴드 시점(2026년 6월 초)의 설계용 API 문서다.**
+> 여기 적힌 엔드포인트(`GET /briefing`, `POST /analyze` 등)는 실제 코드에 존재하지 않는다.
+> 실제 라우트 정본 = `src/app/api/` 폴더 15개(collect-news, generate-briefing, cron 3종,
+> subscribe/unsubscribe, terms, analyze-link, grade-briefing, health 등). 개요는 `CLAUDE.md` 참조.
+> 본문은 초기 설계 기록으로 보존한다.
+
 # API 문서
 
 ## 기본 정보

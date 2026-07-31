@@ -38,6 +38,9 @@
 
 **📊 2026-07-08 — 채점 점수 → 구글 시트 자동 기록판 구축 (A 완료)**
 
+> 🔴 **(2026-07-31 추가) 이 시트 동기화는 실행 금지다.** 운영 리뷰 W30(2026-07-27) 결정:
+> 0행 가드가 없어 원본이 빈 값일 때 시트를 통째로 덮어쓸 수 있다. 아래 실행법·스케줄 계획은 기록으로만 남긴다.
+
 자동 채점기(briefing_scores) 점수를 **구글 시트에 매일 쌓아 추세를 눈으로 보는 판**을 만듦. 코드는 이 repo가 아니라 바깥(`클로드 자료/`)에 있음 — 서비스 계정 방식 학습 겸.
 
 - **데이터 출처**: Supabase `briefing_scores` 표 (date/total/scores(항목별 이해도·사실·선정·다양성·톤 각 0~2)/format_pass/disqualified/issue_note). anon key로 읽음(economy-translator/.env.local의 `NEXT_PUBLIC_SUPABASE_URL`+`NEXT_PUBLIC_SUPABASE_ANON_KEY`).

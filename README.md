@@ -41,12 +41,15 @@ economy-translator/
 ├── src/
 │   ├── app/
 │   │   ├── page.tsx              # 홈 (오늘의 브리핑)
+│   │   ├── briefing/             # 지난 브리핑 목록 + 날짜별 개별 페이지
+│   │   ├── news/[id]/            # 뉴스 상세
 │   │   ├── analyze/page.tsx      # 뉴스 분석 페이지
-│   │   ├── dictionary/page.tsx   # 용어사전 페이지
-│   │   └── api/                  # API 라우트
+│   │   ├── dictionary/           # 용어사전 + 용어별 개별 페이지
+│   │   ├── calendar/page.tsx     # 경제 달력
+│   │   ├── bookmarks/page.tsx    # 북마크
+│   │   └── api/                  # API 라우트 15개
 │   ├── components/               # 리액트 컴포넌트
-│   ├── lib/                      # 유틸리티 함수
-│   ├── hooks/                    # Custom hooks
+│   ├── lib/                      # 수집·생성·채점 로직 (naverNews, runBriefing, gradeBriefing 등)
 │   ├── types/                    # TypeScript 타입
 │   └── styles/                   # 글로벌 스타일
 ├── public/                       # 정적 파일
@@ -63,7 +66,7 @@ economy-translator/
 
 ```bash
 # 저장소 클론
-git clone https://github.com/your-repo/economy-translator.git
+git clone https://github.com/mondwald93-creator/economy-translator.git
 cd economy-translator
 
 # 의존성 설치
@@ -112,20 +115,23 @@ npm run lint
 npm run build
 ```
 
-## 📡 API 엔드포인트
+## 📡 API 엔드포인트 (주요)
 
-### 브리핑
-- `GET /api/briefing` - 오늘의 브리핑 조회
+### 자동 발행 파이프라인
+- `GET /api/cron` - 보험용 통합 크론 (수집 + 브리핑, 멱등)
+- `GET /api/cron-news` / `GET /api/cron-briefing` - 뉴스 수집 / 브리핑 생성 크론
+- `POST /api/collect-news` - 뉴스 수집
+- `POST /api/generate-briefing` - 브리핑 생성 (`regenerate:true`로만 강제 재생성)
 
-### 분석
-- `POST /api/analyze` - 뉴스 URL 또는 텍스트 분석 (SSE 스트리밍)
-- `POST /api/analyze/save` - 분석 결과 저장
+### 품질·구독
+- `POST /api/grade-briefing` - 발행분 자동 채점 (LLM-as-judge)
+- `POST /api/subscribe` / `POST /api/unsubscribe` - 뉴스레터 구독/해지
 
-### 경제용어
-- `GET /api/dictionary/search?q=환율` - 용어 검색
+### 조회·분석
+- `POST /api/analyze-link` - 뉴스 링크 분석
+- `GET /api/terms` - 경제용어 검색
 
-### 경제 건강진단
-- `GET /api/health/current` - 현재 경제 건강진단
+전체 라우트는 `src/app/api/` 15개 참조.
 
 ## 🤖 OpenAI 프롬프트
 
@@ -146,15 +152,14 @@ npm run build
 
 ## 📊 데이터베이스 스키마
 
-주요 테이블:
-- `users` - 사용자 정보
-- `news_articles` - 뉴스 기사
-- `article_analyses` - 기사 분석 결과
-- `briefings` - 경제 브리핑
-- `economic_terms` - 경제용어 사전
-- `economy_health` - 경제 건강진단
+실제 테이블 5개 (전부 RLS 적용):
+- `briefings` - 매일 발행되는 경제 브리핑 (date unique, 하루 1건)
+- `news_articles` - 수집된 뉴스 기사
+- `terms` - 경제용어 사전
+- `subscribers` - 뉴스레터 구독자 (외부 접근 완전 차단)
+- `briefing_scores` - 자동 채점 결과 (외부 접근 완전 차단)
 
-자세한 스키마는 [DATABASE.md](./DATABASE.md) 참고
+스키마 SQL은 `supabase/` 폴더 참고
 
 ## 🛡️ 품질 관리
 
@@ -182,7 +187,7 @@ AI 출력을 그대로 내보내지 않는다. 3층으로 검증한다.
 - ✅ 뉴스 URL 분석
 - ✅ 오늘의 브리핑 (고정 데이터)
 - ✅ 경제 건강진단
-- 🔄 사용자 인증
+- ⏸️ 사용자 인증 (계정 없이 운영하는 구조로 확정, 보류)
 
 ### Phase 2: 확장 ✅ 완료
 - ✅ 실시간 뉴스 수집 (RSS 4개 + 네이버 경제탭 스크래핑 + 검색 API, 하루 500건 이상)

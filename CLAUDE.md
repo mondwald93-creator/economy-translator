@@ -35,13 +35,15 @@
 - 오늘의 경제용어 중복 방지 (2026-06-08): 최근 7일 사용 용어 AI 프롬프트에 전달
 - 지표 실시간화 (2026-06-08): page.tsx에서 Yahoo Finance 실시간 호출, AI 설명만 브리핑 병합
 
-**6개 페이지**
+**페이지**
 - `/` 홈: 헤드라인 + 지표 + 건강진단 + TOP3 + 연결관계 + 뉴스목록 + 경제공부
 - `/news/[id]` 뉴스 상세
+- `/briefing` 지난 브리핑 목록 · `/briefing/[date]` 날짜별 개별 페이지 (검색 유입용 개별 주소)
+- `/dictionary` 경제용어 사전 · `/dictionary/[slug]` 용어별 개별 페이지 (검색 유입용 개별 주소)
 - `/analyze` 링크 분석기
-- `/dictionary` 경제용어 사전
 - `/calendar` 경제 달력
 - `/bookmarks` 북마크
+- `/unsubscribe` 구독 취소
 
 ---
 
