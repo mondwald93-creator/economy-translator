@@ -21,7 +21,8 @@ export default function Top3NewsSection({ top3Analysis, snapshot = false }: Prop
   if (!top3Analysis || top3Analysis.length === 0) return null
 
   return (
-    <section className="space-y-3">
+    // id: 헤드라인 "TOP3 바로 보기" 버튼의 도착 지점. scroll-mt는 고정 메뉴바(60px)에 안 가리게.
+    <section id="top3" className="space-y-3 scroll-mt-[76px]">
       <h2 className="text-[11px] font-semibold text-ink-subtle uppercase tracking-widest">{snapshot ? '그날의' : '오늘의'} TOP 3 뉴스</h2>
       <div className="space-y-4">
         {top3Analysis.map((item, idx) => (
@@ -31,7 +32,7 @@ export default function Top3NewsSection({ top3Analysis, snapshot = false }: Prop
               <span className="flex-shrink-0 w-5 h-5 rounded-full bg-brand-green text-white text-[11px] font-bold flex items-center justify-center mt-0.5">
                 {idx + 1}
               </span>
-              <p className="text-sm font-bold text-ink leading-snug">{item.title}</p>
+              <p className="text-[15px] sm:text-base font-bold text-ink leading-snug">{item.title}</p>
             </div>
             {/* 6단계 분석 */}
             <div className="divide-y divide-line">
@@ -40,7 +41,7 @@ export default function Top3NewsSection({ top3Analysis, snapshot = false }: Prop
                   <span className="flex-shrink-0 text-[11px] font-semibold text-ink-subtle w-20 pt-0.5 whitespace-nowrap">
                     {label}
                   </span>
-                  <p className="text-xs text-ink-muted leading-relaxed flex-1">
+                  <p className="text-[15px] text-ink-muted leading-relaxed flex-1">
                     {item.steps[key]}
                   </p>
                 </div>

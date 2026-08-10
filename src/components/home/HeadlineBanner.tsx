@@ -71,11 +71,21 @@ export default function HeadlineBanner({ headline, summary, dateLabel, showStrea
       {/* 리드 문단 — 첫 번째 문단만 */}
       {leadText && (
         <p
-          className="text-[#4B5563] text-sm sm:text-[15px] mb-8"
+          className="text-[#4B5563] text-base sm:text-[17px] mb-6"
           style={{ lineHeight: 1.8, borderLeft: '3px solid #22C55E', paddingLeft: 16 }}
         >
           {leadText}
         </p>
+      )}
+
+      {/* 첫 화면에서 오늘 핵심(TOP3)으로 내려가는 길 (홈에서만) */}
+      {showStreak && (
+        <a
+          href="#top3"
+          className="inline-flex items-center gap-1.5 bg-brand-green text-white text-sm font-bold px-5 py-2.5 rounded-[12px] mb-6 hover:bg-[#15803d] transition-colors"
+        >
+          📌 오늘의 TOP3 뉴스 바로 보기 ↓
+        </a>
       )}
 
       {/* 응원 배너 + 연속 방문 카운터 (오늘 브리핑에서만) */}

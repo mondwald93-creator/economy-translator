@@ -1,6 +1,14 @@
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
+import { Noto_Sans_KR } from 'next/font/google'
 import '../styles/globals.css'
+
+// 웹폰트 자체 호스팅 (구글 서버 왕복 제거). 가변 폰트 하나가 400~900 굵기를 전부 커버한다.
+const notoSansKR = Noto_Sans_KR({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-noto-sans-kr',
+})
 import TopBar from '@/components/layout/TopBar'
 import GNB from '@/components/layout/GNB'
 import { supabase } from '@/lib/supabase'
@@ -60,20 +68,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     : null
 
   return (
-    <html lang="ko">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="ko" className={notoSansKR.variable}>
+      {/* GA는 화면이 뜬 뒤 한가할 때 로드 (첫 화면 속도 우선, 측정 자체는 동일) */}
       <Script
         src="https://www.googletagmanager.com/gtag/js?id=G-4EX6PHFTLB"
-        strategy="afterInteractive"
+        strategy="lazyOnload"
       />
-      <Script id="google-analytics" strategy="afterInteractive">
+      <Script id="google-analytics" strategy="lazyOnload">
         {`
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}

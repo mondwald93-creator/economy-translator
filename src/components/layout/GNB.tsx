@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
 
 const navItems = [
   { label: '홈', href: '/' },
@@ -29,6 +30,23 @@ function UpdateChip({ updatedAt }: { updatedAt?: string | null }) {
 export default function GNB({ updatedAt }: { updatedAt?: string | null }) {
   const pathname = usePathname()
 
+  // 메뉴가 옆으로 더 있음을 알리는 힌트(페이드+화살표). 끝까지 밀면 숨긴다.
+  const navRef = useRef<HTMLElement>(null)
+  const [moreRight, setMoreRight] = useState(false)
+
+  useEffect(() => {
+    const el = navRef.current
+    if (!el) return
+    const update = () => setMoreRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 8)
+    update()
+    el.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+    return () => {
+      el.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [])
+
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-line">
       {/* 모바일: 로고(auto) + 네비(1fr) / 데스크탑: 1fr + 네비(auto) + 1fr */}
@@ -40,7 +58,7 @@ export default function GNB({ updatedAt }: { updatedAt?: string | null }) {
         </Link>
 
         <div className="relative min-w-0 sm:justify-self-center">
-          <nav className="flex items-center gap-[6px] overflow-x-auto scrollbar-hide">
+          <nav ref={navRef} className="flex items-center gap-[6px] overflow-x-auto scrollbar-hide">
             {navItems.map((item) => (
               <Link
                 key={item.href}
@@ -55,7 +73,14 @@ export default function GNB({ updatedAt }: { updatedAt?: string | null }) {
               </Link>
             ))}
           </nav>
-          <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-white to-transparent lg:hidden" />
+          {moreRight && (
+            <div className="pointer-events-none absolute right-0 top-0 h-full flex items-center lg:hidden">
+              <div className="absolute right-0 top-0 h-full w-12 bg-gradient-to-l from-white via-white/80 to-transparent" />
+              <span className="relative text-ink-muted text-[15px] font-bold pr-0.5" aria-hidden>
+                ›
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="justify-self-end hidden sm:block">

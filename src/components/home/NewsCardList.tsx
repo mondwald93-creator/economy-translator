@@ -93,7 +93,7 @@ export default function NewsCardList({ articles, updatedAt }: Props) {
                   )}
                   <span className="text-[10px] font-bold text-[#16A34A] bg-[#F0FDF4] inline-block px-2 py-0.5 rounded">{article.source}</span>
                 </div>
-                <p className={`text-[15px] font-bold leading-snug transition-colors ${
+                <p className={`text-base font-bold leading-snug transition-colors ${
                   isRead ? 'text-ink-subtle' : 'text-ink'
                 }`}>
                   {article.title}

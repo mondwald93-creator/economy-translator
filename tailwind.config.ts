@@ -41,7 +41,7 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['Noto Sans KR', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        sans: ['var(--font-noto-sans-kr)', 'Noto Sans KR', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
       borderRadius: {
         card: '14px',

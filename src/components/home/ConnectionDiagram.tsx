@@ -48,7 +48,7 @@ export default function ConnectionDiagram({ connections, snapshot = false }: Pro
           <div key={i} className="flex flex-wrap items-center gap-1.5">
             {chain.map((node, j) => (
               <div key={j} className="flex items-center gap-1.5">
-                <span className="bg-white border border-line text-xs font-medium text-ink px-2.5 py-1 rounded-full whitespace-nowrap">
+                <span className="bg-white border border-line text-[13px] font-medium text-ink px-2.5 py-1 rounded-full whitespace-nowrap">
                   {node}
                 </span>
                 {j < chain.length - 1 && (

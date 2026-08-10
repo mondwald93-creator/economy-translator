@@ -13,7 +13,7 @@ export default function EconomyStudy({ dailyTerm, snapshot = false }: Props) {
         <div>
           <p className="text-[11px] font-bold text-[#6B7280] uppercase tracking-widest mb-2">{snapshot ? '그날' : '오늘'} 알면 좋은 경제 단어</p>
           <p className="text-[20px] font-black text-[#F9FAFB] mb-2">{dailyTerm.term}</p>
-          <p className="text-[13px] text-[#9CA3AF] leading-relaxed">{dailyTerm.explanation}</p>
+          <p className="text-[15px] text-[#9CA3AF] leading-relaxed">{dailyTerm.explanation}</p>
         </div>
         <a
           href="/dictionary"
