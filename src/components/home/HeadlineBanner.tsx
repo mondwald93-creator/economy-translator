@@ -37,12 +37,12 @@ export default function HeadlineBanner({ headline, summary, dateLabel, showStrea
   return (
     <div>
       {/* 포지셔닝 문구 — 처음 온 사람이 "나 위한 거네" 느끼게 */}
-      <p className="text-[12px] font-semibold text-[#16A34A] mb-3 tracking-wide">
+      <p className="text-[12px] font-semibold text-[#16A34A] mb-2 sm:mb-3 tracking-wide">
         📰 매일 아침 5분 · 경제 초보를 위한 브리핑
       </p>
 
       {/* 날짜 + 새로고침 안내 */}
-      <div className="flex flex-wrap items-center gap-2 mb-5">
+      <div className="flex flex-wrap items-center gap-2 mb-3 sm:mb-5">
         <span className="bg-[#F3F4F6] text-[#6B7280] text-xs font-medium px-3 py-1 rounded-md">
           {dateStr}
         </span>
@@ -55,7 +55,7 @@ export default function HeadlineBanner({ headline, summary, dateLabel, showStrea
 
       {/* 헤드라인 */}
       <h1
-        className="font-black text-[#111827] text-[22px] sm:text-[30px] lg:text-[36px] leading-tight mb-4"
+        className="font-black text-[#111827] text-[22px] sm:text-[30px] lg:text-[36px] leading-tight mb-3 sm:mb-4"
         style={{ letterSpacing: '-0.8px' }}
       >
         {firstLine}
@@ -70,7 +70,7 @@ export default function HeadlineBanner({ headline, summary, dateLabel, showStrea
       {/* 리드 문단 — 첫 번째 문단만 */}
       {leadText && (
         <p
-          className="text-[#4B5563] text-base sm:text-[17px] mb-6"
+          className="text-[#4B5563] text-base sm:text-[17px] mb-4 sm:mb-6"
           style={{ lineHeight: 1.8, borderLeft: '3px solid #22C55E', paddingLeft: 16 }}
         >
           {leadText}
@@ -81,7 +81,7 @@ export default function HeadlineBanner({ headline, summary, dateLabel, showStrea
       {showStreak && (
         <a
           href="#top3"
-          className="inline-flex items-center gap-1.5 bg-brand-green text-white text-sm font-bold px-5 py-2.5 rounded-[12px] mb-6 hover:bg-[#15803d] transition-colors"
+          className="inline-flex items-center gap-1.5 bg-brand-green text-white text-sm font-bold px-5 py-2.5 rounded-[12px] mb-4 sm:mb-6 hover:bg-[#15803d] transition-colors"
         >
           📌 오늘의 TOP3 뉴스 바로 보기 ↓
         </a>

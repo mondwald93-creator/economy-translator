@@ -136,7 +136,7 @@ export default async function BriefingArchivePage({ params }: { params: { date: 
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6 sm:space-y-10">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       {/* 위치 표시 */}
@@ -148,8 +148,9 @@ export default async function BriefingArchivePage({ params }: { params: { date: 
         <span className="text-ink-muted">{dateLabel}</span>
       </nav>
 
-      {/* 제목(h1)은 HeadlineBanner 안의 헤드라인이 맡는다. 여기는 날짜 표시만. */}
-      <div className="border-l-4 border-brand-green pl-4 py-1">
+      {/* 제목(h1)은 HeadlineBanner 안의 헤드라인이 맡는다. 여기는 날짜 표시만.
+          폰에서는 위 빵부스러기와 아래 날짜칩에 같은 날짜가 이미 두 번 나와 숨긴다(2026-08-11). */}
+      <div className="hidden sm:block border-l-4 border-brand-green pl-4 py-1">
         <p className="section-label">지난 브리핑</p>
         <p className="text-lg font-bold text-ink leading-snug">{dateLabel}</p>
       </div>

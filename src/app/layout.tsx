@@ -86,7 +86,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-screen bg-surface text-ink">
         <TopBar updatedAt={updatedAt} />
         <GNB updatedAt={updatedAt} />
-        <main className="max-w-[900px] mx-auto px-4 sm:px-6 py-8 sm:py-10">
+        <main className="max-w-[900px] mx-auto px-4 sm:px-6 py-5 sm:py-10">
           {children}
         </main>
         <footer className="max-w-[900px] mx-auto px-4 sm:px-6 py-8 pb-24 sm:pb-8 text-xs text-ink-subtle border-t border-line mt-4">

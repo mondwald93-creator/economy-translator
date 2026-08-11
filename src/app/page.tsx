@@ -119,7 +119,7 @@ export default async function Home() {
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6 sm:space-y-10">
       <HeadlineBanner headline={briefing.headline ?? null} summary={briefing.summary ?? null} />
       {todaySentence && (
         <TodaySentenceCard sentence={todaySentence} dateLabel={todayDateLabel} />
