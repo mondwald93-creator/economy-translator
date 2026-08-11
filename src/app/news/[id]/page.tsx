@@ -98,7 +98,7 @@ export default async function NewsDetailPage({ params }: { params: { id: string 
               return (
                 <div key={key} className="bg-[#F9FAFB] rounded-[14px] p-4 border border-[#E5E7EB]">
                   <p className="text-xs font-bold text-ink-subtle mb-1">{meta.icon} {meta.label}</p>
-                  <p className="text-sm text-ink leading-relaxed">{val}</p>
+                  <p className="text-[15px] sm:text-sm text-ink leading-relaxed">{val}</p>
                 </div>
               )
             })}
@@ -110,7 +110,7 @@ export default async function NewsDetailPage({ params }: { params: { id: string 
             <p className="text-xs font-semibold text-brand-green uppercase tracking-widest mb-2">
               쉬운 설명
             </p>
-            <p className="text-sm text-ink-muted leading-relaxed">{article.summary}</p>
+            <p className="text-[15px] sm:text-sm text-ink-muted leading-relaxed">{article.summary}</p>
           </div>
         )}
 

@@ -174,8 +174,8 @@ export default async function BriefingArchivePage({ params }: { params: { date: 
       <ConnectionDiagram connections={(briefing.connections as ConnectionItem[]) ?? null} snapshot />
       <EndCard dailyTerm={dailyTerm} prevDate={older ?? null} snapshot />
 
-      {/* 앞뒤 브리핑 이동 */}
-      <div className="flex items-center justify-between gap-3 pt-2 border-t border-line">
+      {/* 앞뒤 브리핑 이동 — 폰에서는 끝 카드의 "○월 ○일 브리핑 보기" 버튼과 같은 날짜를 두 번 가리켜 숨긴다(2026-08-11) */}
+      <div className="hidden sm:flex items-center justify-between gap-3 pt-2 border-t border-line">
         {older ? (
           <Link href={`/briefing/${older}`} className="text-xs text-ink-muted hover:text-ink">
             ‹ {formatDate(older)}

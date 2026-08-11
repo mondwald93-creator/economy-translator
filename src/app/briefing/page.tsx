@@ -86,11 +86,11 @@ export default async function BriefingListPage() {
                 className="block border border-line rounded-[14px] p-4 bg-white hover:bg-surface transition-colors"
               >
                 <p className="text-[11px] text-ink-subtle mb-1">{formatDate(row.date)}</p>
-                <p className="text-sm font-bold text-ink leading-snug mb-1">
+                <p className="text-[15px] sm:text-sm font-bold text-ink leading-snug mb-1">
                   {(row.headline ?? '').split('\n')[0]}
                 </p>
                 {row.summary && (
-                  <p className="text-xs text-ink-muted leading-relaxed line-clamp-2">{row.summary}</p>
+                  <p className="text-[13px] sm:text-xs text-ink-muted leading-relaxed line-clamp-2">{row.summary}</p>
                 )}
               </Link>
             ))}

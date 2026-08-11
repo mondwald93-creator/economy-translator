@@ -34,7 +34,8 @@ export default function DictionaryList({ terms }: { terms: Term[] }) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="용어 검색 (예: 금리, 환율, 인플레이션...)"
-          className="w-full pl-9 pr-4 py-2.5 text-sm border border-line rounded-[14px] text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green bg-white"
+          /* text-base(16px): 16px보다 작으면 아이폰이 입력할 때 화면을 멋대로 확대한다 */
+          className="w-full pl-9 pr-4 py-2.5 text-base sm:text-sm border border-line rounded-[14px] text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green bg-white"
         />
       </div>
 
@@ -85,17 +86,20 @@ export default function DictionaryList({ terms }: { terms: Term[] }) {
               className="block border border-line rounded-[14px] p-4 bg-white hover:bg-surface transition-colors"
             >
               <div className="flex items-start justify-between gap-2 mb-2">
-                <p className="text-sm font-bold text-ink leading-snug">{term.term}</p>
+                <p className="text-[15px] sm:text-sm font-bold text-ink leading-snug">{term.term}</p>
                 <span className={`flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[term.category] ?? CATEGORY_COLORS['기타']}`}>
                   {term.category}
                 </span>
               </div>
-              <p className="text-xs text-ink-muted leading-relaxed mb-2 line-clamp-3">{term.explanation}</p>
+              {/* 폰에서는 2줄까지만. 설명을 다 펼쳐 보여주면 목록에서 끝나 상세로 들어갈 이유가 없다(2026-08-11) */}
+              <p className="text-[13px] sm:text-xs text-ink-muted leading-relaxed mb-2 line-clamp-2 sm:line-clamp-3">{term.explanation}</p>
+              {/* 예문은 폰에서 감춘다 — 상세 페이지에서 본다 */}
               {term.example && (
-                <p className="text-[11px] text-ink-subtle leading-relaxed border-l-2 border-line pl-2 line-clamp-2">
+                <p className="hidden sm:block text-[11px] text-ink-subtle leading-relaxed border-l-2 border-line pl-2 line-clamp-2">
                   {term.example}
                 </p>
               )}
+              <span className="sm:hidden text-[13px] font-bold text-[#16A34A]">자세히 보기 →</span>
             </Link>
           ))}
         </div>

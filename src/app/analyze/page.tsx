@@ -67,19 +67,21 @@ export default function AnalyzePage() {
 
       {/* 입력창 */}
       <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="flex gap-2">
+        {/* 폰에서는 입력창과 버튼을 위아래로. 한 줄에 두면 버튼이 화면 밖으로 밀린다(2026-08-11) */}
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://news.naver.com/..."
-            className="flex-1 text-sm border border-line rounded-[14px] px-4 py-2.5 text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green bg-white"
+            /* text-base(16px) 고정: 16px보다 작으면 아이폰이 입력할 때 화면을 멋대로 확대한다 */
+            className="flex-1 min-w-0 text-base sm:text-sm border border-line rounded-[14px] px-4 py-2.5 text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green bg-white"
             disabled={loading}
           />
           <button
             type="submit"
             disabled={loading || !url.trim()}
-            className="px-5 py-2.5 bg-[#16A34A] text-white text-sm font-semibold rounded-[14px] hover:bg-[#15803d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+            className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-[#16A34A] text-white text-sm font-semibold rounded-[14px] hover:bg-[#15803d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
           >
             {loading ? '분석 중...' : '분석하기'}
           </button>
