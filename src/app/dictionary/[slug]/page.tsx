@@ -49,7 +49,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     description,
     alternates: { canonical: url },
     openGraph: { title: `${title} | 경제번역기`, description, url, type: 'article' },
-    twitter: { title: `${title} | 경제번역기`, description },
+    twitter: { card: 'summary_large_image', title: `${title} | 경제번역기`, description },
   }
 }
 

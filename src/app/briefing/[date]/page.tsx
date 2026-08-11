@@ -78,7 +78,7 @@ export async function generateMetadata({ params }: { params: { date: string } })
     description,
     alternates: { canonical: url },
     openGraph: { title: `${title} | 경제번역기`, description, url, type: 'article', publishedTime: briefing.created_at },
-    twitter: { title: `${title} | 경제번역기`, description },
+    twitter: { card: 'summary_large_image', title: `${title} | 경제번역기`, description },
   }
 }
 

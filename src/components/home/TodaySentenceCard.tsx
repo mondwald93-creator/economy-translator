@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { trackEvent } from '@/lib/gtag'
 
 interface Props {
@@ -8,8 +8,17 @@ interface Props {
   dateLabel: string
 }
 
+/**
+ * 오늘의 한 문장 카드 (2026-08-11 개편)
+ *
+ * 카드 그림은 서버가 만든 공유 카드(`/opengraph-image`) 한 장을 그대로 쓴다.
+ * 화면에 보이는 것 = 저장되는 것 = 카톡에 뜨는 것이 전부 같은 그림이다.
+ *
+ * 왜 바꿨나: 예전에는 화면 요소를 html2canvas로 사진 찍어 저장했는데,
+ * 그러면 카드가 두 벌(화면용·공유용)이 되어 나중에 한쪽만 고치는 사고가 난다.
+ * 겸사겸사 html2canvas(무거운 라이브러리)도 걷어냈다.
+ */
 export default function TodaySentenceCard({ sentence, dateLabel }: Props) {
-  const cardRef = useRef<HTMLDivElement>(null)
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -22,20 +31,17 @@ export default function TodaySentenceCard({ sentence, dateLabel }: Props) {
   }
 
   const handleSaveImage = async () => {
-    if (!cardRef.current) return
     trackEvent('sentence_card_save_image')
     setSaving(true)
     try {
-      const html2canvas = (await import('html2canvas')).default
-      const canvas = await html2canvas(cardRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: null,
-      })
+      const res = await fetch('/opengraph-image')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.download = `경제번역기-${dateLabel}.png`
-      link.href = canvas.toDataURL('image/png')
+      link.href = url
       link.click()
+      URL.revokeObjectURL(url)
     } finally {
       setSaving(false)
     }
@@ -43,99 +49,18 @@ export default function TodaySentenceCard({ sentence, dateLabel }: Props) {
 
   return (
     <div>
-      <h2 className="text-sm font-bold text-[#111827] mb-3 tracking-tight">
-        ✨ 오늘의 한 문장
-      </h2>
+      <h2 className="text-sm font-bold text-[#111827] mb-3 tracking-tight">✨ 오늘의 한 문장</h2>
 
-      {/* 이미지로 저장될 카드 영역 */}
-      <div
-        ref={cardRef}
-        style={{
-          background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 60%, #064E3B 100%)',
-          borderRadius: 18,
-          padding: '32px 28px 24px',
-          maxWidth: 420,
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        {/* 배경 장식 */}
-        <div style={{
-          position: 'absolute', top: -50, right: -50,
-          width: 160, height: 160, borderRadius: '50%',
-          background: 'rgba(34,197,94,0.12)',
-          pointerEvents: 'none',
-        }} />
-        <div style={{
-          position: 'absolute', bottom: -30, left: -30,
-          width: 100, height: 100, borderRadius: '50%',
-          background: 'rgba(34,197,94,0.08)',
-          pointerEvents: 'none',
-        }} />
-
-        {/* 상단 라벨 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-          <span style={{
-            background: '#22C55E',
-            color: '#fff',
-            fontSize: 10,
-            fontWeight: 700,
-            padding: '3px 9px',
-            borderRadius: 20,
-            letterSpacing: 0.5,
-          }}>
-            경제번역기
-          </span>
-          <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11 }}>
-            {dateLabel}
-          </span>
-        </div>
-
-        {/* 큰따옴표 — 배경 장식 (절대 위치, 텍스트 흐름과 분리) */}
-        <div style={{
-          position: 'absolute',
-          top: 52,
-          left: 20,
-          color: 'rgba(34,197,94,0.15)',
-          fontSize: 130,
-          lineHeight: 1,
-          fontFamily: 'Georgia, serif',
-          userSelect: 'none',
-          pointerEvents: 'none',
-        }}>
-          &ldquo;
-        </div>
-
-        {/* 한 문장 */}
-        <p style={{
-          color: '#F8FAFC',
-          fontSize: 20,
-          fontWeight: 700,
-          lineHeight: 1.6,
-          letterSpacing: '-0.3px',
-          marginBottom: 28,
-          position: 'relative',
-          zIndex: 1,
-        }}>
-          {sentence}
-        </p>
-
-        {/* 하단 브랜딩 */}
-        <div style={{
-          borderTop: '1px solid rgba(255,255,255,0.12)',
-          paddingTop: 14,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}>
-          <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10 }}>
-            매일 5분 경제 입문 브리핑
-          </span>
-          <span style={{ color: '#22C55E', fontSize: 10, fontWeight: 600 }}>
-            economy-translator.vercel.app
-          </span>
-        </div>
-      </div>
+      {/* 서버가 만든 공유 카드 그대로. 링크를 붙였을 때 뜨는 그림과 같은 것이다.
+          eslint-disable: 이 그림은 매일 내용이 바뀌고 next/image의 최적화가 필요 없다 */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/opengraph-image"
+        alt={sentence}
+        width={1200}
+        height={630}
+        className="w-full max-w-[520px] rounded-[14px]"
+      />
 
       {/* 버튼 */}
       <div className="flex gap-2 mt-3">

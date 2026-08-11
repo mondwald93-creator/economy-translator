@@ -31,7 +31,8 @@ export const metadata: Metadata = {
     description: '경제 공부, 어디서부터 시작할지 모르겠다면? 매일 아침 5분, 한국 경제 뉴스를 쉬운 말로 풀어드려요.',
   },
   twitter: {
-    card: 'summary',
+    // 공유 카드(og:image)가 큰 그림으로 뜨게 한다. 'summary'면 작은 정사각형으로 잘린다 (2026-08-11)
+    card: 'summary_large_image',
     title: '경제번역기 — 5분으로 끝내는 경제 입문',
     description: '경제 공부, 어디서부터 시작할지 모르겠다면? 매일 아침 5분, 쉬운 말로 풀어드려요.',
   },
