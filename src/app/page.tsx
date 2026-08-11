@@ -9,7 +9,7 @@ import Top3NewsSection from '@/components/home/Top3NewsSection'
 import ConnectionDiagram from '@/components/home/ConnectionDiagram'
 import KeyIndicators from '@/components/home/KeyIndicators'
 import NewsCardList from '@/components/home/NewsCardList'
-import EconomyStudy from '@/components/home/EconomyStudy'
+import EndCard from '@/components/home/EndCard'
 import TodaySentenceCard from '@/components/home/TodaySentenceCard'
 // EmailSubscribeSection — 트래픽 생기면 활성화
 // import EmailSubscribeSection from '@/components/home/EmailSubscribeSection'
@@ -64,6 +64,10 @@ export default async function Home() {
 
   const { data: briefing } = await db
     .from('briefings').select('*').eq('date', today).order('created_at', { ascending: false }).limit(1).single()
+
+  // 끝 카드에서 이어 볼 직전 브리핑 (오늘 것 바로 앞 날짜)
+  const { data: prevBriefing } = await db
+    .from('briefings').select('date').lt('date', today).order('date', { ascending: false }).limit(1).single()
 
   const { data: analyzedArticles } = await db
     .from('news_articles').select('id, title, source, created_at, full_analysis')
@@ -125,7 +129,7 @@ export default async function Home() {
       <Top3NewsSection top3Analysis={(briefing.top3_analysis as Top3AnalysisItem[]) ?? null} />
       <ConnectionDiagram connections={(briefing.connections as ConnectionItem[]) ?? null} />
       <NewsCardList articles={articles} updatedAt={formatKST(briefing.created_at)} />
-      <EconomyStudy dailyTerm={dailyTerm} />
+      <EndCard dailyTerm={dailyTerm} prevDate={prevBriefing?.date ?? null} />
     </div>
   )
 }

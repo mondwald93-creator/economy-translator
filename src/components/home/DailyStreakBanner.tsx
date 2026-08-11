@@ -21,6 +21,10 @@ function calcStreak(): number {
   return count
 }
 
+/**
+ * 연속 방문 기록 표시. 2026-08-11부터 EndCard(글 맨 끝) 안에서만 쓴다.
+ * 완독 문구는 EndCard 제목이 맡으므로 여기서는 연속 일수만 말한다(문구 중복 제거).
+ */
 export default function DailyStreakBanner() {
   const [streak, setStreak] = useState<number | null>(null)
 
@@ -28,24 +32,15 @@ export default function DailyStreakBanner() {
     try {
       setStreak(calcStreak())
     } catch {
-      // 브라우저 저장소 미지원 환경 — 배너는 기본 문구만 표시
+      // 브라우저 저장소 미지원 환경 — 표시하지 않는다
     }
   }, [])
 
+  if (streak === null || streak < 2) return null
+
   return (
-    <div
-      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[#92400E]"
-      style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '10px 16px', fontSize: 13, marginBottom: 16 }}
-    >
-      <span className="flex items-center gap-3">
-        <span style={{ fontSize: 16 }}>☀️</span>
-        <span>오늘 브리핑 읽으면 <strong className="font-bold">경제 공부 하루치 완료!</strong> 내일 아침 9시에 또 만나요</span>
-      </span>
-      {streak !== null && streak >= 2 && (
-        <span className="flex-shrink-0 font-bold" style={{ color: '#B45309' }}>
-          🔥 {streak}일 연속 공부 중
-        </span>
-      )}
-    </div>
+    <p className="inline-flex items-center gap-1.5 bg-white/[0.07] text-[#FDE68A] text-[13px] font-bold rounded-full px-3.5 py-1.5">
+      🔥 {streak}일 연속 공부 중
+    </p>
   )
 }

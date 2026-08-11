@@ -1,26 +1,5 @@
 import { KeyIndicator, HealthCheckItem } from '@/types'
-
-function getGrade(items: HealthCheckItem[]): string {
-  const points: Record<string, number> = { good: 2, normal: 1, warning: 0 }
-  const total = items.reduce((sum, item) => sum + (points[item.status] ?? 1), 0)
-  const ratio = total / (items.length * 2)
-  if (ratio >= 0.92) return 'A+'
-  if (ratio >= 0.75) return 'A'
-  if (ratio >= 0.58) return 'B+'
-  if (ratio >= 0.42) return 'B'
-  if (ratio >= 0.25) return 'C'
-  return 'D'
-}
-
-function getGradeReason(items: HealthCheckItem[]): string {
-  const warnings = items.filter(i => i.status === 'warning').map(i => i.category)
-  const goods = items.filter(i => i.status === 'good').map(i => i.category)
-  if (warnings.length > 0 && goods.length > 0) return `${goods.join('·')} 호조, ${warnings.join('·')} 주의`
-  if (warnings.length > 0) return `${warnings.join('·')} 분야 주의가 필요해요`
-  if (goods.length === items.length) return '전 분야 고르게 좋은 상태예요'
-  if (goods.length > 0) return `${goods.join('·')} 분야가 좋은 상태예요`
-  return '전반적으로 보통 수준이에요'
-}
+import { getGrade, getGradeReason } from '@/lib/healthGrade'
 
 interface Props {
   indicators: KeyIndicator[] | null
@@ -39,17 +18,44 @@ export default function KeyIndicators({ indicators, healthCheck, briefingAt, sna
   return (
     <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-4">
 
+      {/* 폰 전용: 지표를 가는 띠 한 줄로. 숫자는 배경 정보라 첫 화면 세로 공간을 덜 쓴다.
+          (큰 화면은 아래 카드 그리드 그대로 — 데스크톱 화면은 바뀌지 않는다) */}
+      <div className="sm:hidden">
+        <div className="relative">
+        <div className="flex gap-3 overflow-x-auto scrollbar-hide bg-white border border-[#F3F4F6] rounded-[14px] px-3 py-2.5 pr-8 whitespace-nowrap">
+          {indicators.map((item) => {
+            const isUp = item.direction === 'up'
+            const isDown = item.direction === 'down'
+            return (
+              <span key={item.name} className="text-[13px] text-[#6B7280] flex-shrink-0">
+                {item.name} <b className="font-extrabold text-[#111827]">{item.value}</b>{' '}
+                <span className={isUp ? 'text-[#DC2626]' : isDown ? 'text-[#2563EB]' : 'text-[#9CA3AF]'}>
+                  {item.change}
+                </span>
+              </span>
+            )
+          })}
+        </div>
+          <div className="pointer-events-none absolute right-px inset-y-px w-10 rounded-r-[14px] bg-gradient-to-l from-white via-white/85 to-transparent flex items-center justify-end pr-2 text-ink-subtle font-bold">
+            ›
+          </div>
+        </div>
+        <p className="text-[11px] text-[#9CA3AF] mt-1.5">
+          {snapshot ? `${briefingAt ?? '작성 당시'} 기준 저장값` : '숫자는 실시간 · 옆으로 밀면 더 있어요'}
+        </p>
+      </div>
+
       {/* 왼쪽: 경제 컨디션 카드 */}
       {grade && (
-        <div className="rounded-[16px] bg-gradient-to-br from-[#ECFDF5] to-[#D1FAE5] border border-[#A7F3D0] p-5 flex flex-col justify-center gap-2">
+        <div className="hidden sm:flex rounded-[16px] bg-gradient-to-br from-[#ECFDF5] to-[#D1FAE5] border border-[#A7F3D0] p-5 flex-col justify-center gap-2">
           <p className="text-[11px] font-bold text-[#059669] uppercase tracking-wide">{snapshot ? '그날 경제 컨디션' : '오늘 경제 컨디션'}</p>
           <p className="text-[48px] font-black leading-none text-[#065F46] tracking-tight">{grade}</p>
           {reason && <p className="text-xs text-[#059669] leading-relaxed">{reason}</p>}
         </div>
       )}
 
-      {/* 오른쪽: 지표 그리드 + 타임스탬프 — grade가 없으면 전체 폭 사용 */}
-      <div className={!grade ? 'sm:col-span-full' : ''}>
+      {/* 오른쪽: 지표 그리드 + 타임스탬프 — grade가 없으면 전체 폭 사용 (폰에서는 위 띠가 대신한다) */}
+      <div className={`hidden sm:block ${!grade ? 'sm:col-span-full' : ''}`}>
         <div className={`grid gap-3 grid-cols-2 ${indicators.length === 4 ? 'sm:grid-cols-4' : indicators.length === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
           {indicators.map((item) => {
             const isUp = item.direction === 'up'

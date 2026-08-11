@@ -11,6 +11,7 @@ const notoSansKR = Noto_Sans_KR({
 })
 import TopBar from '@/components/layout/TopBar'
 import GNB from '@/components/layout/GNB'
+import BottomTabBar from '@/components/layout/BottomTabBar'
 import { supabase } from '@/lib/supabase'
 
 export const metadata: Metadata = {
@@ -88,9 +89,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <main className="max-w-[900px] mx-auto px-4 sm:px-6 py-8 sm:py-10">
           {children}
         </main>
-        <footer className="max-w-[900px] mx-auto px-4 sm:px-6 py-8 text-xs text-ink-subtle border-t border-line mt-4">
+        <footer className="max-w-[900px] mx-auto px-4 sm:px-6 py-8 pb-24 sm:pb-8 text-xs text-ink-subtle border-t border-line mt-4">
           © 경제번역기 · 매일 아침 5분, 경제 입문 브리핑
         </footer>
+        <BottomTabBar />
       </body>
     </html>
   )

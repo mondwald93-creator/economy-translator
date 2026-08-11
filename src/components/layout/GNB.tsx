@@ -3,13 +3,14 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 
+// mobileHidden = 폰에서는 하단 탭바(BottomTabBar)가 맡는 항목. 큰 화면에서는 순서·구성 그대로 전부 보인다.
 const navItems = [
-  { label: '홈', href: '/' },
-  { label: '지난 브리핑', href: '/briefing' },
-  { label: '링크분석기', href: '/analyze' },
-  { label: '용어사전', href: '/dictionary' },
-  { label: '달력', href: '/calendar' },
-  { label: '북마크', href: '/bookmarks' },
+  { label: '홈', href: '/', mobileHidden: true },
+  { label: '지난 브리핑', href: '/briefing', mobileHidden: false },
+  { label: '링크분석기', href: '/analyze', mobileHidden: true },
+  { label: '용어사전', href: '/dictionary', mobileHidden: true },
+  { label: '달력', href: '/calendar', mobileHidden: true },
+  { label: '북마크', href: '/bookmarks', mobileHidden: false },
 ]
 
 /** 하위 페이지(/dictionary/기준금리, /briefing/2026-07-26)에서도 해당 메뉴를 켜둔다. */
@@ -63,7 +64,7 @@ export default function GNB({ updatedAt }: { updatedAt?: string | null }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex-shrink-0 px-[14px] py-1.5 rounded-lg text-[13px] font-medium transition-colors whitespace-nowrap ${
+                className={`${item.mobileHidden ? 'hidden sm:block' : ''} flex-shrink-0 px-[14px] py-1.5 rounded-lg text-[13px] font-medium transition-colors whitespace-nowrap ${
                   isActive(pathname, item.href)
                     ? 'bg-[#F0FDF4] text-[#16A34A] font-bold'
                     : 'text-ink-muted hover:text-ink hover:bg-surface'

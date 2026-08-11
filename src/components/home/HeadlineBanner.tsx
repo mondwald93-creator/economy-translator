@@ -1,5 +1,4 @@
 import ShareButtons from './ShareButtons'
-import DailyStreakBanner from './DailyStreakBanner'
 
 interface Props {
   headline: string | null
@@ -88,8 +87,8 @@ export default function HeadlineBanner({ headline, summary, dateLabel, showStrea
         </a>
       )}
 
-      {/* 응원 배너 + 연속 방문 카운터 (오늘 브리핑에서만) */}
-      {showStreak && <DailyStreakBanner />}
+      {/* 완독 배너·연속 방문 카운터는 맨 아래 EndCard로 옮겼다(2026-08-11).
+          맨 위에 있으면 '완료'가 아니라 '예고'로 읽혀 완독의 기분이 생기지 않았다. */}
 
       {/* 공유 버튼 */}
       <ShareButtons url={shareUrl} title={shareTitle} />

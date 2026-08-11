@@ -8,7 +8,7 @@ import KeyIndicators from '@/components/home/KeyIndicators'
 import EconomyHealthCheck from '@/components/home/EconomyHealthCheck'
 import Top3NewsSection from '@/components/home/Top3NewsSection'
 import ConnectionDiagram from '@/components/home/ConnectionDiagram'
-import EconomyStudy from '@/components/home/EconomyStudy'
+import EndCard from '@/components/home/EndCard'
 
 // 오늘 날짜도 이 경로로 열리므로 갱신 주기를 짧게 둔다.
 export const revalidate = 3600
@@ -171,7 +171,7 @@ export default async function BriefingArchivePage({ params }: { params: { date: 
       <EconomyHealthCheck healthCheck={(briefing.health_check as HealthCheckItem[]) ?? null} snapshot />
       <Top3NewsSection top3Analysis={(briefing.top3_analysis as Top3AnalysisItem[]) ?? null} snapshot />
       <ConnectionDiagram connections={(briefing.connections as ConnectionItem[]) ?? null} snapshot />
-      <EconomyStudy dailyTerm={dailyTerm} snapshot />
+      <EndCard dailyTerm={dailyTerm} prevDate={older ?? null} snapshot />
 
       {/* 앞뒤 브리핑 이동 */}
       <div className="flex items-center justify-between gap-3 pt-2 border-t border-line">
