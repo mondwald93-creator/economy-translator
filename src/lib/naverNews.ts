@@ -90,6 +90,11 @@ const HTML_ENTITIES: Record<string, string> = {
 function cleanHtml(text: string): string {
   return text
     .replace(/<[^>]+>/g, '')
+    // 숫자 엔티티(&#39; &#x27; 등)를 먼저 글자로 되돌린다.
+    // 2026-08-14 발견: 네이버 경제 섹션 제목에 16진수 표기 &#x27;가 쓰이는데
+    // 아래 맵에 없어서 통째로 삭제되고 있었다("'긍정적'" → "긍정적").
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)))
     .replace(/&[a-z#0-9]+;/gi, m => HTML_ENTITIES[m] ?? '')
     .replace(/\s+/g, ' ')
     .trim()
@@ -114,12 +119,31 @@ function toPublishedAt(pubDate: string): string | null {
   return isNaN(d.getTime()) ? null : d.toISOString()
 }
 
-// ① 주요 언론사 RSS 피드
-const RSS_SOURCES = [
-  'https://www.yna.co.kr/rss/economy.xml',
-  'https://www.hankyung.com/feed/economy',
-  'https://www.mk.co.kr/rss/30100041/',
-  'https://www.sedaily.com/RSS',
+// ① 주요 언론사 RSS 피드 — 전부 "경제 섹션 전용" 피드다.
+//
+// 2026-08-14 전수 검증(실제 요청해서 확인). 전체기사 피드는 정치·연예가 섞여 들어오므로 쓰지 않는다.
+// 뺀 것 2곳:
+//   - 서울경제: 피드는 살아있으나(주소는 /rss/economy) RSS 안내에 "상업적 활용 및 AI학습 이용 금지"
+//               명시. 이 서비스는 기사를 AI로 가공하므로 쓰지 않는다.
+//   - 머니투데이: 경제 섹션 피드가 2025-09-22에 멈춰 있다(응답은 200에 기사 100건이라 겉으론 정상).
+//                전체 피드는 비경제가 40%.
+// ⚠️ 검증할 때 주의(이번에 실제로 걸린 것):
+//   - HTTP 200 + item 다수여도 죽은 피드일 수 있다. pubDate 최댓값을 봐야 한다.
+//   - UA를 붙이면 오히려 막히는 곳이 있다(mk.co.kr은 'Mozilla/5.0' 단독이면 403, UA 없으면 200).
+//     아래 목록은 전부 UA 없이 동작하는 것만 남겼다.
+const RSS_SOURCES: { name: string; url: string }[] = [
+  { name: '연합뉴스', url: 'https://www.yna.co.kr/rss/economy.xml' },
+  { name: '한국경제', url: 'https://www.hankyung.com/feed/economy' },
+  { name: '매일경제', url: 'https://www.mk.co.kr/rss/30100041/' },
+  { name: '뉴시스', url: 'https://www.newsis.com/RSS/economy.xml' },
+  { name: '헤럴드경제', url: 'https://biz.heraldcorp.com/rss/google/economy' },
+  { name: '뉴스1', url: 'https://www.news1.kr/api/feeds/google?category_id=13' },
+  // 이데일리(rss.edaily.co.kr)는 뺐다: curl로는 200인데 Node fetch로는
+  // ERR_SSL_UNSUPPORTED_PROTOCOL로 실패한다(서버가 낡은 TLS를 쓴다). 2026-08-14 실측.
+  { name: '아시아경제', url: 'https://view.asiae.co.kr/rss/economy.htm' },
+  { name: '아시아경제증권', url: 'https://view.asiae.co.kr/rss/stock.htm' },
+  { name: '조선비즈산업', url: 'https://biz.chosun.com/arc/outboundfeeds/rss/category/industry/?outputType=xml' },
+  { name: 'SBS경제', url: 'https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=02' },
 ]
 
 function parseRSSItems(xml: string): NaverNewsItem[] {
@@ -143,47 +167,77 @@ function parseRSSItems(xml: string): NaverNewsItem[] {
   return items
 }
 
-async function fetchRSSFeeds(): Promise<NaverNewsItem[]> {
+// 소스별로 몇 건 들어왔는지 함께 돌려준다.
+// 이유: 2026-08-14까지 서울경제 피드가 0건을 반환하는데 아무도 몰랐다.
+// 실패해도 나머지가 살아서(allSettled) 전체는 "성공"으로 보이기 때문이다.
+async function fetchRSSFeeds(): Promise<{ items: NaverNewsItem[]; counts: Record<string, number> }> {
+  const counts: Record<string, number> = {}
   const results = await Promise.allSettled(
-    RSS_SOURCES.map(async (url) => {
+    RSS_SOURCES.map(async ({ name, url }) => {
       const res = await fetch(url, { next: { revalidate: 0 } })
-      if (!res.ok) return []
-      return parseRSSItems(await res.text())
+      if (!res.ok) { counts[name] = 0; return [] }
+      const items = parseRSSItems(await res.text())
+      counts[name] = items.length
+      return items
     })
   )
-  return results.flatMap(r => r.status === 'fulfilled' ? r.value : [])
+  for (let i = 0; i < RSS_SOURCES.length; i++) {
+    if (results[i].status === 'rejected') counts[RSS_SOURCES[i].name] = 0
+  }
+  return { items: results.flatMap(r => r.status === 'fulfilled' ? r.value : []), counts }
 }
 
-// ② 네이버 뉴스 경제 많이본 기사
-async function fetchNaverRankingNews(): Promise<NaverNewsItem[]> {
+// "12분전"·"3시간전"·"1일전" → ISO 시각. 못 읽으면 빈 문자열(=모름)을 돌려준다.
+// 오늘로 추측하지 않는 원칙은 published_at 신설 때와 같다(2026-07-23 사고).
+function relativeToISO(text: string, now: number): string {
+  const m = text.match(/(\d+)\s*(분|시간|일)/)
+  if (!m) return ''
+  const n = parseInt(m[1], 10)
+  if (!Number.isFinite(n)) return ''
+  const ms = m[2] === '분' ? 60_000 : m[2] === '시간' ? 3_600_000 : 86_400_000
+  return new Date(now - n * ms).toISOString()
+}
+
+// ② 네이버 뉴스 "경제 섹션" 기사 (헤드라인 + 추천)
+//
+// 2026-08-14 교체. 그전엔 popularDay.naver(많이 본 기사)를 긁고 있었는데, 그 페이지는
+// 언론사 83곳의 인기 기사를 모은 것이라 섹션 구분이 아예 없다. sid1=101(경제)을 붙여도
+// 무시된다(경제·정치·파라미터없음 세 요청의 결과가 글자 하나까지 동일함을 실측).
+// 그래서 「별자리 운세」·「프로야구 별세」 같은 기사가 하루 800건씩 후보 풀에 들어왔다.
+// 첫 수집일(2026-06-04)부터 계속이었고, 요청이 200 OK로 성공하니 아무도 몰랐다.
+async function fetchNaverEconomySection(): Promise<NaverNewsItem[]> {
   try {
-    const res = await fetch(
-      'https://news.naver.com/main/ranking/popularDay.naver?mid=etc&sid1=101',
-      {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
-        next: { revalidate: 0 },
-      }
-    )
+    const res = await fetch('https://news.naver.com/section/101', {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+      next: { revalidate: 0 },
+    })
     if (!res.ok) return []
+    const html = await res.text()
+    const now = Date.now()
 
-    const buffer = await res.arrayBuffer()
-    const html = new TextDecoder('euc-kr').decode(buffer)
-
-    const pattern = /href="(https:\/\/n\.news\.naver\.com\/article\/[^"]+ntype=RANKING)"[^>]*>([^<]+)</g
+    // 기사 하나가 <div class="sa_text"> 블록 하나다. 제목·시각이 같은 블록에 있어야 짝이 맞는다.
+    const blocks = html.split('<div class="sa_text">').slice(1)
     const items: NaverNewsItem[] = []
     const seen = new Set<string>()
-    let match
 
-    while ((match = pattern.exec(html)) !== null) {
-      const url = match[1]
-      const title = match[2].trim()
-      if (title && !seen.has(url)) {
+    for (const b of blocks) {
+      try {
+        const link = b.match(/<a href="(https:\/\/n\.news\.naver\.com\/mnews\/article\/\d+\/\d+)"[^>]*class="sa_text_title/)
+        if (!link) continue
+        const url = link[1]
+        if (seen.has(url)) continue
+        const rawTitle = b.match(/class="sa_text_title[^"]*"[^>]*>([\s\S]*?)<\/a>/)
+        const title = rawTitle ? cleanHtml(rawTitle[1]) : ''
+        if (!title) continue
+        // 헤드라인 10건에는 시각이 없고, 추천 기사에만 "N분전"이 붙는다.
+        const dt = b.match(/sa_text_datetime[^>]*>\s*<b>([^<]+)<\/b>/)
         seen.add(url)
-        // 랭킹 페이지는 발행 시각을 주지 않는다. 예전엔 여기에 '지금'을 박아 넣었는데,
-        // 그러면 며칠 전 기사가 랭킹에 다시 뜰 때 오늘 발행된 것처럼 보인다.
-        // → 빈 값으로 두어 published_at이 null(=모름)이 되게 한다.
-        // (date 열은 toDateString이 파싱 실패 시 오늘로 대체하므로 기존과 동일하게 동작)
-        items.push({ title, originallink: url, link: url, description: '', pubDate: '' })
+        items.push({
+          title, originallink: url, link: url, description: '',
+          pubDate: dt ? relativeToISO(dt[1], now) : '',
+        })
+      } catch {
+        continue   // 블록 하나가 이상해도 나머지는 계속 읽는다
       }
     }
     return items
@@ -221,11 +275,29 @@ export async function collectAndSaveNews(): Promise<{ saved: number; errors: str
   let saved = 0
 
   // 세 가지 소스 병렬 수집
-  const [rssItems, rankingItems, keywordItems] = await Promise.all([
+  const [rss, sectionItems, keywordItems] = await Promise.all([
     fetchRSSFeeds(),
-    fetchNaverRankingNews(),
+    fetchNaverEconomySection(),
     fetchNaverKeywordNews(20),
   ])
+  const rssItems = rss.items
+  const rankingItems = sectionItems
+
+  // 소스별 수집량을 남긴다. 0건인 소스는 경고로 올린다.
+  // 없으면 소스 하나가 조용히 죽어도 아무도 모른다(서울경제 0건이 그렇게 방치됐다).
+  const counts: Record<string, number> = {
+    ...rss.counts,
+    '네이버경제섹션': sectionItems.length,
+    '네이버검색': keywordItems.length,
+  }
+  const dead = Object.entries(counts).filter(([, n]) => n === 0).map(([k]) => k)
+  console.log('[collectNews] 소스별 수집: ' +
+    Object.entries(counts).map(([k, v]) => `${k} ${v}`).join(' · '))
+  if (dead.length) {
+    const msg = `수집 0건인 소스: ${dead.join(', ')}`
+    console.warn(`[collectNews] ⚠️ ${msg}`)
+    errors.push(msg)
+  }
 
   // 전체 합치고 중복 제거: URL + 제목 앞 20자(완전 일치) + 핵심 단어 겹침(거의 같은 중복)
   const seenUrls = new Set<string>()
@@ -247,18 +319,24 @@ export async function collectAndSaveNews(): Promise<{ saved: number; errors: str
   })
 
   // 50개씩 나눠서 upsert (original_url 충돌 시 무시)
+  // 기사 하나가 이상해도 그 기사만 버리고 나머지는 계속 간다.
+  // 예전엔 이 변환 줄에 안전망이 없어서, 예상 못 한 값 하나가 그 회차 수집 전체를 죽일 수 있었다.
   const newItems = allItems
     .map(item => {
-      const title = cleanHtml(item.title)
-      const original_url = item.originallink || item.link
-      if (!title || !original_url) return null
-      return {
-        date: toDateString(item.pubDate),
-        published_at: toPublishedAt(item.pubDate),
-        title,
-        summary: '',
-        original_url,
-        source: extractSource(original_url),
+      try {
+        const title = cleanHtml(item.title)
+        const original_url = item.originallink || item.link
+        if (!title || !original_url) return null
+        return {
+          date: toDateString(item.pubDate),
+          published_at: toPublishedAt(item.pubDate),
+          title,
+          summary: '',
+          original_url,
+          source: extractSource(original_url),
+        }
+      } catch {
+        return null
       }
     })
     .filter((item): item is NonNullable<typeof item> => item !== null)
@@ -272,6 +350,8 @@ export async function collectAndSaveNews(): Promise<{ saved: number; errors: str
   const existingUrls = new Set((existing ?? []).map(r => r.original_url))
   const toInsert = newItems.filter(item => !existingUrls.has(item.original_url))
 
+  // 50개씩 묶어 넣되, 묶음이 실패하면 그 묶음만 한 건씩 다시 넣는다.
+  // 예전엔 묶음 하나가 실패하면 50건이 통째로 사라졌다(평소엔 빠르게, 사고 난 날만 느리게).
   const CHUNK = 50
   for (let i = 0; i < toInsert.length; i += CHUNK) {
     const chunk = toInsert.slice(i, i + CHUNK)
@@ -279,8 +359,15 @@ export async function collectAndSaveNews(): Promise<{ saved: number; errors: str
       .from('news_articles')
       .insert(chunk)
       .select('id')
-    if (error) errors.push(`저장 실패: ${error.message}`)
-    else saved += data?.length ?? 0
+    if (!error) { saved += data?.length ?? 0; continue }
+
+    let recovered = 0
+    for (const one of chunk) {
+      const r = await supabase.from('news_articles').insert(one).select('id')
+      if (!r.error) recovered++
+    }
+    saved += recovered
+    errors.push(`저장 실패(묶음 ${chunk.length}건): ${error.message} → 개별 재시도로 ${recovered}건 복구, ${chunk.length - recovered}건 유실`)
   }
 
   return { saved, errors }

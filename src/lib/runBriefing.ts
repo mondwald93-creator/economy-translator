@@ -52,7 +52,8 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
   console.log(`[runBriefing] 후보 관문: ${articles.length}건 → 통과 ${gate.kept.length}건 (제외 ${gate.dropped.length}건: ` +
     `신선도 ${gate.dropped.filter(d => d.reason === 'stale').length}·` +
     `연성 ${gate.dropped.filter(d => d.reason === 'lifestyle').length}·` +
-    `의견글 ${gate.dropped.filter(d => d.reason === 'opinion').length})` +
+    `의견글 ${gate.dropped.filter(d => d.reason === 'opinion').length}·` +
+    `비경제 ${gate.dropped.filter(d => d.reason === 'noneconomic').length})` +
     (useGated ? '' : ' ⚠️통과<30 → 원본 사용'))
 
   const sevenDaysAgo = new Date(Date.now() + 9 * 60 * 60 * 1000 - 7 * 24 * 60 * 60 * 1000)
