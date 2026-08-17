@@ -214,21 +214,36 @@ function parseRSSItems(xml: string): NaverNewsItem[] {
 // 소스별로 몇 건 들어왔는지 함께 돌려준다.
 // 이유: 2026-08-14까지 서울경제 피드가 0건을 반환하는데 아무도 몰랐다.
 // 실패해도 나머지가 살아서(allSettled) 전체는 "성공"으로 보이기 때문이다.
-async function fetchRSSFeeds(): Promise<{ items: NaverNewsItem[]; counts: Record<string, number> }> {
+// reasons = 0건인 소스가 "왜" 0건인지 (2026-08-17 추가).
+// 예전엔 실패를 전부 0으로만 적어서, 서버(미국→서울로 옮겨도)에서 한국경제·뉴스1이 0건인 이유를
+// 알 수 없었다(403인지, 연결이 안 되는지, 200인데 item이 없는지). 이제 "0건" 옆에 그 이유를 같이 남긴다.
+async function fetchRSSFeeds(): Promise<{ items: NaverNewsItem[]; counts: Record<string, number>; reasons: Record<string, string> }> {
   const counts: Record<string, number> = {}
+  const reasons: Record<string, string> = {}
   const results = await Promise.allSettled(
     RSS_SOURCES.map(async ({ name, url }) => {
       const res = await fetch(url, { next: { revalidate: 0 } })
-      if (!res.ok) { counts[name] = 0; return [] }
-      const items = parseRSSItems(await res.text())
+      if (!res.ok) {
+        counts[name] = 0
+        reasons[name] = `HTTP ${res.status}` + (res.headers.get('server') ? ` (server: ${res.headers.get('server')})` : '')
+        return []
+      }
+      const body = await res.text()
+      const items = parseRSSItems(body)
       counts[name] = items.length
+      if (items.length === 0) reasons[name] = `HTTP 200이지만 item 0건 (본문 ${body.length}자, 앞부분: ${body.slice(0, 80).replace(/\s+/g, ' ')})`
       return items
     })
   )
   for (let i = 0; i < RSS_SOURCES.length; i++) {
-    if (results[i].status === 'rejected') counts[RSS_SOURCES[i].name] = 0
+    const r = results[i]
+    if (r.status === 'rejected') {
+      counts[RSS_SOURCES[i].name] = 0
+      const cause = (r.reason as { cause?: { code?: string; message?: string }; message?: string })
+      reasons[RSS_SOURCES[i].name] = `요청 실패: ${cause?.cause?.code ?? ''} ${cause?.cause?.message ?? cause?.message ?? String(r.reason)}`.trim()
+    }
   }
-  return { items: results.flatMap(r => r.status === 'fulfilled' ? r.value : []), counts }
+  return { items: results.flatMap(r => r.status === 'fulfilled' ? r.value : []), counts, reasons }
 }
 
 // "12분전"·"3시간전"·"1일전" → ISO 시각. 못 읽으면 빈 문자열(=모름)을 돌려준다.
@@ -338,7 +353,8 @@ export async function collectAndSaveNews(): Promise<{ saved: number; skippedExis
   console.log('[collectNews] 소스별 수집: ' +
     Object.entries(counts).map(([k, v]) => `${k} ${v}`).join(' · '))
   if (dead.length) {
-    const msg = `수집 0건인 소스: ${dead.join(', ')}`
+    // 이유가 있으면 같이 적는다: "한국경제(HTTP 403), 뉴스1(요청 실패: ...)"
+    const msg = `수집 0건인 소스: ${dead.map(k => rss.reasons[k] ? `${k}(${rss.reasons[k]})` : k).join(', ')}`
     console.warn(`[collectNews] ⚠️ ${msg}`)
     errors.push(msg)
   }
