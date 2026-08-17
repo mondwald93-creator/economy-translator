@@ -199,10 +199,14 @@ function parseRSSItems(xml: string): NaverNewsItem[] {
       c.match(/<title><!\[CDATA\[([\s\S]*?)\]\]><\/title>/)?.[1] ||
       c.match(/<title>([\s\S]*?)<\/title>/)?.[1] || ''
     )
+    // ⚠️ 2026-08-18 수정: 매일경제·한국경제·SBS 피드는 <link>를 CDATA로 감싼다
+    //    (<link><![CDATA[https://…]]></link>). 6/4 첫 수집부터 이 껍데기째 URL로 저장돼
+    //    original_url이 "<![CDATA[https://…]]>"였다(고유 2,199건, 매경 2,047·한경 102·SBS 50).
+    //    결과: 도메인 판별이 실패해 source가 전부 '뉴스'로 찍히고, 뉴스 상세의 원문 링크가 깨졌다.
     const link = (
       c.match(/<link>([\s\S]*?)<\/link>/)?.[1] ||
       c.match(/<guid[^>]*>([\s\S]*?)<\/guid>/)?.[1] || ''
-    ).trim()
+    ).replace(/^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/, '$1').trim()
     const pubDate = c.match(/<pubDate>(.*?)<\/pubDate>/)?.[1]?.trim() || ''
     if (title && link) {
       items.push({ title, originallink: link, link, description: '', pubDate })
