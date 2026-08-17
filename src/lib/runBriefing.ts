@@ -7,6 +7,7 @@ import {
   buildTop3AnalysisData,
 } from './generateBriefing'
 import { filterCandidatePool } from './articleGate'
+import { fetchBriefingPool } from './briefingPool'
 
 // 관문 신선도 기준(발행 후 이 일수 초과 시 후보 제외).
 // ⚠️ 잠정값 — published_at 실데이터가 며칠 쌓이면 실분포 보고 확정(2026-07-24).
@@ -29,13 +30,11 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
     }
   }
 
-  const { data: articles, error: fetchError } = await supabase
-    .from('news_articles')
-    .select('id, title, summary, published_at')
-    .eq('date', today)
-    .order('created_at', { ascending: false })
+  // 후보 풀 = 지금 기준 지난 24시간 발행분 + 발행 시각 모르는 오늘 수집분 (2026-08-17, briefingPool.ts 참조).
+  // 예전 `date = 오늘`은 랭킹 페이지를 뺀 뒤 아침 풀이 오늘 0~9시 기사만 남아(450→130건) 어제 오후 뉴스가 통째로 빠졌다.
+  // 채점 대조 자료(gradeBriefing)도 같은 함수를 쓴다.
+  const articles = await fetchBriefingPool({ date: today, cutoff: new Date() })
 
-  if (fetchError) throw new Error(fetchError.message)
   if (!articles || articles.length === 0) {
     throw new Error('오늘 수집된 뉴스가 없습니다. 먼저 뉴스 수집이 완료되어야 합니다.')
   }

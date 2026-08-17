@@ -9,6 +9,7 @@ export async function POST() {
     return NextResponse.json({
       success: true,
       saved: result.saved,
+      skippedExisting: result.skippedExisting, // 이미 있어 건너뛴 URL 수 (2026-08-17 중복 저장 수정의 관측값)
       totalToday: articles.length,
       errors: result.errors,
     })

@@ -82,6 +82,41 @@ function extractSource(url: string): string {
   }
 }
 
+// DB에 이미 있는 URL을 안전하게 조회한다 (2026-08-17 신설, 중복 저장 사고의 수정).
+// - 한 번에 묻는 개수를 제한해 요청 URL이 길어져 414가 나는 것을 막는다
+// - 응답이 PostgREST 상한(1,000행)에 닿으면 잘렸을 수 있으니 반으로 나눠 다시 묻는다
+//   (같은 URL이 여러 행 있는 옛 중복 때문에 100개만 물어도 1,000행을 넘을 수 있다)
+// - 조회 자체가 실패하면 그 묶음을 errors에 남긴다. 예전처럼 조용히 "없음"으로 넘어가면 다시 전부 저장된다
+const EXISTING_QUERY_CHUNK = 100
+const POSTGREST_ROW_CAP = 1000
+async function fetchExistingUrls(urls: string[], errors: string[]): Promise<Set<string>> {
+  const found = new Set<string>()
+  const queue: string[][] = []
+  for (let i = 0; i < urls.length; i += EXISTING_QUERY_CHUNK) queue.push(urls.slice(i, i + EXISTING_QUERY_CHUNK))
+
+  while (queue.length) {
+    const batch = queue.shift()!
+    const { data, error } = await supabase
+      .from('news_articles')
+      .select('original_url')
+      .in('original_url', batch)
+      .limit(POSTGREST_ROW_CAP)
+    if (error) {
+      errors.push(`기존 URL 조회 실패(${batch.length}개 묶음): ${error.message}`)
+      continue
+    }
+    const rows = data ?? []
+    if (rows.length >= POSTGREST_ROW_CAP && batch.length > 1) {
+      // 잘렸을 가능성 → 반으로 나눠 다시 묻는다 (1개까지 내려가면 그대로 받아들임)
+      const mid = Math.ceil(batch.length / 2)
+      queue.push(batch.slice(0, mid), batch.slice(mid))
+      continue
+    }
+    for (const r of rows) found.add(r.original_url)
+  }
+  return found
+}
+
 const HTML_ENTITIES: Record<string, string> = {
   '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"',
   '&apos;': "'", '&nbsp;': ' ', '&#39;': "'",
@@ -104,8 +139,17 @@ function toKSTDateString(date: Date): string {
   return new Date(date.getTime() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
 }
 
+// 시간대 표시가 없는 발행 시각은 한국 시각으로 읽는다 (2026-08-17 수정).
+// 헤럴드경제 RSS가 `2026-08-17 22:01:14`처럼 시간대 없이 준다. 서버(Vercel)는 UTC라
+// `new Date()`가 이걸 UTC로 읽어 **9시간 뒤**로 저장했다(밤 기사가 다음 날 date로 넘어감,
+// 8/17 실측 16건 = 저장 시각보다 발행 시각이 뒤). 국내 언론 피드이므로 +09:00을 붙인다.
+function normalizePubDate(pubDate: string): string {
+  const s = pubDate.trim()
+  return /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?$/.test(s) ? s.replace(' ', 'T') + '+09:00' : s
+}
+
 function toDateString(pubDate: string): string {
-  const d = new Date(pubDate)
+  const d = new Date(normalizePubDate(pubDate))
   return isNaN(d.getTime()) ? toKSTDateString(new Date()) : toKSTDateString(d)
 }
 
@@ -115,7 +159,7 @@ function toDateString(pubDate: string): string {
 // date 열의 기존 동작은 화면들이 의존하므로 건드리지 않고, 발행일만 따로 보관한다.
 function toPublishedAt(pubDate: string): string | null {
   if (!pubDate) return null
-  const d = new Date(pubDate)
+  const d = new Date(normalizePubDate(pubDate))
   return isNaN(d.getTime()) ? null : d.toISOString()
 }
 
@@ -269,7 +313,7 @@ async function fetchNaverKeywordNews(display = 20): Promise<NaverNewsItem[]> {
   return results.flatMap(r => r.status === 'fulfilled' ? r.value : [])
 }
 
-export async function collectAndSaveNews(): Promise<{ saved: number; errors: string[] }> {
+export async function collectAndSaveNews(): Promise<{ saved: number; skippedExisting: number; errors: string[] }> {
   const today = toKSTDateString(new Date())
   const errors: string[] = []
   let saved = 0
@@ -342,13 +386,16 @@ export async function collectAndSaveNews(): Promise<{ saved: number; errors: str
     .filter((item): item is NonNullable<typeof item> => item !== null)
 
   // DB에 이미 있는 URL 조회해서 중복 제거
-  const allUrls = newItems.map(i => i.original_url)
-  const { data: existing } = await supabase
-    .from('news_articles')
-    .select('original_url')
-    .in('original_url', allUrls)
-  const existingUrls = new Set((existing ?? []).map(r => r.original_url))
+  // ⚠️ 2026-08-17 수정. 예전엔 회차 URL 전부(800~900개)를 `.in()` 한 번에 물었다. 두 가지로 깨졌다:
+  //   ① 요청 URL이 60KB를 넘어 414(URI Too Long) → 에러를 무시하고 "있는 URL 없음"으로 진행 → 전부 다시 저장
+  //   ② 300개쯤이면 200 OK인데 응답이 1,000행에서 잘림(PostgREST 기본 상한) → 잘린 만큼 다시 저장
+  //   그 결과 6월 첫 수집부터 같은 기사가 회차마다 다시 들어갔다(중복률 41~75%, 한 URL이 평균 8행).
+  // → 100개씩 나눠 묻고, 묶음 응답이 상한에 닿으면 더 잘게 나눠 다시 묻는다. 조회 에러는 삼키지 않고 errors에 남긴다.
+  const allUrls = Array.from(new Set(newItems.map(i => i.original_url)))
+  const existingUrls = await fetchExistingUrls(allUrls, errors)
+  const skippedAsExisting = newItems.length - newItems.filter(item => !existingUrls.has(item.original_url)).length
   const toInsert = newItems.filter(item => !existingUrls.has(item.original_url))
+  console.log(`[collectNews] 저장 후보 ${newItems.length}건 중 이미 있는 URL ${skippedAsExisting}건 제외 → ${toInsert.length}건 저장 시도`)
 
   // 50개씩 묶어 넣되, 묶음이 실패하면 그 묶음만 한 건씩 다시 넣는다.
   // 예전엔 묶음 하나가 실패하면 50건이 통째로 사라졌다(평소엔 빠르게, 사고 난 날만 느리게).
@@ -370,7 +417,7 @@ export async function collectAndSaveNews(): Promise<{ saved: number; errors: str
     errors.push(`저장 실패(묶음 ${chunk.length}건): ${error.message} → 개별 재시도로 ${recovered}건 복구, ${chunk.length - recovered}건 유실`)
   }
 
-  return { saved, errors }
+  return { saved, skippedExisting: skippedAsExisting, errors }
 }
 
 export async function getTodayArticles() {

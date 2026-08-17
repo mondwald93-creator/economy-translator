@@ -46,7 +46,34 @@ const ECON_WHITELIST = [
   // - 게임주·게임사·게임업계: 주식·산업 기사가 신호 '게임'에 걸리던 것(신호에서도 '게임' 제거)
   // - 출시·신제품·수주·증설: 기업 신제품 기사가 '세탁'·'반려' 등 신호에 걸리던 것 보호
   '게임주', '게임사', '게임업계', '출시', '신제품', '수주', '증설',
+  // 2026-08-17 8/15~17 실물 3일치 검증에서 잡힌 오탐 6건 방어 보강(전부 실제 걸린 제목에서 뽑음):
+  // - 「양도세 2억→9억5000만원…국회 청원」·「장특공제 10억 한도 철회해야 국회 청원」 → 세금 기사가 '국회'에 걸림
+  // - 「'치매 걸리면 상속 어쩌나'…신탁으로 대비」 → 금융상품 기사가 '치매'에 걸림
+  // - 「대형마트 묶어서 전통시장 살린다?…전통시장도 추락」 → 유통 기사가 '추락'에 걸림
+  // - 「국회 본회의서 상법 개정안…」류(기업 지배구조)가 '국회'에 걸릴 자리 선제 방어
+  '양도세', '종부세', '취득세', '상속세', '증여세', '공제', '신탁',
+  '전통시장', '대형마트', '소상공인', '자영업',
+  '상법', '자본시장법', '공정거래', '공정위',
 ]
+
+// 부분 글자 오매칭 예외 (2026-08-17 신설).
+// `includes()`는 단어 경계를 안 본다. 한국어는 조사가 붙어 경계 검사가 어려우니,
+// "이 단어가 이 긴 단어 안에 들어 있을 땐 세지 않는다"를 단어별로 적는다.
+// 예: '전세'는 「전세계」·「전세기(전세 항공기)」 안에 있을 땐 경제 단어로 안 친다.
+//     '구속'은 「법적 구속력」 안에 있을 땐 사법 신호로 안 친다.
+// 새 사례가 나오면 여기에 한 줄 추가한다(단어를 목록에서 빼는 대신).
+const PARTIAL_MATCH_EXCEPTIONS: Record<string, string[]> = {
+  '전세': ['전세계', '전세기', '전세버스'],   // 화이트리스트 '전세'(주거)가 다른 뜻에 걸리던 것 (2026-08-14 실측 「전세계」)
+  '구속': ['구속력'],                          // 사법 신호 '구속'이 「법적 구속력 없는 MOU」류 계약 기사에 걸릴 자리
+  '대선': ['대선주', '대선 테마주'],           // 정치 신호 '대선'이 주식 기사에 걸릴 자리
+}
+
+// 제목에 단어가 "제대로" 들어 있는지: 예외 문자열을 먼저 지우고 나서 본다.
+function containsWord(title: string, word: string): boolean {
+  const exceptions = PARTIAL_MATCH_EXCEPTIONS[word]
+  const cleaned = exceptions ? exceptions.reduce((t, ex) => t.split(ex).join(''), title) : title
+  return cleaned.includes(word)
+}
 
 // 생활정보·연예·패션 성격을 드러내는 신호. 제목에 있으면 (경제 단어가 없을 때) 제외.
 // ⚠️ '게임'·'뷰티'는 신호에서 뺐다(2026-07-24). 산업 이름이라
@@ -119,9 +146,14 @@ export function isStale(publishedAt: string | null, staleDays: number, now: numb
 }
 
 // 경제 단어가 하나라도 있으면 무조건 통과. 없을 때만 연성 신호를 본다.
+// (2026-08-17부터 includes 대신 containsWord — 부분 글자 예외 적용)
+export function hasEconWord(title: string): boolean {
+  return ECON_WHITELIST.some(k => containsWord(title, k))
+}
+
 export function isLifestyle(title: string): boolean {
-  if (ECON_WHITELIST.some(k => title.includes(k))) return false
-  return LIFESTYLE_SIGNALS.some(k => title.includes(k))
+  if (hasEconWord(title)) return false
+  return LIFESTYLE_SIGNALS.some(k => containsWord(title, k))
 }
 
 export function isOpinion(title: string): boolean {
@@ -131,8 +163,8 @@ export function isOpinion(title: string): boolean {
 // 연성 필터와 같은 방식: 경제 단어가 하나라도 있으면 무조건 통과시킨다.
 // 「대통령, 부동산 대책 발표」가 '대통령'에 걸리지 않는 것이 이 순서 덕분이다.
 export function isNonEconomic(title: string): boolean {
-  if (ECON_WHITELIST.some(k => title.includes(k))) return false
-  return NON_ECONOMIC_SIGNALS.some(k => title.includes(k))
+  if (hasEconWord(title)) return false
+  return NON_ECONOMIC_SIGNALS.some(k => containsWord(title, k))
 }
 
 // ── 통합 관문 ────────────────────────────────────────────────────────────────

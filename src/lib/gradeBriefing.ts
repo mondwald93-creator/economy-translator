@@ -2,6 +2,7 @@ import { supabaseAdmin as supabase } from './supabaseAdmin'
 import { openai } from './openai'
 import { notifyFailure } from './notifyAdmin'
 import { titleTokenSet, isNearDuplicate } from './titleSimilarity'
+import { fetchBriefingPool } from './briefingPool'
 
 // ── 브리핑 자동 채점기 (P1+P2) ───────────────────────────────────────────────
 // 기준표 원본: docs/브리핑_채점기준표.md (v2.4)
@@ -504,17 +505,13 @@ export async function gradeDailyBriefing({
     throw new Error(`채점할 브리핑이 없습니다 (${targetDate}). 브리핑 생성 후에 채점하세요.`)
   }
 
-  // 사실·선정 채점용 대조 자료: 그날 기사 제목 풀 (발행 때와 같은 정렬·중복 제거로 재구성)
+  // 사실·선정 채점용 대조 자료: 발행 때와 같은 풀 (발행 시각 기준 지난 24시간, briefingPool.ts 한 함수 공용)
   // ⚠️ 발행 시각 이전 기사만 — 발행 후 크론이 추가 수집하면 "최신순 30개"가 통째로 새 기사로
   //    바뀌어, 심사위원이 브리핑이 못 본 기사로 대조하게 됨 (2026-07-09 전항목 0점·실격 오판 사고).
   //    기준은 고정 시각이 아니라 그날 브리핑 행의 실제 생성 시각 → 보험 크론이 발행한 날도 안전.
-  const { data: articles } = await supabase
-    .from('news_articles')
-    .select('id, title')
-    .eq('date', targetDate)
-    .lte('created_at', String(briefing.created_at))
-    .order('created_at', { ascending: false })
-  const candidates = buildCandidatePool(articles ?? [])
+  //    2026-08-17: `date = 그날` 필터를 24시간 창으로 바꿈. 발행 코드(runBriefing)와 반드시 같은 함수를 쓸 것.
+  const articles = await fetchBriefingPool({ date: targetDate, cutoff: new Date(String(briefing.created_at)) })
+  const candidates = buildCandidatePool(articles)
 
   // 형식 검사 (코드) — v2.2: 탈락 여부는 하드 검사만으로, 소프트 실패는 경고로 기록
   const formatChecks = runFormatChecks(briefing)
