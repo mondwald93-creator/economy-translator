@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 
 export const revalidate = 3600
 
-const BASE = 'https://economy-translator.vercel.app'
+const BASE = 'https://economytranslator.com'
 
 export const metadata: Metadata = {
   title: '지난 브리핑',

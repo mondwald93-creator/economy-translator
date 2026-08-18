@@ -45,7 +45,7 @@ export async function sendDailyNewsletter(): Promise<{ sent: number; skipped: st
       headline: briefing.headline,
       summary: briefing.summary ?? '',
       dailyTerm,
-      unsubscribeUrl: `https://economy-translator.vercel.app/unsubscribe?email=${encodeURIComponent(sub.email)}`,
+      unsubscribeUrl: `https://economytranslator.com/unsubscribe?email=${encodeURIComponent(sub.email)}`,
     }),
   }))
 

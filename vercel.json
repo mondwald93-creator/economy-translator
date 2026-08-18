@@ -1,17 +1,57 @@
 {
-  "regions": ["icn1"],
+  "regions": [
+    "icn1"
+  ],
   "crons": [
-    { "path": "/api/cron",      "schedule": "20 0 * * *"  },
-    { "path": "/api/cron-news", "schedule": "0 4 * * *"  },
-    { "path": "/api/cron-news", "schedule": "0 8 * * *"  },
-    { "path": "/api/cron-news", "schedule": "0 13 * * *" },
-    { "path": "/api/grade-briefing", "schedule": "0 1 * * *" }
+    {
+      "path": "/api/cron",
+      "schedule": "20 0 * * *"
+    },
+    {
+      "path": "/api/cron-news",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron-news",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron-news",
+      "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/grade-briefing",
+      "schedule": "0 1 * * *"
+    }
   ],
   "functions": {
-    "src/app/api/cron/route.ts":              { "maxDuration": 300 },
-    "src/app/api/cron-briefing/route.ts":     { "maxDuration": 300 },
-    "src/app/api/generate-briefing/route.ts": { "maxDuration": 300 },
-    "src/app/api/collect-news/route.ts":      { "maxDuration": 60  },
-    "src/app/api/grade-briefing/route.ts":    { "maxDuration": 120 }
-  }
+    "src/app/api/cron/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron-briefing/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/generate-briefing/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/collect-news/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/grade-briefing/route.ts": {
+      "maxDuration": 120
+    }
+  },
+  "redirects": [
+    {
+      "source": "/((?!api/).*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "economy-translator.vercel.app"
+        }
+      ],
+      "destination": "https://economytranslator.com/$1",
+      "permanent": true
+    }
+  ]
 }

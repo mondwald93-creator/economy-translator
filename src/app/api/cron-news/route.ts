@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL
-    || 'https://economy-translator.vercel.app'
+    || 'https://economytranslator.com'   // 2026-08-18 도메인 이전. 옛 vercel.app 주소도 /api/* 는 리다이렉트 제외라 계속 동작
 
   try {
     const collectRes = await fetch(`${baseUrl}/api/collect-news`, { method: 'POST' })

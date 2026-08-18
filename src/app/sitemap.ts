@@ -2,7 +2,7 @@ import { MetadataRoute } from 'next'
 import { supabase } from '@/lib/supabase'
 import { slugifyTerm } from '@/lib/terms'
 
-const BASE = 'https://economy-translator.vercel.app'
+const BASE = 'https://economytranslator.com'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [

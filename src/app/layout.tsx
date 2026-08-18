@@ -15,7 +15,7 @@ import BottomTabBar from '@/components/layout/BottomTabBar'
 import { supabase } from '@/lib/supabase'
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://economy-translator.vercel.app'),
+  metadataBase: new URL('https://economytranslator.com'),
   title: {
     default: '경제번역기 — 5분으로 끝내는 경제 입문',
     template: '%s | 경제번역기',
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'ko_KR',
-    url: 'https://economy-translator.vercel.app',
+    url: 'https://economytranslator.com',
     siteName: '경제번역기',
     title: '경제번역기 — 5분으로 끝내는 경제 입문',
     description: '경제 공부, 어디서부터 시작할지 모르겠다면? 매일 아침 5분, 한국 경제 뉴스를 쉬운 말로 풀어드려요.',
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     description: '경제 공부, 어디서부터 시작할지 모르겠다면? 매일 아침 5분, 쉬운 말로 풀어드려요.',
   },
   alternates: {
-    canonical: 'https://economy-translator.vercel.app',
+    canonical: 'https://economytranslator.com',
   },
   // 구글 서치 콘솔 소유권 확인 (2026-07-26 등록). 지우면 소유권이 풀린다.
   verification: {

@@ -191,7 +191,7 @@ function Shell({ badge, meta, footLeft, children }: ShellProps) {
           {footLeft}
         </div>
         <div style={{ display: 'flex', color: '#22C55E', fontSize: 25, fontWeight: 700 }}>
-          economy-translator.vercel.app
+          economytranslator.com
         </div>
       </div>
     </div>

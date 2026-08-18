@@ -52,7 +52,7 @@ export function buildNewsletterHtml(data: BriefingEmailData): string {
 
       <!-- CTA 버튼 -->
       <div style="margin-top:28px;text-align:center;">
-        <a href="https://economy-translator.vercel.app"
+        <a href="https://economytranslator.com"
            style="display:inline-block;background:#22C55E;color:#fff;font-size:14px;font-weight:700;padding:14px 28px;border-radius:10px;text-decoration:none;letter-spacing:-0.2px;">
           오늘 브리핑 전체 보기 →
         </a>
@@ -107,7 +107,7 @@ export function buildWelcomeHtml(email: string): string {
       </div>
 
       <div style="text-align:center;">
-        <a href="https://economy-translator.vercel.app"
+        <a href="https://economytranslator.com"
            style="display:inline-block;background:#22C55E;color:#fff;font-size:14px;font-weight:700;padding:14px 28px;border-radius:10px;text-decoration:none;">
           오늘 브리핑 먼저 보기 →
         </a>
@@ -117,7 +117,7 @@ export function buildWelcomeHtml(email: string): string {
     <div style="padding:20px 32px;border-top:1px solid #F3F4F6;background:#FAFAFA;text-align:center;">
       <p style="margin:0;font-size:11px;color:#9CA3AF;line-height:1.8;">
         경제번역기 · 매일 5분 경제 입문 브리핑<br>
-        <a href="https://economy-translator.vercel.app/unsubscribe?email=${encodeURIComponent(email)}" style="color:#9CA3AF;text-decoration:underline;">구독 취소하기</a>
+        <a href="https://economytranslator.com/unsubscribe?email=${encodeURIComponent(email)}" style="color:#9CA3AF;text-decoration:underline;">구독 취소하기</a>
       </p>
     </div>
 

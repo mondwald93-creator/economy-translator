@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     openGraph: {
       title: article.title,
       description,
-      url: `https://economy-translator.vercel.app/news/${params.id}`,
+      url: `https://economytranslator.com/news/${params.id}`,
     },
   }
 }

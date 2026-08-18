@@ -6,7 +6,7 @@ import type { Term } from '@/lib/terms'
 // 하루 한 번 갱신. 새 용어가 추가되면 다음 갱신 때 목록에 들어온다.
 export const revalidate = 86400
 
-const BASE = 'https://economy-translator.vercel.app'
+const BASE = 'https://economytranslator.com'
 
 export const metadata: Metadata = {
   title: '경제용어 사전',

@@ -24,7 +24,7 @@ export default function TodaySentenceCard({ sentence, dateLabel }: Props) {
 
   const handleCopyText = async () => {
     trackEvent('sentence_card_copy_text')
-    const text = `${sentence}\n\n📰 경제번역기 · 매일 5분 경제 입문 브리핑\nhttps://economy-translator.vercel.app`
+    const text = `${sentence}\n\n📰 경제번역기 · 매일 5분 경제 입문 브리핑\nhttps://economytranslator.com`
     await navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)

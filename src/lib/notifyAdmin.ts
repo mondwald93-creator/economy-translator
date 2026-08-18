@@ -24,8 +24,8 @@ export async function notifyFailure(title: string, detail: string) {
           <pre style="background:#F3F4F6;padding:12px;border-radius:8px;white-space:pre-wrap">${detail}</pre>
           <p style="color:#6B7280;font-size:13px">
             수동 복구: 터미널에서 아래 명령 실행<br/>
-            <code>curl -X POST https://economy-translator.vercel.app/api/collect-news</code><br/>
-            <code>curl -X POST https://economy-translator.vercel.app/api/generate-briefing</code>
+            <code>curl -X POST https://economytranslator.com/api/collect-news</code><br/>
+            <code>curl -X POST https://economytranslator.com/api/generate-briefing</code>
           </p>
         </div>
       `,

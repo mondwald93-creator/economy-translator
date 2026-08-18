@@ -14,7 +14,7 @@ import EndCard from '@/components/home/EndCard'
 export const revalidate = 3600
 export const dynamicParams = true
 
-const BASE = 'https://economy-translator.vercel.app'
+const BASE = 'https://economytranslator.com'
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 function getDb() {

@@ -2,7 +2,9 @@
 
 매일 한국 경제 뉴스를 초보자 언어로 정리해주는 웹사이트.
 
-- 실서비스: https://economy-translator.vercel.app
+- 실서비스: **https://economytranslator.com** (2026-08-18 도메인 구매·연결. Vercel에서 구매, 연 $11.25, 만료 2027-08-18, 자동갱신)
+  - 옛 주소 https://economy-translator.vercel.app 은 `vercel.json` redirects로 새 주소에 **308 영구 이동**. 단 **`/api/*`는 제외**(cron-job.org가 옛 주소로 9:00/9:07을 호출하므로 리다이렉트하면 Authorization 헤더가 떨어질 수 있음)
+  - www.economytranslator.com → 본 주소 308 (Vercel 대시보드 Domains에서 설정)
 - GitHub: https://github.com/mondwald93-creator/economy-translator
 - 배포: git push → Vercel 자동 재배포
 - 자동 업데이트(2026-07-02 구조 개편 — 하루 한 번 발행 보장):
@@ -175,8 +177,8 @@ open color-preview.html
 
 ```bash
 # 뉴스 수집 — ⚠️ 배포 확인용 폴링 금지(위 표 "배포 확인 방법"). 정규 회차가 빠졌을 때 1회만.
-curl -X POST https://economy-translator.vercel.app/api/collect-news
+curl -X POST https://economytranslator.com/api/collect-news
 
 # 브리핑 생성
-curl -X POST https://economy-translator.vercel.app/api/generate-briefing
+curl -X POST https://economytranslator.com/api/generate-briefing
 ```

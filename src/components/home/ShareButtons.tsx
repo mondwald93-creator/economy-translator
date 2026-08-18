@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { trackEvent } from '@/lib/gtag'
 
-const SHARE_URL = 'https://economy-translator.vercel.app'
+const SHARE_URL = 'https://economytranslator.com'
 const SHARE_TITLE = '경제번역기 — 매일 5분 경제 입문 브리핑'
 const SHARE_TEXT = '경제를 전혀 몰라도 OK. 매일 한국 경제 뉴스를 초보자 언어로 쉽게 정리해줘요 📊'
 

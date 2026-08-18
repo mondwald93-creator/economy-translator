@@ -8,7 +8,7 @@ import { CATEGORY_COLORS, slugifyTerm, type Term } from '@/lib/terms'
 export const revalidate = 86400
 export const dynamicParams = true
 
-const BASE = 'https://economy-translator.vercel.app'
+const BASE = 'https://economytranslator.com'
 
 function getDb() {
   return createClient(

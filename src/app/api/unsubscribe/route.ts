@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     <div style="font-size:40px;margin-bottom:16px;">👋</div>
     <h1>구독이 취소됐어요</h1>
     <p>${email} 주소로의 이메일 발송을 중단할게요.<br>언제든 다시 구독하실 수 있어요.</p>
-    <a href="https://economy-translator.vercel.app">경제번역기 보러가기</a>
+    <a href="https://economytranslator.com">경제번역기 보러가기</a>
   </div>
 </body>
 </html>`,
