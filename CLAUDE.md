@@ -18,7 +18,18 @@
 
 ## 현재 상태
 
-모든 기능 완료, 실서비스 운영 중. 알려진 버그 없음.
+모든 기능 완료, 실서비스 운영 중. 서버 실행 지역 = **서울(icn1)**(2026-08-17, `vercel.json` regions).
+
+**알고 있는 데이터 흠 (고치지 않기로 한 것, 분석할 때만 주의)**
+- **6/6 ~ 8/18 00:20 저장분 중 매경·한경·SBS 기사 2,201건(16,566행)은 `original_url`이 `<![CDATA[https://…]]>` 껍데기째이고 `source`가 전부 '뉴스'로 잘못 붙어 있다.** 파서 버그(8/18 수정). 실사용자 영향이 거의 없어(방문자 3달 66명·검색 유입 0) **그대로 두기로 결정(2026-08-18)**. 언론사별 집계를 할 땐 이 구간의 '뉴스'가 대부분 매일경제(2,047건)임을 감안한다. 벗기려면 `original_url like '<![CDATA[%'` 행만 UPDATE하면 되고, 벗긴 뒤 91건은 이미 깨끗하게 저장된 행과 URL이 겹친다.
+- **6/4 ~ 8/17 밤 저장분은 같은 URL이 여러 행이다**(회차마다 다시 저장하던 버그, 중복률 41~75%, 8/17 수정). 브리핑 풀·채점은 URL 기준으로 한 행만 쓰므로 영향 없음. 옛 행 정리는 미결.
+- **8/17 23:30 ~ 8/18 00:24 저장분(배포 확인용 수동 회차)의 네이버뉴스 109건은 `published_at`이 null이다.** 정규 회차는 정상(회차당 시각 없음 5~10건 = 헤드라인). 원인 미확정.
+
+**2026-08-14 · 08-17 · 08-18 수집 개편 요약** (상세 = 각 코드 주석)
+- 랭킹 페이지(`popularDay.naver`) 제거 → 네이버 **경제 섹션**(`/section/101`, 헤드라인 10 + 추천 36) + RSS 10곳 + 검색 API 3키워드
+- 브리핑 재료 = **발행 시각 기준 지난 24시간 창**(`briefingPool.ts`, 발행·채점 공용)
+- 기존 URL 조회 100개씩 + 1,000행 상한 감지(`fetchExistingUrls`) → 회차마다 다시 저장하던 중복 종료
+- RSS `<link>`·`<pubDate>` CDATA 벗기기(`stripCdata`) · 시간대 없는 pubDate는 +09:00(`normalizePubDate`, 헤럴드) · 0건 소스는 이유 표기(`reasons`)
 
 **완료 이력**
 - MVP: Next.js 14 + Supabase + OpenAI 기본 구조, 6개 페이지
@@ -60,7 +71,13 @@
 
 [오후 1시·5시·10시 KST] Vercel Cron → GET /api/cron-news
   → POST /api/collect-news   (뉴스 수집만, 브리핑 생성 없음)
+
+[매일 10:00 KST] Vercel Cron → GET /api/grade-briefing (`0 1` UTC)
+  → 오늘 브리핑 자동 채점 → briefing_scores 저장 (점수 조회 = 같은 경로 `?recent=N`, Bearer CRON_SECRET)
 ```
+
+- ⚠️ **Vercel 무료 플랜 크론은 정각이 아니라 그 시간대 안 아무 때나 돈다.** 실측 = 보험 9:31~9:36 · 오후 13:24 · 17:28 · 22:10. **재배포 직후 그 시간대 회차가 통째로 빠질 수 있다**(2026-08-18 13:11 배포 → 1시 회차 미실행, 16:23 수동 1회로 메움).
+- 회차별 저장 시각은 `news_articles.created_at`(KST +9h)으로 본다. 수집 로그 자체는 DB에 없다(Vercel 함수 로그에만).
 
 - 멱등성: 오늘 briefings에 headline 있으면 `runDailyBriefing`이 재생성 없이 반환 → 같은 날 내용 안 바뀜. 저장은 그대로 `upsert(onConflict:date)`.
 - 수집 실패 또는 0건 시 브리핑 생성을 건너뜀 (실패 감지 로직 있음).
@@ -95,6 +112,13 @@
 | **DB 쓰기·구독자·채점 접근 키** | **서버는 `supabaseAdmin`(service_role 키, `src/lib/supabaseAdmin.ts`)로만.** 모든 write + subscribers + briefing_scores가 여기 의존. 공개 콘텐츠 '읽기'만 anon(`supabase.ts`). env=`SUPABASE_SERVICE_ROLE_KEY`(Vercel Production) | anon 키로 되돌리면 RLS에 막혀 발행·수집·채점·구독이 전부 실패. 새 서버 쓰기 코드도 반드시 `supabaseAdmin` import |
 | **news_articles.published_at** | 기사 발행일 원본(RSS·검색 API pubDate). 파싱 실패 시 **null**(오늘로 추측 금지). 랭킹 스크래핑은 발행일이 없어 null. `date` 열(수집일)과 별개. 2026-07-24 신설 | 오늘 날짜로 채우면 오래된 기사가 '오늘 기사'로 둔갑(2026-07-23 7/16 발행 금리기사 재혼입 원인) |
 | **후보 풀 관문(`articleGate.ts`)** | `runBriefing`의 `articleInputs` **상류 1곳**에서 신선도·연성·의견글 기사 제거. 헤드라인·TOP3·분야별 선정 공통 입구. 통과분<30이면 원본 사용(빈 브리핑 방지). 2026-07-24 신설 | 제거·우회 시 연성기사(건조기시트)·과거기사 재혼입, 분야별 목록까지 오염 |
+| **뉴스 수집 소스(2026-08-14)** | RSS 10곳(`RSS_SOURCES`, 전부 경제 섹션 전용) + 네이버 **경제 섹션** `/section/101` + 검색 API 3키워드. **랭킹 페이지(`popularDay.naver`) 금지** | 랭킹 페이지는 언론사 83곳 인기 기사 모음이라 `sid1=101`을 붙여도 정치·연예가 그대로 들어옴(6/4~8/14 그랬음). 서울경제(AI학습 금지 명시)·머니투데이(피드 멈춤)·이데일리(TLS) 다시 넣지 말 것 |
+| **서버 실행 지역 `icn1`(2026-08-17)** | `vercel.json` `"regions": ["icn1"]` | 기본(미국 iad1)으로 돌아가면 한국경제·뉴스1 RSS가 0건 |
+| **브리핑 재료 창(2026-08-17)** | `briefingPool.ts` = 발행 시각 기준 **지난 24시간** + 시각 모르는 그날 수집분, URL 중복 제거, 1,000행 페이지네이션. **발행(`runBriefing`)·채점(`gradeBriefing`) 반드시 이 함수 하나** | `date = 그날`로 되돌리면 어제 오후 기사가 통째로 빠짐(풀 450→130건). 발행·채점이 다른 풀을 보면 심사위원이 브리핑이 못 본 기사로 채점(2026-07-09 실격 오판) |
+| **기존 URL 조회(2026-08-17)** | `fetchExistingUrls` = 100개씩 `.in()` + 응답 1,000행이면 반분 재조회 + 조회 에러는 errors에 | 회차 URL 전부를 한 번에 물으면 414(URI Too Long)·1,000행 잘림 → 에러 삼키고 전부 재저장(6/4~8/17 중복률 41~75%의 원인) |
+| **RSS 파서 CDATA·시간대(2026-08-17·18)** | `<link>`·`<pubDate>` 모두 `stripCdata()` · 시간대 없는 pubDate는 `normalizePubDate`가 +09:00 | 벗기지 않으면 매경·한경·SBS URL이 껍데기째 저장(source '뉴스'·원문 링크 깨짐), 뉴스1 발행 시각 전부 null. +09:00 없으면 헤럴드 밤 기사가 다음 날로 넘어감 |
+| **배포 확인 방법** | GitHub 배포 API(`/repos/…/deployments` + statuses)·`x-vercel-id`·응답 필드 같은 **읽기 신호**. 라이브 데이터 확인은 다음 정규 회차 `created_at`으로 | **`POST /api/collect-news`를 폴링에 쓰지 말 것** — 옛 코드면 회차마다 수백 건 중복, 새 코드여도 시각 없는 네이버 행이 쌓였다(8/17 밤 109건). 수동 1회는 회차가 빠진 걸 메울 때만 |
+| **화면 완료 기준(모바일, 2026-08-10 로드맵 P6-2)** | **새 페이지·화면 수정은 폰 실물(사용자 스크린샷)로 확인한 뒤 완료 선언.** 방문자 절반이 폰(GA 실측). 헤드리스 크롬은 폰 문제를 재현 못 함 | 데스크톱만 보고 끝내면 폰에서 깨진 채 배포됨(2026-08 모바일 최적화 P1~P5가 그걸 고친 작업) |
 
 ---
 
@@ -114,9 +138,9 @@
 | 프레임워크 | Next.js 14 (App Router) + TypeScript + Tailwind CSS |
 | AI | OpenAI GPT-4o-mini |
 | DB | Supabase PostgreSQL (테이블: briefings, news_articles, terms) |
-| 뉴스 | RSS 4개 + 네이버 경제탭 스크래핑 + 네이버 검색 API |
-| 자동화 | 주 생성=cron-job.org 9:00 수집/9:07 브리핑, 보험=Vercel Cron(UTC 0:20=KST 9:20). 브리핑은 멱등이라 하루 1회 — 2026-07-02 개편 |
-| 배포 | Vercel (git push → 자동 재배포) |
+| 뉴스 | RSS 10곳(경제 섹션 전용) + 네이버 경제 섹션(헤드라인+추천) + 네이버 검색 API 3키워드 — 2026-08-14 개편 |
+| 자동화 | 주 생성=cron-job.org 9:00 수집/9:07 브리핑, 보험=Vercel Cron(UTC 0:20=KST 9:20). 브리핑은 멱등이라 하루 1회 — 2026-07-02 개편. 채점=Vercel Cron KST 10:00 |
+| 배포 | Vercel (git push → 자동 재배포). 실행 지역 서울(icn1). `git push`는 이 세션 도구에서 차단돼 있어 사용자가 `!` 접두사로 직접 실행 |
 
 ---
 
@@ -150,7 +174,7 @@ open color-preview.html
 ## 수동 실행 (필요 시)
 
 ```bash
-# 뉴스 수집
+# 뉴스 수집 — ⚠️ 배포 확인용 폴링 금지(위 표 "배포 확인 방법"). 정규 회차가 빠졌을 때 1회만.
 curl -X POST https://economy-translator.vercel.app/api/collect-news
 
 # 브리핑 생성
