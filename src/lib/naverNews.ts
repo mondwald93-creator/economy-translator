@@ -190,6 +190,11 @@ const RSS_SOURCES: { name: string; url: string }[] = [
   { name: 'SBS경제', url: 'https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=02' },
 ]
 
+// "<![CDATA[ … ]]>" 껍데기를 벗기고 앞뒤 공백을 지운다. link(8/18 1차)·pubDate(8/18 2차)가 같이 쓴다.
+function stripCdata(s: string): string {
+  return s.replace(/^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/, '$1').trim()
+}
+
 function parseRSSItems(xml: string): NaverNewsItem[] {
   const items: NaverNewsItem[] = []
   const blocks = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)]
@@ -203,11 +208,15 @@ function parseRSSItems(xml: string): NaverNewsItem[] {
     //    (<link><![CDATA[https://…]]></link>). 6/4 첫 수집부터 이 껍데기째 URL로 저장돼
     //    original_url이 "<![CDATA[https://…]]>"였다(고유 2,199건, 매경 2,047·한경 102·SBS 50).
     //    결과: 도메인 판별이 실패해 source가 전부 '뉴스'로 찍히고, 뉴스 상세의 원문 링크가 깨졌다.
-    const link = (
+    const link = stripCdata(
       c.match(/<link>([\s\S]*?)<\/link>/)?.[1] ||
       c.match(/<guid[^>]*>([\s\S]*?)<\/guid>/)?.[1] || ''
-    ).replace(/^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/, '$1').trim()
-    const pubDate = c.match(/<pubDate>(.*?)<\/pubDate>/)?.[1]?.trim() || ''
+    )
+    // ⚠️ 2026-08-18 수정(2차): 뉴스1 피드는 <pubDate>도 CDATA로 감싼다
+    //    (<pubDate><![CDATA[Tue, 18 Aug 2026 12:00:00 +0900]]></pubDate>, 60건 중 60건).
+    //    껍데기째 읽으면 new Date()가 실패해 published_at이 전부 null·date는 오늘로 대체됐다.
+    //    뉴스1은 서울 리전 이동(8/17) 뒤 처음 들어와서 이제 드러남. 10곳 피드 중 뉴스1뿐(8/18 실측).
+    const pubDate = stripCdata(c.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || '')
     if (title && link) {
       items.push({ title, originallink: link, link, description: '', pubDate })
     }
