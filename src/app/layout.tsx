@@ -39,9 +39,14 @@ export const metadata: Metadata = {
   alternates: {
     canonical: 'https://economytranslator.com',
   },
-  // 구글 서치 콘솔 소유권 확인 (2026-07-26 등록). 지우면 소유권이 풀린다.
+  // 구글 서치 콘솔 소유권 확인. 지우면 소유권이 풀린다.
+  //  - 1번째: 2026-07-26 등록(옛 주소 economy-translator.vercel.app 속성, 다른 구글 계정)
+  //  - 2번째: 2026-08-18 새 주소 economytranslator.com 속성(사용자 현재 계정). 계정이 달라 태그가 다르다
   verification: {
-    google: 'GFtikU9HkXIaCbjc-P8Ib8PeaBqbiSscJ9sqTs6JKkY',
+    google: [
+      'GFtikU9HkXIaCbjc-P8Ib8PeaBqbiSscJ9sqTs6JKkY',
+      '2Ma7AHxm5v8El1qfTRUBnt617dvigyKD21teejLiYvI',
+    ],
   },
 }
 
