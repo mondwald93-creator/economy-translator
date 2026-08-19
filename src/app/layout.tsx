@@ -39,14 +39,18 @@ export const metadata: Metadata = {
   alternates: {
     canonical: 'https://economytranslator.com',
   },
-  // 구글 서치 콘솔 소유권 확인. 지우면 소유권이 풀린다.
-  //  - 1번째: 2026-07-26 등록(옛 주소 economy-translator.vercel.app 속성, 다른 구글 계정)
-  //  - 2번째: 2026-08-18 새 주소 economytranslator.com 속성(사용자 현재 계정). 계정이 달라 태그가 다르다
+  // 검색엔진 소유권 확인 태그. 지우면 소유권이 풀린다.
+  //  - google 1번째: 2026-07-26 등록(옛 주소 economy-translator.vercel.app 속성, 다른 구글 계정)
+  //  - google 2번째: 2026-08-18 새 주소 economytranslator.com 속성(사용자 현재 계정). 계정이 달라 태그가 다르다
+  //  - naver: 2026-08-19 네이버 서치어드바이저 등록(마케팅 로드맵 회차 1). 네이버는 google처럼 전용 칸이 없어 other에 넣는다
   verification: {
     google: [
       'GFtikU9HkXIaCbjc-P8Ib8PeaBqbiSscJ9sqTs6JKkY',
       '2Ma7AHxm5v8El1qfTRUBnt617dvigyKD21teejLiYvI',
     ],
+    other: {
+      'naver-site-verification': 'd07c23f0d8a330d91092c3e62f16702d9deca4d2',
+    },
   },
 }
 

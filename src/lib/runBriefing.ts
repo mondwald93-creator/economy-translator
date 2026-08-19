@@ -8,6 +8,8 @@ import {
 } from './generateBriefing'
 import { filterCandidatePool } from './articleGate'
 import { fetchBriefingPool } from './briefingPool'
+import { notifyIndexNow, briefingUrls } from './indexNow'
+import { slugifyTerm } from './terms'
 
 // 관문 신선도 기준(발행 후 이 일수 초과 시 후보 제외).
 // ⚠️ 잠정값 — published_at 실데이터가 며칠 쌓이면 실분포 보고 확정(2026-07-24).
@@ -165,6 +167,12 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
     )
   }
 
+  // 검색엔진(네이버·빙 등)에 "새 페이지 생겼다" 알림. 발행이 끝난 뒤에만 부른다.
+  // 실패해도 발행 결과에는 영향을 주지 않는다(부가 기능) — 결과만 응답에 실어 눈으로 볼 수 있게 한다.
+  const termSlug = briefingResult.dailyTerm?.term ? slugifyTerm(briefingResult.dailyTerm.term) : null
+  const indexNow = await notifyIndexNow(briefingUrls(today, termSlug))
+  if (!indexNow.ok) console.error('[runBriefing] IndexNow 알림 실패:', indexNow.status, indexNow.detail)
+
   return {
     date: today,
     generated: true,
@@ -174,5 +182,6 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
     headline: briefingResult.headline,
     top3: top3Articles.map(a => a.title),
     dailyTerm: briefingResult.dailyTerm?.term ?? '',
+    indexNow,
   }
 }
