@@ -11,6 +11,7 @@
  *   재시도로 여러 번 불려도 두 번 올라가지 않는다.
  */
 import { NextResponse } from 'next/server'
+import { waitUntil } from '@vercel/functions'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { getAccessToken, alreadyPosted, recordPost } from '@/lib/socialTokens'
 import { buildPostText, postToThreads } from '@/lib/postToThreads'
@@ -57,15 +58,31 @@ export async function GET(request: Request) {
       return NextResponse.json({ dryRun: true, date: today, tokenNote: note, length: text.length, text })
     }
 
-    const result = await postToThreads(token, text)
-    await recordPost('threads', today, result.ok ? 'success' : 'failed', result.postId, result.detail)
+    // 게시는 백그라운드로 넘기고 응답을 먼저 돌려준다.
+    // cron-job.org는 30초만 기다리고 timeout을 실패로 기록 → 연속 25회면 크론잡이 자동으로 꺼진다
+    // (2026-06-12 실측. cron-briefing이 같은 이유로 같은 구조다).
+    // 게시 한 번은 최소 32초다: 컨테이너 생성 → 문서 권장 30초 대기 → 게시.
+    // 그대로 두면 게시는 되는데 크론 화면엔 매일 실패로 남고, 25일째 조용히 멈춘다.
+    //
+    // 여기까지 오는 데는 1~2초면 충분하다(브리핑 조회·중복 확인·토큰).
+    // 건너뛴 이유(브리핑 없음·이미 올림·토큰 없음)는 위에서 그대로 응답에 담기므로
+    // 크론 화면만 봐도 무슨 일이 있었는지 보인다.
+    waitUntil(
+      (async () => {
+        try {
+          const result = await postToThreads(token, text)
+          await recordPost('threads', today, result.ok ? 'success' : 'failed', result.postId, result.detail)
+          if (!result.ok) {
+            await notifyFailure('스레드 자동 게시 실패', `${result.detail}\n\n본문:\n${text}`)
+          }
+        } catch (error) {
+          await recordPost('threads', today, 'failed', null, String(error))
+          await notifyFailure('스레드 자동 게시 오류', String(error))
+        }
+      })()
+    )
 
-    if (!result.ok) {
-      await notifyFailure('스레드 자동 게시 실패', `${result.detail}\n\n본문:\n${text}`)
-      return NextResponse.json({ success: false, error: result.detail, text }, { status: 500 })
-    }
-
-    return NextResponse.json({ success: true, date: today, postId: result.postId, tokenNote: note, text })
+    return NextResponse.json({ accepted: true, date: today, tokenNote: note, length: text.length, text })
   } catch (error) {
     await recordPost('threads', today, 'failed', null, String(error))
     await notifyFailure('스레드 자동 게시 오류', String(error))
