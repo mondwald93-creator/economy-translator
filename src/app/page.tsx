@@ -11,8 +11,10 @@ import KeyIndicators from '@/components/home/KeyIndicators'
 import NewsCardList from '@/components/home/NewsCardList'
 import EndCard from '@/components/home/EndCard'
 import TodaySentenceCard from '@/components/home/TodaySentenceCard'
-// EmailSubscribeSection — 트래픽 생기면 활성화
-// import EmailSubscribeSection from '@/components/home/EmailSubscribeSection'
+// 구독 폼 — 2026-08-20 노출 시작(마케팅 로드맵 회차 2).
+// 그전까지 주석 처리돼 있었다("트래픽 생기면 활성화"). 순서가 거꾸로였다는 판단으로 뒤집었다:
+// 데려오기 전에 붙잡을 그릇부터 둔다(7/24 오픈채팅 15명 → 재방문 0이 근거).
+import EmailSubscribeSection from '@/components/home/EmailSubscribeSection'
 
 // 홈 뉴스 목록 = 분야별(6개) 대표 기사 1개씩. 경제건강진단과 같은 6개 분류로 화면 일관성 유지.
 // 각 기사는 브리핑이 full_analysis.category 꼬리표를 붙여 저장해 둔 것 중에서 고른다.
@@ -129,6 +131,8 @@ export default async function Home() {
       <Top3NewsSection top3Analysis={(briefing.top3_analysis as Top3AnalysisItem[]) ?? null} />
       <ConnectionDiagram connections={(briefing.connections as ConnectionItem[]) ?? null} />
       <NewsCardList articles={articles} updatedAt={formatKST(briefing.created_at)} />
+      {/* 다 읽고 나서 권하는 자리. 맨 위에 두면 읽기 전에 가로막는다 */}
+      <EmailSubscribeSection />
       <EndCard dailyTerm={dailyTerm} prevDate={prevBriefing?.date ?? null} />
     </div>
   )
