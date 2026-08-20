@@ -41,6 +41,9 @@ const FALLBACK_LINE = '경제 뉴스를 쉬운 말로 옮겨 드려요'
  */
 const FIXED_GLYPHS =
   '경제번역기오늘의브리핑용어사전매일분입문쉬운말로풀어쓴개년월일화수목금토' +
+  // 홈 간판 카드의 메타 글자. 2026-08-20 홈 og를 간판 고정으로 바꾸면서 추가했다.
+  // 이 넉 자가 빠져 있었는데, 그때까진 FallbackCard가 실제로 그려진 적이 없어 안 드러났다.
+  '아침발행' +
   FALLBACK_LINE +
   'abcdefghijklmnopqrstuvwxyz' +
   'ABCDEFGHIJKLMNOPQRSTUVWXYZ' +
