@@ -65,6 +65,23 @@ function weekdayOf(date: string): number {
   return new Date(`${date}T00:00:00Z`).getUTCDay()
 }
 
+/** '2026-08-20' → '8월 20일' */
+export function dateLabelOf(date: string): string {
+  const [, mm, dd] = date.split('-')
+  return `${Number(mm)}월 ${Number(dd)}일`
+}
+
+/**
+ * 그날의 첫 줄을 고른다. **인스타 캡션도 이 함수를 쓴다** — 두 채널의 목소리를
+ * 하나로 두려는 것이고, 문장을 또 지어내지 않으려는 것이기도 하다.
+ */
+export function pickOpener(date: string): string {
+  const label = dateLabelOf(date)
+  const day = Number(date.split('-')[2]) || 1
+  const candidates = [WEEKDAY_OPENERS[weekdayOf(date)], ...OPENERS]
+  return candidates[day % candidates.length](label)
+}
+
 /**
  * 글 구조 = **부르는 첫 줄(반말·계정 목소리) + 브리핑 헤드라인(존댓말 원문) + 링크.**
  *
@@ -81,13 +98,9 @@ function weekdayOf(date: string): number {
  */
 export function buildPostText(opts: { date: string; headline: string; shareCard?: string | null }): string {
   const link = withUtm(`/briefing/${opts.date}`, 'threads')
-  const [, mm, dd] = opts.date.split('-')
-  const label = `${Number(mm)}월 ${Number(dd)}일`
-  const day = Number(dd) || 1
   const headline = opts.headline.trim()
 
-  const candidates = [WEEKDAY_OPENERS[weekdayOf(opts.date)], ...OPENERS]
-  let text = `${candidates[day % candidates.length](label)}\n\n${headline}\n\n${link}`
+  let text = `${pickOpener(opts.date)}\n\n${headline}\n\n${link}`
 
   // 500자를 넘으면 헤드라인을 줄인다(링크는 끝까지 살려야 클릭이 일어난다)
   if (text.length > MAX_TEXT) {

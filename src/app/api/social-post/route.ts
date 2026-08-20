@@ -1,23 +1,42 @@
 /**
- * 자동 게시 크론 진입점 — 2026-08-20 신설 (마케팅 로드맵 P4-7)
+ * 자동 게시 크론 진입점 — 2026-08-20 신설 (마케팅 로드맵 P4-7 · P4-8)
  *
  * 매일 09:35 KST에 불린다(브리핑 09:07 · 보험 09:20 뒤).
- * 흐름: 오늘 브리핑 조회 → 이미 올렸으면 skip → 토큰 확인·갱신 → 글 조립 → 게시 → 결과 기록
+ * cron-job.org 잡 `8294068`. Vercel 크론을 안 쓴 이유는 무료 플랜이 시각을 보장하지
+ * 않아서다 — 9시대 아무 때나 돌면 브리핑(09:07)보다 먼저 돌아 그날 게시가 통째로 빠진다.
  *
- * 크론 자리: cron-job.org (Vercel에 이미 5개가 등록돼 있어 6번째가 되는지 미확인이라
- *   브리핑 발행에 쓰는 외부 크론에 붙였다. 실패 이력도 그쪽 화면에 남는다)
+ * 채널 둘을 **각각 따로, 나란히** 돌린다. 한쪽이 실패해도 다른 쪽은 올라간다.
+ * 순서대로 하면 스레드 32초 + 인스타 최대 60초 = 92초라 maxDuration 120초에 빠듯하기도 하다.
  *
- * ⚠️ 하루 한 번 보장 = `social_posts`의 부분 유니크 인덱스(성공 1건/일) + 이 라우트의 선조회.
+ * ⚠️ 하루 한 번 보장 = `social_posts`의 부분 유니크 인덱스(성공 1건/일) + 여기 선조회.
  *   재시도로 여러 번 불려도 두 번 올라가지 않는다.
  */
 import { NextResponse } from 'next/server'
 import { waitUntil } from '@vercel/functions'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
-import { getAccessToken, alreadyPosted, recordPost } from '@/lib/socialTokens'
+import { getAccessToken, alreadyPosted, recordPost, type Platform } from '@/lib/socialTokens'
 import { buildPostText, postToThreads } from '@/lib/postToThreads'
+import { buildCaption, postToInstagram } from '@/lib/postToInstagram'
+import { SITE_URL } from '@/lib/utm'
 import { notifyFailure } from '@/lib/notifyAdmin'
 
 export const maxDuration = 120
+
+type Plan = { platform: Platform; ready: boolean; reason: string; token: string | null }
+
+/** 올릴 수 있는 상태인지 본다. 전부 DB·토큰 조회라 1초 안에 끝난다. */
+async function plan(platform: Platform): Promise<Plan> {
+  if (await alreadyPosted(platform, todayKST())) {
+    return { platform, ready: false, reason: '오늘 이미 게시함', token: null }
+  }
+  const { token, note } = await getAccessToken(platform)
+  if (!token) return { platform, ready: false, reason: note, token: null }
+  return { platform, ready: true, reason: note, token }
+}
+
+function todayKST(): string {
+  return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
+}
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')
@@ -27,8 +46,7 @@ export async function GET(request: Request) {
 
   // ?dry=1 이면 올리지 않고 "무슨 글이 나갈지"만 돌려준다(실물 확인 전 점검용)
   const dry = new URL(request.url).searchParams.get('dry') === '1'
-
-  const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const today = todayKST()
 
   try {
     const { data: briefing } = await supabase
@@ -41,51 +59,79 @@ export async function GET(request: Request) {
       return NextResponse.json({ skipped: '오늘 브리핑 없음', date: today })
     }
 
-    const text = buildPostText({ date: today, headline: briefing.headline, shareCard: briefing.share_card })
+    const headline = briefing.headline
+    const text = buildPostText({ date: today, headline, shareCard: briefing.share_card })
+    const caption = buildCaption({ date: today, headline })
+    const imageUrl = `${SITE_URL}/api/card/instagram/${today}`
 
-    if (await alreadyPosted('threads', today)) {
-      return NextResponse.json({ skipped: '오늘 이미 게시함', date: today, text })
-    }
-
-    const { token, note } = await getAccessToken('threads')
-    if (!token) {
-      await recordPost('threads', today, 'failed', null, note)
-      await notifyFailure('스레드 자동 게시 — 토큰 없음', note)
-      return NextResponse.json({ success: false, error: note }, { status: 500 })
-    }
+    const [threads, instagram] = await Promise.all([plan('threads'), plan('instagram')])
 
     if (dry) {
-      return NextResponse.json({ dryRun: true, date: today, tokenNote: note, length: text.length, text })
+      return NextResponse.json({
+        dryRun: true,
+        date: today,
+        threads: { ...channelView(threads), length: text.length, text },
+        instagram: { ...channelView(instagram), length: caption.length, caption, imageUrl },
+      })
     }
 
     // 게시는 백그라운드로 넘기고 응답을 먼저 돌려준다.
     // cron-job.org는 30초만 기다리고 timeout을 실패로 기록 → 연속 25회면 크론잡이 자동으로 꺼진다
     // (2026-06-12 실측. cron-briefing이 같은 이유로 같은 구조다).
-    // 게시 한 번은 최소 32초다: 컨테이너 생성 → 문서 권장 30초 대기 → 게시.
-    // 그대로 두면 게시는 되는데 크론 화면엔 매일 실패로 남고, 25일째 조용히 멈춘다.
-    //
-    // 여기까지 오는 데는 1~2초면 충분하다(브리핑 조회·중복 확인·토큰).
-    // 건너뛴 이유(브리핑 없음·이미 올림·토큰 없음)는 위에서 그대로 응답에 담기므로
+    // 여기까지는 1~2초면 끝나고, 건너뛴 이유는 아래 응답에 그대로 담기므로
     // 크론 화면만 봐도 무슨 일이 있었는지 보인다.
     waitUntil(
-      (async () => {
-        try {
-          const result = await postToThreads(token, text)
-          await recordPost('threads', today, result.ok ? 'success' : 'failed', result.postId, result.detail)
-          if (!result.ok) {
-            await notifyFailure('스레드 자동 게시 실패', `${result.detail}\n\n본문:\n${text}`)
-          }
-        } catch (error) {
-          await recordPost('threads', today, 'failed', null, String(error))
-          await notifyFailure('스레드 자동 게시 오류', String(error))
-        }
-      })()
+      Promise.allSettled([
+        threads.ready ? run('threads', () => postToThreads(threads.token!, text), text) : noop(),
+        instagram.ready
+          ? run('instagram', () => postToInstagram(instagram.token!, imageUrl, caption), caption)
+          : noop(),
+      ])
     )
 
-    return NextResponse.json({ accepted: true, date: today, tokenNote: note, length: text.length, text })
+    return NextResponse.json({
+      accepted: true,
+      date: today,
+      threads: channelView(threads),
+      instagram: channelView(instagram),
+    })
   } catch (error) {
-    await recordPost('threads', today, 'failed', null, String(error))
-    await notifyFailure('스레드 자동 게시 오류', String(error))
+    await notifyFailure('자동 게시 오류', String(error))
     return NextResponse.json({ success: false, error: String(error) }, { status: 500 })
+  }
+}
+
+/** 응답에 담는 채널 상태 (토큰 값은 절대 넣지 않는다) */
+function channelView(p: Plan) {
+  return p.ready ? { willPost: true, tokenNote: p.reason } : { willPost: false, reason: p.reason }
+}
+
+function noop() {
+  return Promise.resolve()
+}
+
+/**
+ * 한 채널을 올리고 결과를 남긴다.
+ *
+ * ⚠️ 토큰이 아예 없는 경우는 여기까지 오지 않는다(`plan`에서 걸러진다).
+ * 인스타는 계정 연결 전이라 토큰이 없는 게 정상 상태라서, 그걸 실패로 적고
+ * 매일 알림을 보내면 진짜 실패가 묻힌다. 연결하고 나면 이 자리에서 같이 감시된다.
+ */
+async function run(
+  platform: Platform,
+  post: () => Promise<{ ok: boolean; postId?: string; detail: string }>,
+  body: string
+): Promise<void> {
+  const today = todayKST()
+  const label = platform === 'threads' ? '스레드' : '인스타'
+  try {
+    const result = await post()
+    await recordPost(platform, today, result.ok ? 'success' : 'failed', result.postId, result.detail)
+    if (!result.ok) {
+      await notifyFailure(`${label} 자동 게시 실패`, `${result.detail}\n\n본문:\n${body}`)
+    }
+  } catch (error) {
+    await recordPost(platform, today, 'failed', null, String(error))
+    await notifyFailure(`${label} 자동 게시 오류`, String(error))
   }
 }

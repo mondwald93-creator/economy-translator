@@ -330,6 +330,223 @@ export function TermCard({
   )
 }
 
+/* ────────────────────────────────────────────────────────────────
+   ④ 인스타 세로 카드 (2026-08-20 신설 · 마케팅 P4-8)
+
+   위 3종과 크기가 다르다. 1080×1350(4:5)이고, 무엇보다 **카드 한 장이 전부**다.
+   인스타는 캡션에 적은 링크가 눌리지 않는다(Meta 문서 확인). 스레드처럼
+   "카드는 미끼, 본문 링크로 들어온다"가 안 통하고, 이 그림만 보고 주소를
+   외워서 찾아와야 한다. 그래서 두 가지가 위 3종과 다르다.
+     - 정보를 더 넣는다(지표 4개·오늘의 용어). 세로라 자리가 남기도 한다
+     - 주소를 푸터에서 끌어올려 크게 쓴다
+   ──────────────────────────────────────────────────────────────── */
+
+export const IG_SIZE = { width: 1080, height: 1350 }
+
+/** 세로 카드가 쓰는 고정 글자. 폰트 서브셋에 반드시 넣는다(ogFonts에 넘길 것). */
+export const IG_FIXED_GLYPHS = '오늘의지표용어매일분경제입문브리핑주소에서전체보기▲▼—'
+
+/** 지표 등락 색 — 빨강=상승/파랑=하락(한국 금융앱 관습, 2026-06-11 결정).
+ *  카드 배경이 어두워서 사이트 색(#DC2626·#2563EB)을 그대로 쓰면 묻힌다.
+ *  색상은 그대로 두고 밝기만 올린 값이다. */
+function changeColor(direction: string): string {
+  if (direction === 'up') return '#F87171'
+  if (direction === 'down') return '#60A5FA'
+  return 'rgba(255,255,255,0.55)'
+}
+
+export type IgIndicator = { name: string; value: string; change: string; direction: string }
+
+export function InstagramCard({
+  headline,
+  dateLabel,
+  indicators,
+  term,
+}: {
+  headline: string
+  dateLabel: string
+  indicators: IgIndicator[]
+  term?: string | null
+}) {
+  const [first, ...rest] = headline.split('\n').map((s) => s.trim()).filter(Boolean)
+  const second = rest.join(' ')
+  const rows = indicators.slice(0, 4)
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        width: '100%',
+        height: '100%',
+        padding: '92px 78px 84px',
+        position: 'relative',
+        fontFamily: FONT,
+        backgroundImage: 'linear-gradient(160deg, #0F172A 0%, #1E293B 55%, #064E3B 100%)',
+      }}
+    >
+      {/* 배경 장식 원 2개 — 가로 카드와 같은 값, 세로 비율에 맞춰 자리만 옮겼다 */}
+      <div
+        style={{
+          display: 'flex',
+          position: 'absolute',
+          top: -190,
+          right: -150,
+          width: 520,
+          height: 520,
+          borderRadius: '50%',
+          background: 'rgba(34,197,94,0.13)',
+        }}
+      />
+      <div
+        style={{
+          display: 'flex',
+          position: 'absolute',
+          bottom: -140,
+          left: -120,
+          width: 360,
+          height: 360,
+          borderRadius: '50%',
+          background: 'rgba(34,197,94,0.08)',
+        }}
+      />
+
+      {/* 머리 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+        <div
+          style={{
+            display: 'flex',
+            background: '#22C55E',
+            color: '#FFFFFF',
+            fontSize: 28,
+            fontWeight: 700,
+            padding: '10px 26px',
+            borderRadius: 40,
+          }}
+        >
+          오늘의 브리핑
+        </div>
+        <div style={{ display: 'flex', color: 'rgba(255,255,255,0.5)', fontSize: 28 }}>{dateLabel}</div>
+      </div>
+
+      {/* 헤드라인 */}
+      <div style={{ display: 'flex', flexDirection: 'column', marginTop: 76 }}>
+        <div
+          style={{
+            display: 'flex',
+            color: '#F8FAFC',
+            fontSize: fit(first.length, [[16, 68], [24, 58]], 50),
+            fontWeight: 700,
+            lineHeight: 1.38,
+            letterSpacing: '-0.02em',
+            wordBreak: 'keep-all',
+            marginBottom: second ? 24 : 0,
+          }}
+        >
+          {first}
+        </div>
+        {second && (
+          <div
+            style={{
+              display: 'flex',
+              color: 'rgba(226,232,240,0.72)',
+              fontSize: fit(second.length, [[22, 42], [32, 36]], 32),
+              fontWeight: 400,
+              lineHeight: 1.5,
+              letterSpacing: '-0.015em',
+              wordBreak: 'keep-all',
+            }}
+          >
+            {second}
+          </div>
+        )}
+      </div>
+
+      {/* 지표 — 남는 세로 공간을 여기가 채운다 */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          justifyContent: 'center',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            background: 'rgba(255,255,255,0.06)',
+            border: '2px solid rgba(255,255,255,0.10)',
+            borderRadius: 24,
+            padding: '34px 38px',
+          }}
+        >
+          {rows.map((it, i) => (
+            <div
+              key={it.name}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingTop: i === 0 ? 0 : 18,
+                paddingBottom: i === rows.length - 1 ? 0 : 18,
+                borderBottom: i === rows.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              <div style={{ display: 'flex', color: 'rgba(226,232,240,0.66)', fontSize: 31 }}>
+                {it.name}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+                <div style={{ display: 'flex', color: '#F8FAFC', fontSize: 33, fontWeight: 700 }}>
+                  {it.value}
+                </div>
+                <div style={{ display: 'flex', color: changeColor(it.direction), fontSize: 29, fontWeight: 700 }}>
+                  {it.change}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {term && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 34 }}>
+            <div
+              style={{
+                display: 'flex',
+                border: '2px solid rgba(34,197,94,0.55)',
+                color: '#4ADE80',
+                fontSize: 26,
+                padding: '7px 20px',
+                borderRadius: 30,
+              }}
+            >
+              오늘의 용어
+            </div>
+            <div style={{ display: 'flex', color: '#F8FAFC', fontSize: 32, fontWeight: 700 }}>{term}</div>
+          </div>
+        )}
+      </div>
+
+      {/* 발 — 링크가 안 눌리는 매체라 주소를 크게 쓴다 */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          borderTop: '2px solid rgba(255,255,255,0.14)',
+          paddingTop: 30,
+        }}
+      >
+        <div style={{ display: 'flex', color: '#22C55E', fontSize: 40, fontWeight: 700 }}>
+          economytranslator.com
+        </div>
+        <div style={{ display: 'flex', color: 'rgba(255,255,255,0.42)', fontSize: 27, marginTop: 10 }}>
+          매일 5분 경제 입문 브리핑 · 프로필 주소에서 전체 보기
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /** 브리핑이 없는 날·문장이 빈 날 떨어지는 자리 */
 export function FallbackCard() {
   return (
