@@ -1,6 +1,25 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 
+/**
+ * 원클릭 구독 취소 (2026-08-20 추가).
+ *
+ * 메일 헤더 `List-Unsubscribe-Post: List-Unsubscribe=One-Click`을 붙이면
+ * 지메일이 메일 위에 '구독 취소' 버튼을 직접 띄우고, 누르면 이 주소로 **POST**를 보낸다
+ * (사람이 페이지를 열지 않으므로 화면 없이 처리하고 200만 돌려주면 된다. RFC 8058).
+ *
+ * 왜 넣었나: 8/20 첫 발송이 스팸함으로 갔다. SPF·DKIM·DMARC는 전부 PASS였고
+ * 남은 개선점이 이 헤더와 도메인 평판뿐이었다. 지메일·야후가 2024년부터 요구하는 항목이다.
+ */
+export async function POST(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const email = searchParams.get('email')?.trim().toLowerCase()
+  if (!email) return new NextResponse('Bad Request', { status: 400 })
+
+  await supabase.from('subscribers').update({ is_active: false }).eq('email', email)
+  return new NextResponse('OK', { status: 200 })
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const email = searchParams.get('email')?.trim().toLowerCase()

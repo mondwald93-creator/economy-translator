@@ -42,10 +42,17 @@ export async function POST(request: Request) {
   if (resendKey) {
     const resend = new Resend(resendKey)
     const fromAddress = process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev'
+    // 구독 해지를 헤더에도 넣는다 (2026-08-20). 브리핑 메일(sendNewsletter.ts)과 같은 이유·같은 형식.
+    // 8/20 첫 환영 메일이 스팸함으로 갔다(SPF·DKIM·DMARC는 전부 PASS). 지메일이 2024년부터 요구하는 항목이다.
+    const unsubscribeApi = `https://economytranslator.com/api/unsubscribe?email=${encodeURIComponent(email)}`
     await resend.emails.send({
       from: fromAddress,
       to: email,
       subject: '📰 경제번역기 구독이 완료됐어요!',
+      headers: {
+        'List-Unsubscribe': `<${unsubscribeApi}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
       html: buildWelcomeHtml(email),
     }).catch(() => {})
   }

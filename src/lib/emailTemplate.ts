@@ -1,3 +1,9 @@
+import { withUtm } from './utm'
+
+// 메일 안 링크에는 꼬리표를 붙인다. 메일에서 온 방문이 GA에 (direct)로 뭉뚱그려지지 않게 하기 위함.
+// 규칙 원본 = 전직로드맵/1_프로젝트/경제번역기/마케팅/02_P3_설계_2026-08-19.md (P3-1)
+const CTA_URL = withUtm('/', 'email')
+
 interface BriefingEmailData {
   date: string
   headline: string
@@ -52,7 +58,7 @@ export function buildNewsletterHtml(data: BriefingEmailData): string {
 
       <!-- CTA 버튼 -->
       <div style="margin-top:28px;text-align:center;">
-        <a href="https://economytranslator.com"
+        <a href="${CTA_URL}"
            style="display:inline-block;background:#22C55E;color:#fff;font-size:14px;font-weight:700;padding:14px 28px;border-radius:10px;text-decoration:none;letter-spacing:-0.2px;">
           오늘 브리핑 전체 보기 →
         </a>
@@ -107,7 +113,7 @@ export function buildWelcomeHtml(email: string): string {
       </div>
 
       <div style="text-align:center;">
-        <a href="https://economytranslator.com"
+        <a href="${CTA_URL}"
            style="display:inline-block;background:#22C55E;color:#fff;font-size:14px;font-weight:700;padding:14px 28px;border-radius:10px;text-decoration:none;">
           오늘 브리핑 먼저 보기 →
         </a>
