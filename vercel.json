@@ -39,6 +39,9 @@
     },
     "src/app/api/grade-briefing/route.ts": {
       "maxDuration": 120
+    },
+    "src/app/api/social-post/route.ts": {
+      "maxDuration": 120
     }
   },
   "redirects": [
