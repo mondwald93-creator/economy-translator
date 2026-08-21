@@ -18,7 +18,16 @@ import { createClient } from '@supabase/supabase-js'
 import { OG_SIZE, OG_HEADERS, ogFonts, SentenceCard, FallbackCard } from '@/lib/ogCard'
 import { pickTodaySentence, sentenceDateLabel } from '@/lib/todaySentence'
 
-export const revalidate = 3600
+/**
+ * ⚠️ `revalidate = 3600`을 쓰지 않는다. 그 설정은 그림뿐 아니라 **안에서 하는 DB 조회까지**
+ * 1시간 묶어버린다. 그래서 문장을 고쳐도 최대 1시간은 옛 문장으로 그렸다(2026-08-21 실측:
+ * `x-vercel-cache: MISS`인데도 옛 문장). `page.tsx`가 같은 함정 때문에 `cache: 'no-store'`를
+ * 쓰고 있다(CLAUDE.md "절대 건드리지 말 것" 표).
+ *
+ * 대신 매번 새로 읽고, 캐시는 CDN이 `OG_HEADERS`(s-maxage=3600)로 한다.
+ * 그림을 다시 그리는 건 1시간에 한 번뿐이고, 그때 최신 문장을 읽는다.
+ */
+export const dynamic = 'force-dynamic'
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -31,9 +40,11 @@ export async function GET(_request: Request, { params }: { params: { date: strin
   const dateLabel = sentenceDateLabel(params.date)
 
   try {
+    // no-store: 위 주석 참조. 이게 없으면 조회 결과가 캐시에 굳는다
     const db = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { global: { fetch: (url, opts) => fetch(url, { ...opts, cache: 'no-store' }) } }
     )
     const { data } = await db
       .from('briefings')
