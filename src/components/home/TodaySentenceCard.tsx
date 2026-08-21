@@ -6,19 +6,23 @@ import { trackEvent } from '@/lib/gtag'
 interface Props {
   sentence: string
   dateLabel: string
+  /** 'YYYY-MM-DD'. 카드 그림 주소에 들어간다 */
+  date: string
 }
 
 /**
- * 오늘의 한 문장 카드 (2026-08-11 개편)
+ * 오늘의 한 문장 카드 (2026-08-11 개편 · 2026-08-21 그림 주소 분리)
  *
- * 카드 그림은 서버가 만든 공유 카드(`/opengraph-image`) 한 장을 그대로 쓴다.
- * 화면에 보이는 것 = 저장되는 것 = 카톡에 뜨는 것이 전부 같은 그림이다.
+ * 카드 그림은 서버가 만든다. 화면에 보이는 것 = 저장되는 것이 같은 그림이다.
+ * 예전에는 화면 요소를 html2canvas로 사진 찍어 저장했는데, 그러면 카드가 두 벌이 되어
+ * 나중에 한쪽만 고치는 사고가 난다. 겸사겸사 무거운 라이브러리도 걷어냈다.
  *
- * 왜 바꿨나: 예전에는 화면 요소를 html2canvas로 사진 찍어 저장했는데,
- * 그러면 카드가 두 벌(화면용·공유용)이 되어 나중에 한쪽만 고치는 사고가 난다.
- * 겸사겸사 html2canvas(무거운 라이브러리)도 걷어냈다.
+ * ⚠️ 2026-08-21: 그림 주소를 `/opengraph-image`에서 `/api/card/sentence/<날짜>`로 옮겼다.
+ * 홈 og는 8/20에 **간판 고정**이 됐다(스레드 고정글이 홈 링크를 걸어 매일 그림이 바뀌던 걸
+ * 막은 것). 그런데 이 화면 카드가 같은 주소를 쓰고 있어서, 「오늘의 한 문장」 자리에
+ * 그날 문장 대신 간판이 떴다. 링크 미리보기와 화면 카드는 **쓰임이 다르다.**
  */
-export default function TodaySentenceCard({ sentence, dateLabel }: Props) {
+export default function TodaySentenceCard({ sentence, dateLabel, date }: Props) {
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -34,7 +38,7 @@ export default function TodaySentenceCard({ sentence, dateLabel }: Props) {
     trackEvent('sentence_card_save_image')
     setSaving(true)
     try {
-      const res = await fetch('/opengraph-image')
+      const res = await fetch(`/api/card/sentence/${date}`)
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
@@ -51,11 +55,11 @@ export default function TodaySentenceCard({ sentence, dateLabel }: Props) {
     <div>
       <h2 className="text-sm font-bold text-[#111827] mb-3 tracking-tight">✨ 오늘의 한 문장</h2>
 
-      {/* 서버가 만든 공유 카드 그대로. 링크를 붙였을 때 뜨는 그림과 같은 것이다.
+      {/* 서버가 만든 그날 문장 카드. 「이미지 저장」이 받아가는 것과 같은 그림이다.
           eslint-disable: 이 그림은 매일 내용이 바뀌고 next/image의 최적화가 필요 없다 */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/opengraph-image"
+        src={`/api/card/sentence/${date}`}
         alt={sentence}
         width={1200}
         height={630}

@@ -11,6 +11,7 @@ import KeyIndicators from '@/components/home/KeyIndicators'
 import NewsCardList from '@/components/home/NewsCardList'
 import EndCard from '@/components/home/EndCard'
 import TodaySentenceCard from '@/components/home/TodaySentenceCard'
+import { pickTodaySentence } from '@/lib/todaySentence'
 // 구독 폼 — 2026-08-20 노출 시작(마케팅 로드맵 회차 2).
 // 그전까지 주석 처리돼 있었다("트래픽 생기면 활성화"). 순서가 거꾸로였다는 판단으로 뒤집었다:
 // 데려오기 전에 붙잡을 그릇부터 둔다(7/24 오픈채팅 15명 → 재방문 0이 근거).
@@ -98,13 +99,10 @@ export default async function Home() {
       }))
     : storedIndicators
 
-  // 오늘의 한 문장: AI가 생성한 share_card 우선, 없으면 summary 첫 문장
-  const todaySentence: string = briefing.share_card
-    || (() => {
-      if (!briefing.summary) return ''
-      const firstPara = (briefing.summary as string).split(/\n+/).find((p: string) => p.trim().length > 10) ?? ''
-      return firstPara.match(/[^。.!?!?]*[。.!?!?]+/)?.[0]?.trim() ?? firstPara.slice(0, 60)
-    })()
+  // 오늘의 한 문장: share_card 우선, 없으면 summary 첫 문장.
+  // 규칙은 `todaySentence.ts` 한 곳에만 둔다 — 카드 그림 라우트가 같은 함수를 쓴다.
+  // 규칙이 두 벌이면 그림에 적힌 문장과 「텍스트 복사」가 어긋난다(2026-08-21).
+  const todaySentence: string = pickTodaySentence(briefing.share_card, briefing.summary)
   // 주의: +9h 보정과 timeZone 옵션을 같이 쓰면 날짜가 하루 밀림 — timeZone만 사용
   const todayDateLabel = new Date()
     .toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' })
@@ -124,7 +122,7 @@ export default async function Home() {
     <div className="space-y-6 sm:space-y-10">
       <HeadlineBanner headline={briefing.headline ?? null} summary={briefing.summary ?? null} />
       {todaySentence && (
-        <TodaySentenceCard sentence={todaySentence} dateLabel={todayDateLabel} />
+        <TodaySentenceCard sentence={todaySentence} dateLabel={todayDateLabel} date={briefing.date as string} />
       )}
       <KeyIndicators indicators={indicators} healthCheck={(briefing.health_check as HealthCheckItem[]) ?? null} briefingAt={formatKST(briefing.created_at)} />
       <EconomyHealthCheck healthCheck={(briefing.health_check as HealthCheckItem[]) ?? null} />
