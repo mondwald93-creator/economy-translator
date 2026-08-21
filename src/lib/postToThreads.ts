@@ -22,6 +22,24 @@ const MAX_TEXT = 500
 /** 컨테이너 만든 뒤 게시까지 기다리는 시간 (문서 권장 30초) */
 const PUBLISH_DELAY_MS = 30_000
 
+/**
+ * 주제 태그 — 스레드가 글을 묶어 보여주는 값. **글 하나에 1개만** 붙는다(Meta 문서).
+ * 1~50자, 마침표(.)와 &는 못 쓴다.
+ *
+ * 팔로워가 없는 계정 글은 팔로우 타임라인에 아무한테도 안 뜬다. 그래서 이 태그가
+ * 사실상 유일한 발견 경로다. 실제로 8/20·8/21 자동 게시 두 건은 태그가 없어 조회 0이었고,
+ * 사용자가 태그 '경제'를 붙여 쓴 소개글만 조회 8이었다(2026-08-21 API 실측).
+ *
+ * **'경제뉴스'로 정한 근거** = 2026-08-21 사용자가 스레드 앱에서 직접 센 최근 게시물 수.
+ *   경제뉴스 704 · 재테크 589 · 주식공부 388 · 경제 264 · 경제공부 없음
+ * 넓은 말인 '경제'가 오히려 적었다(Claude 추측과 반대. 앱에서 직접 안 봤으면 264짜리에 붙일 뻔했다).
+ * 성격도 여기가 맞다 — 재테크·주식공부는 투자 정보를 기대하는 자리인데 경번은 조언을 하지 않는다.
+ *
+ * ⚠️ 태그 값을 바꾸려면 실제로 글이 쌓여 있는 태그인지 앱에서 먼저 확인할 것.
+ *    없는 태그를 지어 붙이면 아무도 안 본다(그래서 '경제공부'를 뺐다).
+ */
+const TOPIC_TAG = '경제뉴스'
+
 export type ThreadsPostResult = { ok: boolean; postId?: string; detail: string }
 
 /**
@@ -111,18 +129,49 @@ export function buildPostText(opts: { date: string; headline: string; shareCard?
   return text
 }
 
+/** 지금 붙는 주제 태그 (점검용 `?dry=1` 응답에서도 보여준다) */
+export function currentTopicTag(): string {
+  return TOPIC_TAG
+}
+
+/** 글 담을 그릇을 만든다. 태그를 붙일 때와 뺄 때 둘 다 여기를 지난다. */
+async function createContainer(token: string, text: string, topicTag: string | null) {
+  const params = new URLSearchParams({ media_type: 'TEXT', text, access_token: token })
+  if (topicTag) params.set('topic_tag', topicTag)
+
+  const res = await fetch(`${API}/me/threads?${params.toString()}`, { method: 'POST' })
+  const json = (await res.json()) as { id?: string; error?: { message?: string } }
+  return {
+    id: res.ok ? json.id : undefined,
+    reason: json.error?.message ?? JSON.stringify(json).slice(0, 200),
+  }
+}
+
 /** 스레드에 텍스트 글 하나를 올린다. */
 export async function postToThreads(
   token: string,
   text: string,
-  opts: { delayMs?: number } = {}
+  opts: { delayMs?: number; topicTag?: string | null } = {}
 ): Promise<ThreadsPostResult> {
+  const topicTag = opts.topicTag === undefined ? TOPIC_TAG : opts.topicTag
+
   // 1단계: 컨테이너 생성
-  const createUrl = `${API}/me/threads?media_type=TEXT&text=${encodeURIComponent(text)}&access_token=${token}`
-  const createRes = await fetch(createUrl, { method: 'POST' })
-  const created = (await createRes.json()) as { id?: string; error?: { message?: string } }
-  if (!createRes.ok || !created.id) {
-    return { ok: false, detail: `컨테이너 생성 실패: ${created.error?.message ?? JSON.stringify(created).slice(0, 200)}` }
+  let created = await createContainer(token, text, topicTag)
+  let tagNote = topicTag ? ` (주제 '${topicTag}')` : ''
+
+  // 태그 때문에 막힌 거라면 태그를 빼고 한 번 더 시도한다.
+  // 태그는 덤이고 **매일 글이 나가는 게 본질**이라, 덤 때문에 그날 게시가 통째로
+  // 빠지면 안 된다. 태그가 빠진 채 올라간 건 아래 detail에 남아 다음 날 눈에 띈다.
+  if (!created.id && topicTag) {
+    const retry = await createContainer(token, text, null)
+    if (retry.id) {
+      created = retry
+      tagNote = ` (⚠️ 주제 '${topicTag}' 거부돼 태그 없이 올림: ${created.reason || '사유 없음'})`
+    }
+  }
+
+  if (!created.id) {
+    return { ok: false, detail: `컨테이너 생성 실패${tagNote}: ${created.reason}` }
   }
 
   // 문서 권장 대기. 바로 게시하면 아직 준비가 안 돼 실패할 수 있다
@@ -145,5 +194,5 @@ export async function postToThreads(
     }
   }
 
-  return { ok: true, postId: published.id, detail: '게시 완료' }
+  return { ok: true, postId: published.id, detail: `게시 완료${tagNote}` }
 }

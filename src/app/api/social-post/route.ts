@@ -15,7 +15,7 @@ import { NextResponse } from 'next/server'
 import { waitUntil } from '@vercel/functions'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { getAccessToken, alreadyPosted, recordPost, type Platform } from '@/lib/socialTokens'
-import { buildPostText, postToThreads } from '@/lib/postToThreads'
+import { buildPostText, postToThreads, currentTopicTag } from '@/lib/postToThreads'
 import { buildCaption, postToInstagram } from '@/lib/postToInstagram'
 import { SITE_URL } from '@/lib/utm'
 import { notifyFailure } from '@/lib/notifyAdmin'
@@ -70,7 +70,7 @@ export async function GET(request: Request) {
       return NextResponse.json({
         dryRun: true,
         date: today,
-        threads: { ...channelView(threads), length: text.length, text },
+        threads: { ...channelView(threads), length: text.length, topicTag: currentTopicTag(), text },
         instagram: { ...channelView(instagram), length: caption.length, caption, imageUrl },
       })
     }
