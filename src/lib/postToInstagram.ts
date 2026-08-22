@@ -17,7 +17,6 @@
  *    **먼저 PNG로 올려 보고 실제로 거부될 때만** 변환(sharp)을 붙인다.
  *    거부되면 `detail`에 그 응답이 그대로 남으므로 그걸 보고 판단한다.
  */
-import { withUtm } from './utm'
 import { pickOpener } from './postToThreads'
 
 const API = 'https://graph.instagram.com/v21.0'
@@ -61,14 +60,23 @@ const MAX_HASHTAGS = 5
 export const IG_HASHTAGS: string[] = ['경제뉴스', '경제공부', '마켓브리핑', '코스피', '경제']
 
 /**
- * 캡션 = 첫 줄(스레드와 같은 계정 목소리) + 헤드라인(존댓말 원문) + 주소 안내 + 해시태그.
+ * 캡션 = 첫 줄(스레드와 같은 계정 목소리) + 헤드라인(존댓말 원문) + 계정 소개·팔로우 유도 + 해시태그.
  * 첫 줄을 `pickOpener`로 공유하는 이유는 두 채널의 목소리를 하나로 두기 위해서다.
+ *
+ * 소개·유도 두 줄은 **2026-08-22에 니나님이 실제 게시물을 손으로 고쳐 정한 문구**를 그대로 옮겼다.
+ * 바꿀 일이 생기면 인스타에 올라간 글과 이 문자열을 같이 고쳐야 한다(한쪽만 고치면 갈린다).
+ *
+ * ⚠️ **캡션에서 사이트 주소를 뺐다.** 인스타는 캡션 링크가 눌리지 않아서, 눌리지도 않는 긴 주소가
+ *    자리만 차지하고 있었다. 주소는 카드 그림 하단에 40px로 크게 박혀 있다(`InstagramCard`).
+ *
+ * 🚨 **그래서 인스타 → 사이트 유입을 세는 꼬리표(utm)가 붙을 자리는 프로필 링크 하나뿐이다.**
+ *    프로필 웹사이트가 맨 주소(`economytranslator.com`)이면 그 방문이 GA에서 전부 '직접 방문'으로
+ *    뭉쳐서, 인스타가 유입에 효과가 있었는지 나중에 못 잰다. 프로필 링크는 반드시
+ *    `economytranslator.com/?utm_source=instagram&utm_medium=social&utm_campaign=daily`
+ *    (= `withUtm('/', 'instagram')`과 같은 값)로 둘 것. 링크 수정은 **인스타 앱에서만** 된다.
  */
 export function buildCaption(opts: { date: string; headline: string }): string {
   const headline = opts.headline.trim()
-  // 눌리지 않는 링크라도 꼬리표는 붙여둔다. 프로필 링크에 같은 값을 넣어두면
-  // 사람이 주소를 보고 찾아온 경우와 프로필을 눌러 온 경우가 GA에서 같은 칸으로 모인다.
-  const link = withUtm('/', 'instagram')
   // 상한을 넘겨 넣어두면 인스타가 조용히 자르거나 거부한다. 여기서 먼저 자른다.
   const used = IG_HASHTAGS.slice(0, MAX_HASHTAGS)
   const tags = used.length ? `\n\n${used.map(t => `#${t}`).join(' ')}` : ''
@@ -76,8 +84,9 @@ export function buildCaption(opts: { date: string; headline: string }): string {
   let caption =
     `${pickOpener(opts.date)}\n\n` +
     `${headline}\n\n` +
-    `전체 브리핑은 프로필 주소에서 볼 수 있어\n` +
-    `${link}${tags}`
+    `어려운 경제 뉴스, 매일 아침 5분이면 끝 ☕ 경제 왕초보 환영!\n` +
+    `👉 팔로우하면 내일 브리핑이 와요 / 프로필 링크에서 오늘 브리핑 확인` +
+    `${tags}`
 
   if (caption.length > MAX_CAPTION) caption = caption.slice(0, MAX_CAPTION - 1) + '…'
   return caption
