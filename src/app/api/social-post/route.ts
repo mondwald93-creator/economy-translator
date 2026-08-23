@@ -16,7 +16,7 @@ import { waitUntil } from '@vercel/functions'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { getAccessToken, alreadyPosted, recordPost, type Platform } from '@/lib/socialTokens'
 import { buildPostText, postToThreads, currentTopicTag } from '@/lib/postToThreads'
-import { buildCaption, postToInstagram } from '@/lib/postToInstagram'
+import { buildCaption, postToInstagram, postCarouselToInstagram } from '@/lib/postToInstagram'
 import { SITE_URL } from '@/lib/utm'
 import { notifyFailure } from '@/lib/notifyAdmin'
 
@@ -32,6 +32,33 @@ async function plan(platform: Platform): Promise<Plan> {
   const { token, note } = await getAccessToken(platform)
   if (!token) return { platform, ready: false, reason: note, token: null }
   return { platform, ready: true, reason: note, token }
+}
+
+const DAILY_CARD_COUNT = 5
+
+/**
+ * 일간 인스타 게시. 5장 캐러셀로 올리고, **실패하면 표지 한 장으로 다시 시도한다.**
+ *
+ * 장수가 늘면 실패할 자리도 는다(카드 5장 중 하나만 안 그려져도 캐러셀 전체가 멈춘다).
+ * 그날 아무것도 안 나가는 것보다는 표지 한 장이라도 나가는 게 낫다 —
+ * 일간은 매일이라 하루 빠지면 연속 기록이 끊긴다(6/5부터 하루도 안 빠졌다).
+ */
+async function postDailyInstagram(
+  token: string,
+  carouselUrls: string[],
+  coverUrl: string,
+  caption: string
+) {
+  const carousel = await postCarouselToInstagram(token, carouselUrls, caption)
+  if (carousel.ok) return carousel
+
+  const single = await postToInstagram(token, coverUrl, caption)
+  return {
+    ...single,
+    detail: single.ok
+      ? `캐러셀 실패해 표지 한 장으로 올림 · 캐러셀 사유: ${carousel.detail}`
+      : `캐러셀·한 장 모두 실패 · 캐러셀: ${carousel.detail} · 한 장: ${single.detail}`,
+  }
 }
 
 function todayKST(): string {
@@ -63,6 +90,13 @@ export async function GET(request: Request) {
     const text = buildPostText({ date: today, headline, shareCard: briefing.share_card })
     const caption = buildCaption({ date: today, headline })
     const imageUrl = `${SITE_URL}/api/card/instagram/${today}`
+    // 2026-08-23: 한 장에서 5장 캐러셀로. 표지 + TOP3 셋 + 팔로우 유도.
+    // 단일 이미지 도달이 1년 새 21.96% 떨어졌다는 실측(Metricool 2,436만 건)과,
+    // 매일 팔로우를 유도할 자리가 없다는 게 이유다.
+    const carouselUrls = Array.from(
+      { length: DAILY_CARD_COUNT },
+      (_, i) => `${SITE_URL}/api/card/instagram/${today}/${i + 1}`
+    )
 
     const [threads, instagram] = await Promise.all([plan('threads'), plan('instagram')])
 
@@ -71,7 +105,7 @@ export async function GET(request: Request) {
         dryRun: true,
         date: today,
         threads: { ...channelView(threads), length: text.length, topicTag: currentTopicTag(), text },
-        instagram: { ...channelView(instagram), length: caption.length, caption, imageUrl },
+        instagram: { ...channelView(instagram), length: caption.length, caption, imageUrl, carouselUrls },
       })
     }
 
@@ -84,7 +118,7 @@ export async function GET(request: Request) {
       Promise.allSettled([
         threads.ready ? run('threads', () => postToThreads(threads.token!, text), text) : noop(),
         instagram.ready
-          ? run('instagram', () => postToInstagram(instagram.token!, imageUrl, caption), caption)
+          ? run('instagram', () => postDailyInstagram(instagram.token!, carouselUrls, imageUrl, caption), caption)
           : noop(),
       ])
     )
