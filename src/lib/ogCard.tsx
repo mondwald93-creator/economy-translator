@@ -58,7 +58,7 @@ const FIXED_GLYPHS =
  * 붙이면 woff2 형식이 오는데 satori는 woff2를 못 읽는다(brotli 해제를 안 함).
  * 헤더 없이 부르면 truetype이 온다. 2026-08-11 실측 확인.
  */
-async function loadFontSubset(text: string, weight: 400 | 700): Promise<ArrayBuffer> {
+async function loadFontSubset(text: string, weight: 400 | 700 | 900): Promise<ArrayBuffer> {
   const api = `https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@${weight}&text=${encodeURIComponent(text)}`
   const css = await fetch(api).then((r) => r.text())
   const found = css.match(/src: url\((.+?)\) format\('(?:opentype|truetype)'\)/)
@@ -71,11 +71,15 @@ async function loadFontSubset(text: string, weight: 400 | 700): Promise<ArrayBuf
 /** 카드에 실제로 들어가는 글자만 모아 굵기 2벌을 받는다. */
 export async function ogFonts(...texts: (string | null | undefined)[]) {
   const text = texts.filter(Boolean).join('') + FIXED_GLYPHS
-  const [bold, regular] = await Promise.all([
+  // 900(Black)도 받는다. 주간 카드 제목이 이 굵기다 — 옛 미리보기 HTML의 `.h{font-weight:900}`.
+  // 700만 쓰면 제목이 눈에 띄게 얇아 보인다(2026-08-23 실물 대조에서 드러났다).
+  const [black, bold, regular] = await Promise.all([
+    loadFontSubset(text, 900),
     loadFontSubset(text, 700),
     loadFontSubset(text, 400),
   ])
   return [
+    { name: FONT, data: black, style: 'normal' as const, weight: 900 as const },
     { name: FONT, data: bold, style: 'normal' as const, weight: 700 as const },
     { name: FONT, data: regular, style: 'normal' as const, weight: 400 as const },
   ]
@@ -355,6 +359,13 @@ function changeColor(direction: string): string {
   return 'rgba(255,255,255,0.55)'
 }
 
+/** 밝은 배경용 등락 색. 사이트와 같은 값을 그대로 쓴다(어두운 배경일 때만 밝기를 올렸었다). */
+function changeColorLight(direction: string): string {
+  if (direction === 'up') return '#DC2626'
+  if (direction === 'down') return '#2563EB'
+  return '#9CA3AF'
+}
+
 export type IgIndicator = { name: string; value: string; change: string; direction: string }
 
 export function InstagramCard({
@@ -382,7 +393,9 @@ export function InstagramCard({
         padding: '92px 78px 84px',
         position: 'relative',
         fontFamily: FONT,
-        backgroundImage: 'linear-gradient(160deg, #0F172A 0%, #1E293B 55%, #064E3B 100%)',
+        // 2026-08-23 라이트로 전환. 주간 카드가 옛 형식대로 다크라서, 매일 올라가는
+        // 일간을 밝게 두면 프로필 그리드에서 주마다 어두운 줄(주간 묶음)이 하나 껴 보인다.
+        backgroundImage: 'linear-gradient(160deg, #FFFFFF 0%, #ECFDF3 100%)',
       }}
     >
       {/* 배경 장식 원 2개 — 가로 카드와 같은 값, 세로 비율에 맞춰 자리만 옮겼다 */}
@@ -395,7 +408,7 @@ export function InstagramCard({
           width: 520,
           height: 520,
           borderRadius: '50%',
-          background: 'rgba(34,197,94,0.13)',
+          background: 'rgba(34,197,94,0.12)',
         }}
       />
       <div
@@ -407,7 +420,7 @@ export function InstagramCard({
           width: 360,
           height: 360,
           borderRadius: '50%',
-          background: 'rgba(34,197,94,0.08)',
+          background: 'rgba(34,197,94,0.07)',
         }}
       />
 
@@ -416,8 +429,8 @@ export function InstagramCard({
         <div
           style={{
             display: 'flex',
-            background: '#22C55E',
-            color: '#FFFFFF',
+            background: '#DCFCE7',
+            color: '#16A34A',
             fontSize: 28,
             fontWeight: 700,
             padding: '10px 26px',
@@ -426,7 +439,7 @@ export function InstagramCard({
         >
           오늘의 브리핑
         </div>
-        <div style={{ display: 'flex', color: 'rgba(255,255,255,0.5)', fontSize: 28 }}>{dateLabel}</div>
+        <div style={{ display: 'flex', color: '#6B7280', fontSize: 28 }}>{dateLabel}</div>
       </div>
 
       {/* 헤드라인 */}
@@ -434,7 +447,7 @@ export function InstagramCard({
         <div
           style={{
             display: 'flex',
-            color: '#F8FAFC',
+            color: '#111827',
             fontSize: fit(first.length, [[16, 68], [24, 58]], 50),
             fontWeight: 700,
             lineHeight: 1.38,
@@ -449,7 +462,7 @@ export function InstagramCard({
           <div
             style={{
               display: 'flex',
-              color: 'rgba(226,232,240,0.72)',
+              color: '#4B5563',
               fontSize: fit(second.length, [[22, 42], [32, 36]], 32),
               fontWeight: 400,
               lineHeight: 1.5,
@@ -475,8 +488,8 @@ export function InstagramCard({
           style={{
             display: 'flex',
             flexDirection: 'column',
-            background: 'rgba(255,255,255,0.06)',
-            border: '2px solid rgba(255,255,255,0.10)',
+            background: 'rgba(255,255,255,0.72)',
+            border: '2px solid rgba(17,24,39,0.08)',
             borderRadius: 24,
             padding: '34px 38px',
           }}
@@ -490,17 +503,17 @@ export function InstagramCard({
                 justifyContent: 'space-between',
                 paddingTop: i === 0 ? 0 : 18,
                 paddingBottom: i === rows.length - 1 ? 0 : 18,
-                borderBottom: i === rows.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                borderBottom: i === rows.length - 1 ? 'none' : '1px solid rgba(17,24,39,0.08)',
               }}
             >
-              <div style={{ display: 'flex', color: 'rgba(226,232,240,0.66)', fontSize: 31 }}>
+              <div style={{ display: 'flex', color: '#6B7280', fontSize: 31 }}>
                 {it.name}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-                <div style={{ display: 'flex', color: '#F8FAFC', fontSize: 33, fontWeight: 700 }}>
+                <div style={{ display: 'flex', color: '#111827', fontSize: 33, fontWeight: 700 }}>
                   {it.value}
                 </div>
-                <div style={{ display: 'flex', color: changeColor(it.direction), fontSize: 29, fontWeight: 700 }}>
+                <div style={{ display: 'flex', color: changeColorLight(it.direction), fontSize: 29, fontWeight: 700 }}>
                   {it.change}
                 </div>
               </div>
@@ -513,8 +526,8 @@ export function InstagramCard({
             <div
               style={{
                 display: 'flex',
-                border: '2px solid rgba(34,197,94,0.55)',
-                color: '#4ADE80',
+                border: '2px solid rgba(22,163,74,0.45)',
+                color: '#16A34A',
                 fontSize: 26,
                 padding: '7px 20px',
                 borderRadius: 30,
@@ -522,7 +535,7 @@ export function InstagramCard({
             >
               오늘의 용어
             </div>
-            <div style={{ display: 'flex', color: '#F8FAFC', fontSize: 32, fontWeight: 700 }}>{term}</div>
+            <div style={{ display: 'flex', color: '#111827', fontSize: 32, fontWeight: 700 }}>{term}</div>
           </div>
         )}
       </div>
@@ -532,14 +545,14 @@ export function InstagramCard({
         style={{
           display: 'flex',
           flexDirection: 'column',
-          borderTop: '2px solid rgba(255,255,255,0.14)',
+          borderTop: '2px solid rgba(17,24,39,0.10)',
           paddingTop: 30,
         }}
       >
-        <div style={{ display: 'flex', color: '#22C55E', fontSize: 40, fontWeight: 700 }}>
+        <div style={{ display: 'flex', color: '#16A34A', fontSize: 40, fontWeight: 700 }}>
           economytranslator.com
         </div>
-        <div style={{ display: 'flex', color: 'rgba(255,255,255,0.42)', fontSize: 27, marginTop: 10 }}>
+        <div style={{ display: 'flex', color: '#9CA3AF', fontSize: 27, marginTop: 10 }}>
           매일 5분 경제 입문 브리핑 · 프로필 주소에서 전체 보기
         </div>
       </div>
@@ -575,10 +588,9 @@ export function FallbackCard() {
  * 색·서체·배치는 그때 쓰던 미리보기 HTML(`마케팅/인스타_카드_2026-*주_미리보기.html`)의
  * 값을 그대로 옮겼다. 미리보기가 300×375였으므로 1080×1350 기준으로 3.6배 환산했다.
  *
- * ⚠️ **커버만 라이트로 바꿨다.** 옛 커버는 다크였는데, 지금 일간 카드가 같은 다크
- *    그라데이션(#0F172A→#1E293B→#064E3B)이라 프로필 그리드에서 섞여 보였다.
- *    (2026-08-23 사용자 지적: "주간브리핑이랑 일간브리핑 구분이 잘 안돼")
- *    커버를 밝게 두면 그리드에 주마다 밝은 칸이 하나씩 껴서 리듬이 생긴다.
+ * ⚠️ **커버는 옛 형식 그대로 다크다.** 일간 카드가 같은 다크 그라데이션이라 프로필
+ *    그리드에서 섞여 보이는 문제가 있는데(2026-08-23 지적), 그건 **일간 쪽을 바꿔서**
+ *    푼다. 주간 형식은 6~7월에 쓰던 것을 그대로 지킨다.
  * ────────────────────────────────────────────────────────────────────────── */
 
 /** 주간 카드 공통 껍데기. dark=false면 라이트. */
@@ -637,16 +649,62 @@ function WeeklyShell({
   )
 }
 
-/** 배지 — 라이트는 연초록 바탕에 진초록 글씨, 다크는 초록 바탕에 흰 글씨 */
-function WeeklyBadge({ text, dark }: { text: string; dark: boolean }) {
+/**
+ * 머리 표시.
+ * ⚠️ 옛 카드는 **밝은 장에서만 알약**을 쓰고, 어두운 장에서는 **배경 없는 초록 글씨**를 쓴다
+ *    (미리보기 HTML에 `.badge`와 `.label`이 따로 있고, 다크 장은 label을 쓴다.
+ *     실물 `card_03.jpg`의 "② 상장폐지"가 그 모양이다).
+ */
+function WeeklyBadge({
+  text,
+  dark,
+  pill = false,
+}: {
+  text: string
+  dark: boolean
+  /** 어두운 장이라도 알약으로 그린다. 표지가 그렇다(실물 card_01의 "주간 정리") */
+  pill?: boolean
+}) {
+  if (dark && pill) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          background: '#22C55E',
+          color: '#FFFFFF',
+          fontSize: 40,
+          fontWeight: 900,
+          padding: '16px 40px',
+          borderRadius: 999,
+        }}
+      >
+        {text}
+      </div>
+    )
+  }
+  if (dark) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          color: '#22C55E',
+          fontSize: 40,
+          fontWeight: 900,
+          letterSpacing: '0.06em',
+        }}
+      >
+        {text}
+      </div>
+    )
+  }
   return (
     <div
       style={{
         display: 'flex',
-        background: dark ? '#22C55E' : '#DCFCE7',
-        color: dark ? '#FFFFFF' : '#16A34A',
+        background: '#DCFCE7',
+        color: '#16A34A',
         fontSize: 40,
-        fontWeight: 700,
+        fontWeight: 900,
         padding: '16px 40px',
         borderRadius: 999,
       }}
@@ -657,7 +715,16 @@ function WeeklyBadge({ text, dark }: { text: string; dark: boolean }) {
 }
 
 /** 카드 하단 줄 — 왼쪽에 짧은 한 줄, 오른쪽에 계정 이름. 모든 장에 들어간다. */
-function WeeklyFoot({ left, dark }: { left: string; dark: boolean }) {
+function WeeklyFoot({
+  left,
+  dark,
+  brand = true,
+}: {
+  left: string
+  dark: boolean
+  /** 표지·팔로우 장은 계정만 쓴다(실물 card_01·card_07이 그렇다) */
+  brand?: boolean
+}) {
   return (
     <div
       style={{
@@ -670,7 +737,7 @@ function WeeklyFoot({ left, dark }: { left: string; dark: boolean }) {
       }}
     >
       <div style={{ display: 'flex', fontSize: 30, color: dark ? 'rgba(255,255,255,0.5)' : '#9CA3AF' }}>
-        {left}
+        {left || ''}
       </div>
       <div
         style={{
@@ -680,29 +747,31 @@ function WeeklyFoot({ left, dark }: { left: string; dark: boolean }) {
           color: dark ? '#22C55E' : '#16A34A',
         }}
       >
-        @econ.5min
+        {brand ? '경제번역기 · @econ.5min' : '@econ.5min'}
       </div>
     </div>
   )
 }
 
-/** 1장 — 커버. 라이트(일간과 구분되는 지점) */
+/**
+ * 1장 — 커버. 옛 주간 카드와 같은 다크.
+ * 줄 안에서 `**...**`로 감싼 곳이 초록이 된다(실물 카드가 "**8000선 회복** 📈"처럼 썼다).
+ */
 export function WeeklyCoverCard({
   rangeLabel,
   lines,
-  stat,
 }: {
   rangeLabel: string
   lines: string[]
-  stat: string
 }) {
-  // 줄 수가 3~4로 달라져서 글자 크기를 줄 수에 맞춘다. 4줄이면 조금 작게.
-  const size = lines.length >= 4 ? 84 : 96
+  // 글자 크기는 가장 긴 줄에 맞춘다. 강조 표시는 길이에서 뺀다.
+  const longest = lines.reduce((m, l) => Math.max(m, plainText(l).length), 0)
+  const size = fit(longest, [[10, 92], [13, 80], [16, 68], [19, 58]], 50)
   return (
-    <WeeklyShell dark={false}>
+    <WeeklyShell dark={true}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-        <WeeklyBadge text="주간 정리" dark={false} />
-        <div style={{ display: 'flex', fontSize: 38, color: '#6B7280', fontWeight: 700 }}>
+        <WeeklyBadge text="주간 정리" dark={true} pill={true} />
+        <div style={{ display: 'flex', fontSize: 38, color: 'rgba(255,255,255,0.55)', fontWeight: 700 }}>
           {rangeLabel}
         </div>
       </div>
@@ -713,53 +782,50 @@ export function WeeklyCoverCard({
           flexDirection: 'column',
           flex: 1,
           justifyContent: 'center',
-          gap: 18,
+          gap: 10,
         }}
       >
         {lines.map((l, i) => (
-          <div
-            key={i}
-            style={{
-              display: 'flex',
-              fontSize: size,
-              fontWeight: 700,
-              color: '#111827',
-              lineHeight: 1.34,
-            }}
-          >
-            {l}
-          </div>
+          <RichLine key={i} text={l} size={size} color="#F8FAFC" accent="#22C55E" weight={900} lineHeight={1.34} />
         ))}
-        {stat ? (
-          <div style={{ display: 'flex', marginTop: 26, fontSize: 46, fontWeight: 700, color: '#16A34A' }}>
-            {stat}
-          </div>
-        ) : (
-          <div style={{ display: 'flex' }} />
-        )}
       </div>
 
-      <WeeklyFoot left="이번 주 경제, 4가지로 정리 →" dark={false} />
+      <WeeklyFoot left="이번 주 경제, 4가지로 정리 →" dark={true} brand={false} />
     </WeeklyShell>
   )
 }
 
-/** 2~5장 — 분야별. 다크·라이트를 번갈아 쓴다. */
+/**
+ * 2~5장 — 분야별. 다크·라이트를 번갈아 쓴다.
+ * 실물 카드(`경제번역기_ins_260705/card_02.jpg`) 구조 그대로다:
+ *   배지 → 제목 첫 줄 → 제목 둘째 줄(통째로 강조 + 이모지) → 본문 문단 둘 → 하단 한마디
+ */
 export function WeeklySectionCard({
   badge,
-  title,
-  body,
+  titleTop,
+  titleAccent,
+  bodyParts,
   foot,
   dark,
 }: {
   badge: string
-  title: string
-  body: string
+  titleTop: string
+  titleAccent: string
+  bodyParts: string[]
   foot: string
   dark: boolean
 }) {
-  const titleSize = fit(title.length, [[18, 84], [28, 72], [40, 62]], 54)
-  const bodySize = fit(body.length, [[70, 48], [110, 43], [160, 38]], 34)
+  const titleLen = Math.max(titleTop.length, plainText(titleAccent).length)
+  const titleSize = fit(titleLen, [[13, 82], [17, 70], [21, 60]], 52)
+  const bodyLen = bodyParts.reduce((m, b) => m + plainText(b).length, 0)
+  // 옛 미리보기 HTML의 `.b{font-size:13.5px}`를 1080 기준으로 환산하면 약 48px이다.
+  // 글자가 많은 날만 단계적으로 줄인다.
+  const bodySize = fit(bodyLen, [[80, 48], [120, 44], [160, 40]], 36)
+  const ink = dark ? '#F8FAFC' : '#111827'
+  const sub = dark ? 'rgba(255,255,255,0.66)' : '#4B5563'
+  // 어두운 장에서는 #22C55E가 배경에 가라앉아 밝은 민트를 쓴다(실물 card_03의 "200억"이 그 색이다)
+  const hot = dark ? '#5EEAD4' : '#16A34A'
+
   return (
     <WeeklyShell dark={dark}>
       <div style={{ display: 'flex' }}>
@@ -767,28 +833,46 @@ export function WeeklySectionCard({
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'center' }}>
-        <div
-          style={{
-            display: 'flex',
-            fontSize: titleSize,
-            fontWeight: 700,
-            color: dark ? '#F8FAFC' : '#111827',
-            lineHeight: 1.42,
-          }}
-        >
-          {title}
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div
+            style={{
+              display: 'flex',
+              fontSize: titleSize,
+              fontWeight: 900,
+              color: ink,
+              lineHeight: 1.4,
+            }}
+          >
+            {titleTop}
+          </div>
+          {titleAccent ? (
+            <div style={{ display: 'flex' }}>
+              <RichLine
+                text={`**${plainText(titleAccent)}**`}
+                size={titleSize}
+                color={ink}
+                accent={hot}
+                weight={900}
+                lineHeight={1.4}
+              />
+            </div>
+          ) : (
+            <div style={{ display: 'flex' }} />
+          )}
         </div>
-        <div
-          style={{
-            display: 'flex',
-            marginTop: 34,
-            fontSize: bodySize,
-            fontWeight: 400,
-            color: dark ? 'rgba(255,255,255,0.66)' : '#4B5563',
-            lineHeight: 1.62,
-          }}
-        >
-          {body}
+
+        <div style={{ display: 'flex', flexDirection: 'column', marginTop: 34, gap: 22 }}>
+          {bodyParts.map((b, i) => (
+            <RichLine
+              key={i}
+              text={b}
+              size={bodySize}
+              color={sub}
+              accent={hot}
+              weight={400}
+              lineHeight={1.62}
+            />
+          ))}
         </div>
       </div>
 
@@ -797,49 +881,70 @@ export function WeeklySectionCard({
   )
 }
 
-/** 6장 — 이번 주 숫자. 여기에만 숫자가 모인다(전부 코드가 만든 실측값). */
+/**
+ * 6장 — 이번 주 숫자. 여기 값은 전부 코드가 만든 실측이다.
+ * 실물 카드(`card_06.jpg`)를 따라 **지표마다 둥근 박스**로 떼어 놓고,
+ * 머리는 배지가 아니라 초록 라벨로 둔다. 값 옆 한마디(note)는 AI가 쓴다.
+ */
 export function WeeklyStatsCard({
   rangeLabel,
   indicators,
+  notes,
 }: {
   rangeLabel: string
   indicators: IgIndicator[]
+  notes?: Record<string, string>
 }) {
   return (
     <WeeklyShell dark={true}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-        <WeeklyBadge text="이번 주 숫자" dark={true} />
-        <div style={{ display: 'flex', fontSize: 36, color: 'rgba(255,255,255,0.55)', fontWeight: 700 }}>
-          {rangeLabel}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ display: 'flex', fontSize: 42, fontWeight: 900, color: '#22C55E' }}>
+          📊 이번 주 숫자
+        </div>
+        <div style={{ display: 'flex', fontSize: 38, fontWeight: 700, color: 'rgba(255,255,255,0.5)' }}>
+          ({rangeLabel})
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'center', gap: 30 }}>
-        {indicators.map((it, i) => (
-          <div
-            key={i}
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '30px 0',
-              borderBottom: i === indicators.length - 1 ? 'none' : '2px solid rgba(255,255,255,0.10)',
-            }}
-          >
-            <div style={{ display: 'flex', fontSize: 46, color: 'rgba(255,255,255,0.72)' }}>{it.name}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
-              <div style={{ display: 'flex', fontSize: 52, fontWeight: 700, color: '#FFFFFF' }}>
-                {it.value}
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'center', gap: 24 }}>
+        {indicators.map((it) => {
+          const note = notes?.[it.name] ?? ''
+          return (
+            <div
+              key={it.name}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'rgba(255,255,255,0.06)',
+                borderRadius: 30,
+                padding: '38px 44px',
+              }}
+            >
+              <div style={{ display: 'flex', fontSize: 44, fontWeight: 700, color: 'rgba(255,255,255,0.72)' }}>
+                {it.name.replace('(원/달러)', '')}
               </div>
-              <div style={{ display: 'flex', fontSize: 44, fontWeight: 700, color: changeColor(it.direction) }}>
-                {it.change}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+                <div style={{ display: 'flex', fontSize: 48, fontWeight: 700, color: changeColor(it.direction) }}>
+                  {it.value}
+                </div>
+                <div style={{ display: 'flex', fontSize: 40, fontWeight: 700, color: changeColor(it.direction) }}>
+                  {it.change}
+                </div>
+                {note ? (
+                  <div style={{ display: 'flex', fontSize: 36, fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>
+                    {note}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex' }} />
+                )}
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
-      <WeeklyFoot left="한 주 동안 이만큼 움직였어요" dark={true} />
+      <WeeklyFoot left="오른 건 지수, 지갑은 아직" dark={true} />
     </WeeklyShell>
   )
 }
@@ -852,34 +957,145 @@ export function WeeklyCtaCard() {
         <WeeklyBadge text="매일 5분" dark={false} />
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'center' }}>
-        <div style={{ display: 'flex', fontSize: 96, fontWeight: 700, color: '#111827', lineHeight: 1.34 }}>
-          매일 아침 5분이면
+      {/* 실물 card_07 그대로: 커피잔을 크게 놓고 전부 가운데로 모은다.
+          다른 장은 왼쪽 정렬인데 이 장만 가운데인 게 원본이다. */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <div style={{ display: 'flex', fontSize: 150, marginBottom: 46 }}>☕</div>
+
+        <div style={{ display: 'flex', alignItems: 'baseline' }}>
+          {/* satori는 &nbsp;를 공백으로 안 읽는다(붙어서 나온다). 여백으로 띄운다 */}
+          <div
+            style={{
+              display: 'flex',
+              fontSize: 88,
+              fontWeight: 900,
+              color: '#111827',
+              lineHeight: 1.3,
+              marginRight: 22,
+            }}
+          >
+            매일 아침
+          </div>
+          <div style={{ display: 'flex', fontSize: 88, fontWeight: 900, color: '#16A34A', lineHeight: 1.3 }}>
+            5분
+          </div>
+          <div style={{ display: 'flex', fontSize: 88, fontWeight: 900, color: '#111827', lineHeight: 1.3 }}>
+            이면
+          </div>
         </div>
-        <div style={{ display: 'flex', fontSize: 96, fontWeight: 700, color: '#16A34A', lineHeight: 1.34 }}>
+        <div style={{ display: 'flex', fontSize: 88, fontWeight: 900, color: '#111827', lineHeight: 1.3 }}>
           경제가 쉬워져요
         </div>
+
+        <div style={{ display: 'flex', marginTop: 34, fontSize: 42, color: '#6B7280', fontWeight: 700 }}>
+          👇 팔로우하면 내일 브리핑이 와요
+        </div>
+
         <div
           style={{
             display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
             marginTop: 46,
             background: '#22C55E',
             color: '#FFFFFF',
-            fontSize: 46,
-            fontWeight: 700,
-            padding: '38px 0',
-            borderRadius: 26,
-            justifyContent: 'center',
+            fontSize: 50,
+            fontWeight: 900,
+            padding: '38px 90px',
+            borderRadius: 30,
+            lineHeight: 1.34,
           }}
         >
-          프로필 링크에서 오늘 브리핑 보기
-        </div>
-        <div style={{ display: 'flex', marginTop: 28, fontSize: 40, color: '#6B7280' }}>
-          팔로우하면 내일 브리핑이 와요
+          <div style={{ display: 'flex' }}>프로필 링크에서</div>
+          <div style={{ display: 'flex' }}>오늘 브리핑 보기 →</div>
         </div>
       </div>
 
-      <WeeklyFoot left="경제 왕초보 환영" dark={false} />
+      <WeeklyFoot left="경제 왕초보 환영" dark={false} brand={false} />
     </WeeklyShell>
   )
+}
+
+/**
+ * 강조가 섞인 한 줄을 그린다 — 2026-08-23 신설 (주간 카드용)
+ *
+ * `**이렇게**` 감싼 곳만 강조색으로 낸다. 옛 주간 카드가 숫자와 결론을 초록으로
+ * 짚어 주던 방식이다("장중 **7,378**까지 밀렸다가 7/3 하루 **+5.76%** 반등했어요").
+ *
+ * ⚠️ satori는 한 텍스트 안에서 일부만 색을 바꾸지 못한다(인라인 span이 없다).
+ *    그래서 **어절 단위로 쪼개 flexWrap으로 흘려보낸다.**
+ *    이때 공백을 gap으로 주면 "**7,378**까지"처럼 원래 붙어 있던 자리까지 벌어진다.
+ *    그래서 gap을 안 쓰고, 원문에 공백이 있던 어절에만 marginRight를 준다.
+ */
+function RichLine({
+  text,
+  size,
+  color,
+  accent,
+  weight = 700,
+  lineHeight = 1.42,
+}: {
+  text: string
+  size: number
+  color: string
+  accent: string
+  weight?: number
+  lineHeight?: number
+}) {
+  type Tok = { t: string; hot: boolean; gap: boolean }
+  const toks: Tok[] = []
+  let pendingGap = false
+
+  for (const seg of text.split(/(\*\*[^*]+\*\*)/g)) {
+    if (!seg) continue
+    const hot = seg.startsWith('**') && seg.endsWith('**')
+    const body = hot ? seg.slice(2, -2) : seg
+    for (const piece of body.split(/(\s+)/)) {
+      if (!piece) continue
+      if (/^\s+$/.test(piece)) {
+        // 앞 어절 뒤에 공백이 있었다는 표시. 어절 자체로는 넣지 않는다.
+        if (toks.length) toks[toks.length - 1].gap = true
+        else pendingGap = true
+        continue
+      }
+      toks.push({ t: piece, hot, gap: false })
+      if (pendingGap) pendingGap = false
+    }
+  }
+
+  // ⚠️ 줄 간격은 **어절 요소의 lineHeight로만** 준다.
+  // rowGap을 같이 주면 요소가 이미 가진 줄높이에 더해져 두 번 벌어진다
+  // (2026-08-23 실물 대조에서 "줄간격이 넓다"고 지적받은 자리).
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline' }}>
+      {toks.map((tk, i) => (
+        <div
+          key={i}
+          style={{
+            display: 'flex',
+            color: tk.hot ? accent : color,
+            fontSize: size,
+            fontWeight: weight,
+            lineHeight,
+            marginRight: tk.gap ? Math.round(size * 0.28) : 0,
+          }}
+        >
+          {tk.t}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** `**강조**` 표시를 걷어낸 순수 글자. 폰트 서브셋에 넘길 때 쓴다. */
+export function plainText(s: string): string {
+  return s.replace(/\*\*/g, '')
 }

@@ -232,15 +232,19 @@ export async function postCarouselToInstagram(
 export function buildWeeklyCaption(opts: {
   rangeLabel: string
   coverLines: string[]
-  sections: { badge: string; title: string }[]
+  sections: { badge: string; titleTop: string; titleAccent: string }[]
 }): string {
   const used = IG_HASHTAGS.slice(0, MAX_HASHTAGS)
   const tags = used.length ? `\n\n${used.map(t => `#${t}`).join(' ')}` : ''
-  const summary = opts.sections.map(s => `${s.badge} ${s.title}`).join('\n')
+  // 캡션엔 강조 표시(**)를 걷어내고 넣는다. 카드에서만 색으로 쓰는 표시다.
+  const strip = (t: string) => t.replace(/\*\*/g, '')
+  const summary = opts.sections
+    .map(s => `${s.badge} ${strip(s.titleTop)} ${strip(s.titleAccent)}`.trim())
+    .join('\n')
 
   let caption =
     `이번 주 경제, 4가지로 정리했어요 (${opts.rangeLabel})\n\n` +
-    `${opts.coverLines.join(' ')}\n\n` +
+    `${opts.coverLines.map(strip).join(' ')}\n\n` +
     `${summary}\n\n` +
     `어려운 경제 뉴스, 매일 아침 5분이면 끝 ☕ 경제 왕초보 환영!\n` +
     `👉 팔로우하면 내일 브리핑이 와요 / 프로필 링크에서 오늘 브리핑 확인` +

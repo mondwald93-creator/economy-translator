@@ -209,12 +209,16 @@ export async function postToThreads(
 export function buildWeeklyPostText(opts: {
   rangeLabel: string
   coverLines: string[]
-  sections: { badge: string; title: string }[]
+  sections: { badge: string; titleTop: string; titleAccent: string }[]
   coverStat: string
 }): string {
   const link = withUtm('/', 'threads')
-  const summary = opts.sections.map(s => `${s.badge} ${s.title}`).join('\n')
-  const hook = opts.coverLines.join(' ')
+  // 강조 표시(**)는 인스타 카드에서만 색으로 쓰는 것이라 글에서는 걷어낸다.
+  const strip = (t: string) => t.replace(/\*\*/g, '')
+  const summary = opts.sections
+    .map(s => `${s.badge} ${strip(s.titleTop)} ${strip(s.titleAccent)}`.trim())
+    .join('\n')
+  const hook = opts.coverLines.map(strip).join(' ')
 
   let text =
     `이번 주 경제, 4가지로 정리했어요 (${opts.rangeLabel})\n\n` +

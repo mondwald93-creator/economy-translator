@@ -17,7 +17,7 @@ import { NextResponse } from 'next/server'
 import { waitUntil } from '@vercel/functions'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { getAccessToken, alreadyPosted, recordPost, type PostChannel } from '@/lib/socialTokens'
-import { buildWeeklyData, weekRange, type WeeklyData } from '@/lib/weeklyBriefing'
+import { buildWeeklyData, weekRange, indicatorSummaryLine, type WeeklyData } from '@/lib/weeklyBriefing'
 import { postCarouselToInstagram, buildWeeklyCaption } from '@/lib/postToInstagram'
 import { postToThreads, buildWeeklyPostText } from '@/lib/postToThreads'
 import { SITE_URL } from '@/lib/utm'
@@ -105,7 +105,7 @@ export async function GET(request: Request) {
       rangeLabel: w.rangeLabel,
       coverLines: w.coverLines,
       sections: w.sections,
-      coverStat: w.coverStat,
+      coverStat: indicatorSummaryLine(w.indicators),
     })
 
     const [igDone, thDone] = await Promise.all([
@@ -120,7 +120,7 @@ export async function GET(request: Request) {
         week: `${w.weekStart} ~ ${w.weekEnd}`,
         rangeLabel: w.rangeLabel,
         coverLines: w.coverLines,
-        coverStat: w.coverStat,
+        indicatorNotes: w.indicatorNotes,
         indicators: w.indicators,
         sections: w.sections,
         imageUrls,
