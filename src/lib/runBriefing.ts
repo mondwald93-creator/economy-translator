@@ -6,6 +6,7 @@ import {
   generateTop3Analysis,
   buildTop3AnalysisData,
 } from './generateBriefing'
+import { resolveTop3Overlap } from './top3Dedup'
 import { filterCandidatePool } from './articleGate'
 import { fetchBriefingPool } from './briefingPool'
 import { notifyIndexNow, briefingUrls } from './indexNow'
@@ -76,8 +77,21 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
   const indicators = await getMarketIndicators()
   const briefingResult = await generateMainBriefing(articleInputs, indicators, recentTerms)
 
-  const top3Articles = (briefingResult.top3Indices ?? [])
-    .slice(0, 3)
+  // 단어 겹침 검문(enforceTop3Rules)을 통과한 3개를 AI가 한 번 더 본다 — 표현이 달라도 같은 사안이면 교체.
+  // 2026-08-23 "한은의 고심, 또 인상?" + "[금통위폴] 8월도 금리 인상?"이 나란히 실린 게 계기. 상세 = top3Dedup.ts
+  const { indices: top3Indices, log: top3DedupLog } = await resolveTop3Overlap(
+    (briefingResult.top3Indices ?? []).slice(0, 3),
+    briefingResult.candidateArticles
+  )
+  if (top3DedupLog.replaced.length > 0) {
+    console.log(`[runBriefing] TOP3 겹침 교체 ${top3DedupLog.replaced.length}건:`,
+      top3DedupLog.replaced.map(r => `"${r.out}" → "${r.in}"`).join(' / '),
+      `(사유: ${top3DedupLog.rounds[0]?.reason ?? ''})`)
+  } else if (top3DedupLog.note) {
+    console.log(`[runBriefing] TOP3 겹침 검문: ${top3DedupLog.note}`)
+  }
+
+  const top3Articles = top3Indices
     .map(idx => briefingResult.candidateArticles[idx])
     .filter((a): a is { id: string; title: string } => !!a)
 
@@ -155,6 +169,16 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
   }, { onConflict: 'date' })
 
   if (insertError) throw new Error(insertError.message)
+
+  // 겹침 검문 기록 — 나중에 "그날 왜 이렇게 뽑혔나"를 되짚을 때 쓴다(2026-08-23 진단이 47일치 채점 기록 덕에 가능했음).
+  // 별도 update인 이유: 컬럼이 없어도 브리핑 발행은 이미 끝나 있어야 한다. 컬럼 추가 = supabase/add_top3_dedup_column.sql
+  const { error: dedupLogError } = await supabase
+    .from('briefings')
+    .update({ top3_dedup: top3DedupLog })
+    .eq('date', today)
+  if (dedupLogError) {
+    console.warn('[runBriefing] TOP3 겹침 검문 기록 저장 건너뜀:', dedupLogError.message)
+  }
 
   if (briefingResult.dailyTerm?.term) {
     await supabase.from('terms').upsert(

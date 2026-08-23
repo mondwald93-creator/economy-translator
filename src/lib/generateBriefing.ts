@@ -27,7 +27,8 @@ function isForeignOnly(title: string): boolean {
   return !/한국|국내|한은|한국은행|코스피|코스닥|정부|기재부|우리|국채/.test(title)
 }
 
-function isUnfitForTop3(title: string): boolean {
+// export 이유: 교체 후보를 고르는 top3Dedup.ts가 같은 잣대를 써야 한다(시황·해외 기사가 교체분으로 들어오면 안 됨)
+export function isUnfitForTop3(title: string): boolean {
   return isSituationNews(title) || isForeignOnly(title)
 }
 
