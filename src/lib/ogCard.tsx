@@ -567,3 +567,319 @@ export function FallbackCard() {
     </Shell>
   )
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * 주간 카드 (2026-08-23 신설)
+ *
+ * 6~7월에 손으로 만들던 인스타 주간 카드뉴스를 코드로 옮긴 것이다.
+ * 색·서체·배치는 그때 쓰던 미리보기 HTML(`마케팅/인스타_카드_2026-*주_미리보기.html`)의
+ * 값을 그대로 옮겼다. 미리보기가 300×375였으므로 1080×1350 기준으로 3.6배 환산했다.
+ *
+ * ⚠️ **커버만 라이트로 바꿨다.** 옛 커버는 다크였는데, 지금 일간 카드가 같은 다크
+ *    그라데이션(#0F172A→#1E293B→#064E3B)이라 프로필 그리드에서 섞여 보였다.
+ *    (2026-08-23 사용자 지적: "주간브리핑이랑 일간브리핑 구분이 잘 안돼")
+ *    커버를 밝게 두면 그리드에 주마다 밝은 칸이 하나씩 껴서 리듬이 생긴다.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/** 주간 카드 공통 껍데기. dark=false면 라이트. */
+function WeeklyShell({
+  dark,
+  children,
+}: {
+  dark: boolean
+  children: ReactElement | ReactElement[]
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        width: '100%',
+        height: '100%',
+        padding: '94px 86px 86px',
+        position: 'relative',
+        fontFamily: FONT,
+        backgroundImage: dark
+          ? 'linear-gradient(135deg, #0F172A 0%, #1E293B 60%, #064E3B 100%)'
+          : 'linear-gradient(160deg, #FFFFFF 0%, #ECFDF3 100%)',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          position: 'absolute',
+          top: -190,
+          right: -150,
+          width: 520,
+          height: 520,
+          borderRadius: '50%',
+          background: dark ? 'rgba(34,197,94,0.13)' : 'rgba(34,197,94,0.10)',
+        }}
+      />
+      {dark ? (
+        <div
+          style={{
+            display: 'flex',
+            position: 'absolute',
+            bottom: -140,
+            left: -120,
+            width: 360,
+            height: 360,
+            borderRadius: '50%',
+            background: 'rgba(34,197,94,0.08)',
+          }}
+        />
+      ) : (
+        <div style={{ display: 'flex' }} />
+      )}
+      {children}
+    </div>
+  )
+}
+
+/** 배지 — 라이트는 연초록 바탕에 진초록 글씨, 다크는 초록 바탕에 흰 글씨 */
+function WeeklyBadge({ text, dark }: { text: string; dark: boolean }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        background: dark ? '#22C55E' : '#DCFCE7',
+        color: dark ? '#FFFFFF' : '#16A34A',
+        fontSize: 40,
+        fontWeight: 700,
+        padding: '16px 40px',
+        borderRadius: 999,
+      }}
+    >
+      {text}
+    </div>
+  )
+}
+
+/** 카드 하단 줄 — 왼쪽에 짧은 한 줄, 오른쪽에 계정 이름. 모든 장에 들어간다. */
+function WeeklyFoot({ left, dark }: { left: string; dark: boolean }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        marginTop: 'auto',
+        paddingTop: 34,
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderTop: dark ? 'none' : '2px solid rgba(17,24,39,0.10)',
+      }}
+    >
+      <div style={{ display: 'flex', fontSize: 30, color: dark ? 'rgba(255,255,255,0.5)' : '#9CA3AF' }}>
+        {left}
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          fontSize: 30,
+          fontWeight: 700,
+          color: dark ? '#22C55E' : '#16A34A',
+        }}
+      >
+        @econ.5min
+      </div>
+    </div>
+  )
+}
+
+/** 1장 — 커버. 라이트(일간과 구분되는 지점) */
+export function WeeklyCoverCard({
+  rangeLabel,
+  lines,
+  stat,
+}: {
+  rangeLabel: string
+  lines: string[]
+  stat: string
+}) {
+  // 줄 수가 3~4로 달라져서 글자 크기를 줄 수에 맞춘다. 4줄이면 조금 작게.
+  const size = lines.length >= 4 ? 84 : 96
+  return (
+    <WeeklyShell dark={false}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+        <WeeklyBadge text="주간 정리" dark={false} />
+        <div style={{ display: 'flex', fontSize: 38, color: '#6B7280', fontWeight: 700 }}>
+          {rangeLabel}
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          justifyContent: 'center',
+          gap: 18,
+        }}
+      >
+        {lines.map((l, i) => (
+          <div
+            key={i}
+            style={{
+              display: 'flex',
+              fontSize: size,
+              fontWeight: 700,
+              color: '#111827',
+              lineHeight: 1.34,
+            }}
+          >
+            {l}
+          </div>
+        ))}
+        {stat ? (
+          <div style={{ display: 'flex', marginTop: 26, fontSize: 46, fontWeight: 700, color: '#16A34A' }}>
+            {stat}
+          </div>
+        ) : (
+          <div style={{ display: 'flex' }} />
+        )}
+      </div>
+
+      <WeeklyFoot left="이번 주 경제, 4가지로 정리 →" dark={false} />
+    </WeeklyShell>
+  )
+}
+
+/** 2~5장 — 분야별. 다크·라이트를 번갈아 쓴다. */
+export function WeeklySectionCard({
+  badge,
+  title,
+  body,
+  foot,
+  dark,
+}: {
+  badge: string
+  title: string
+  body: string
+  foot: string
+  dark: boolean
+}) {
+  const titleSize = fit(title.length, [[18, 84], [28, 72], [40, 62]], 54)
+  const bodySize = fit(body.length, [[70, 48], [110, 43], [160, 38]], 34)
+  return (
+    <WeeklyShell dark={dark}>
+      <div style={{ display: 'flex' }}>
+        <WeeklyBadge text={badge} dark={dark} />
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'center' }}>
+        <div
+          style={{
+            display: 'flex',
+            fontSize: titleSize,
+            fontWeight: 700,
+            color: dark ? '#F8FAFC' : '#111827',
+            lineHeight: 1.42,
+          }}
+        >
+          {title}
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            marginTop: 34,
+            fontSize: bodySize,
+            fontWeight: 400,
+            color: dark ? 'rgba(255,255,255,0.66)' : '#4B5563',
+            lineHeight: 1.62,
+          }}
+        >
+          {body}
+        </div>
+      </div>
+
+      <WeeklyFoot left={foot} dark={dark} />
+    </WeeklyShell>
+  )
+}
+
+/** 6장 — 이번 주 숫자. 여기에만 숫자가 모인다(전부 코드가 만든 실측값). */
+export function WeeklyStatsCard({
+  rangeLabel,
+  indicators,
+}: {
+  rangeLabel: string
+  indicators: IgIndicator[]
+}) {
+  return (
+    <WeeklyShell dark={true}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+        <WeeklyBadge text="이번 주 숫자" dark={true} />
+        <div style={{ display: 'flex', fontSize: 36, color: 'rgba(255,255,255,0.55)', fontWeight: 700 }}>
+          {rangeLabel}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'center', gap: 30 }}>
+        {indicators.map((it, i) => (
+          <div
+            key={i}
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '30px 0',
+              borderBottom: i === indicators.length - 1 ? 'none' : '2px solid rgba(255,255,255,0.10)',
+            }}
+          >
+            <div style={{ display: 'flex', fontSize: 46, color: 'rgba(255,255,255,0.72)' }}>{it.name}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
+              <div style={{ display: 'flex', fontSize: 52, fontWeight: 700, color: '#FFFFFF' }}>
+                {it.value}
+              </div>
+              <div style={{ display: 'flex', fontSize: 44, fontWeight: 700, color: changeColor(it.direction) }}>
+                {it.change}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <WeeklyFoot left="한 주 동안 이만큼 움직였어요" dark={true} />
+    </WeeklyShell>
+  )
+}
+
+/** 7장 — 팔로우 유도. 문구는 고정이고 캡션 끝 두 줄과 같은 말을 쓴다. */
+export function WeeklyCtaCard() {
+  return (
+    <WeeklyShell dark={false}>
+      <div style={{ display: 'flex' }}>
+        <WeeklyBadge text="매일 5분" dark={false} />
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'center' }}>
+        <div style={{ display: 'flex', fontSize: 96, fontWeight: 700, color: '#111827', lineHeight: 1.34 }}>
+          매일 아침 5분이면
+        </div>
+        <div style={{ display: 'flex', fontSize: 96, fontWeight: 700, color: '#16A34A', lineHeight: 1.34 }}>
+          경제가 쉬워져요
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            marginTop: 46,
+            background: '#22C55E',
+            color: '#FFFFFF',
+            fontSize: 46,
+            fontWeight: 700,
+            padding: '38px 0',
+            borderRadius: 26,
+            justifyContent: 'center',
+          }}
+        >
+          프로필 링크에서 오늘 브리핑 보기
+        </div>
+        <div style={{ display: 'flex', marginTop: 28, fontSize: 40, color: '#6B7280' }}>
+          팔로우하면 내일 브리핑이 와요
+        </div>
+      </div>
+
+      <WeeklyFoot left="경제 왕초보 환영" dark={false} />
+    </WeeklyShell>
+  )
+}

@@ -144,3 +144,108 @@ export async function postToInstagram(
 
   return { ok: true, postId: published.id, detail: `게시 완료 · ${ready.detail}` }
 }
+
+/**
+ * 캐러셀(여러 장 묶어 올리기) — 2026-08-23 신설, 주간 브리핑용
+ *
+ * 한 장짜리와 절차가 다르다. Meta 문서 기준 3단계다.
+ *   ① 장마다 **자식 컨테이너**를 만든다 (`is_carousel_item=true`). 캡션은 여기 안 붙는다
+ *   ② 자식 id들을 묶어 **캐러셀 컨테이너**를 만든다 (`media_type=CAROUSEL`). 캡션은 여기 붙는다
+ *   ③ 캐러셀 컨테이너를 게시한다
+ *
+ * 자식은 병렬로 만든다. 7장을 순서대로 만들면 그만큼 곱해져서 함수 시간 제한에 걸린다.
+ * ⚠️ **children 배열의 순서가 화면 순서다.** 병렬로 만들되 `Promise.all`이 순서를 지켜
+ *    돌려주는 것에 기대고, 실패한 장이 하나라도 있으면 게시하지 않는다 —
+ *    7장 중 3장만 올라간 글은 안 올린 것만 못하다.
+ */
+export async function postCarouselToInstagram(
+  token: string,
+  imageUrls: string[],
+  caption: string
+): Promise<InstagramPostResult> {
+  if (imageUrls.length < 2 || imageUrls.length > 10) {
+    return { ok: false, detail: `캐러셀은 2~10장이어야 함 (받은 장수: ${imageUrls.length})` }
+  }
+
+  // ① 자식 컨테이너 — 병렬
+  const children = await Promise.all(
+    imageUrls.map(async (url, i) => {
+      const res = await fetch(
+        `${API}/me/media?image_url=${encodeURIComponent(url)}&is_carousel_item=true&access_token=${token}`,
+        { method: 'POST' }
+      )
+      const body = (await res.json()) as { id?: string; error?: { message?: string } }
+      if (!res.ok || !body.id) {
+        throw new Error(`${i + 1}번째 장 실패: ${body.error?.message ?? JSON.stringify(body).slice(0, 150)}`)
+      }
+      return body.id
+    })
+  ).catch((e: Error) => e)
+
+  if (children instanceof Error) return { ok: false, detail: children.message }
+
+  // 자식들이 준비될 때까지 기다린다. 하나라도 못 되면 게시하지 않는다.
+  const readies = await Promise.all(children.map(id => waitUntilReady(token, id)))
+  const failed = readies.findIndex(r => !r.ok)
+  if (failed >= 0) {
+    return { ok: false, detail: `${failed + 1}번째 장 준비 실패: ${readies[failed].detail}` }
+  }
+
+  // ② 캐러셀 컨테이너 — 캡션은 여기 붙는다
+  const carouselRes = await fetch(
+    `${API}/me/media?media_type=CAROUSEL&children=${children.join(',')}` +
+      `&caption=${encodeURIComponent(caption)}&access_token=${token}`,
+    { method: 'POST' }
+  )
+  const carousel = (await carouselRes.json()) as { id?: string; error?: { message?: string } }
+  if (!carouselRes.ok || !carousel.id) {
+    return {
+      ok: false,
+      detail: `캐러셀 묶기 실패: ${carousel.error?.message ?? JSON.stringify(carousel).slice(0, 250)}`,
+    }
+  }
+
+  const ready = await waitUntilReady(token, carousel.id)
+  if (!ready.ok) return { ok: false, detail: `캐러셀 준비 실패: ${ready.detail}` }
+
+  // ③ 게시
+  const pubRes = await fetch(
+    `${API}/me/media_publish?creation_id=${carousel.id}&access_token=${token}`,
+    { method: 'POST' }
+  )
+  const published = (await pubRes.json()) as { id?: string; error?: { message?: string } }
+  if (!pubRes.ok || !published.id) {
+    return {
+      ok: false,
+      detail: `게시 실패: ${published.error?.message ?? JSON.stringify(published).slice(0, 250)}`,
+    }
+  }
+
+  return { ok: true, postId: published.id, detail: `캐러셀 ${imageUrls.length}장 게시 완료 · ${ready.detail}` }
+}
+
+/**
+ * 주간 캡션. 일간과 구조는 같고 **가운데에 4가지 요약**이 들어간다.
+ * 옛 주간 카드 문서(`마케팅/인스타_카드_2026-07-06주.md`)의 「게시물 설명」을 그대로 옮겼다.
+ * 끝 두 줄은 일간과 같은 문장을 쓴다 — 계정 목소리를 하나로 두려고.
+ */
+export function buildWeeklyCaption(opts: {
+  rangeLabel: string
+  coverLines: string[]
+  sections: { badge: string; title: string }[]
+}): string {
+  const used = IG_HASHTAGS.slice(0, MAX_HASHTAGS)
+  const tags = used.length ? `\n\n${used.map(t => `#${t}`).join(' ')}` : ''
+  const summary = opts.sections.map(s => `${s.badge} ${s.title}`).join('\n')
+
+  let caption =
+    `이번 주 경제, 4가지로 정리했어요 (${opts.rangeLabel})\n\n` +
+    `${opts.coverLines.join(' ')}\n\n` +
+    `${summary}\n\n` +
+    `어려운 경제 뉴스, 매일 아침 5분이면 끝 ☕ 경제 왕초보 환영!\n` +
+    `👉 팔로우하면 내일 브리핑이 와요 / 프로필 링크에서 오늘 브리핑 확인` +
+    `${tags}`
+
+  if (caption.length > MAX_CAPTION) caption = caption.slice(0, MAX_CAPTION - 1) + '…'
+  return caption
+}

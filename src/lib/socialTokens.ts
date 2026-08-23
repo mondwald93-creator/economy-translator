@@ -62,8 +62,15 @@ export async function getAccessToken(platform: Platform): Promise<{ token: strin
   }
 }
 
+/**
+ * 기록용 채널 이름. 토큰은 플랫폼당 하나지만(`Platform`), **게시 기록은 종류별로 나눈다.**
+ * 일요일에는 일간과 주간이 같은 날 같은 계정에 올라가는데, `social_posts`의 하루 한 번
+ * 잠금이 (platform, post_date)라서 이름이 같으면 둘째 것이 막힌다 (2026-08-23 주간 신설).
+ */
+export type PostChannel = Platform | 'threads_weekly' | 'instagram_weekly'
+
 /** 오늘 이미 성공적으로 올렸는지 (같은 날 두 번 게시 방지) */
-export async function alreadyPosted(platform: Platform, date: string): Promise<boolean> {
+export async function alreadyPosted(platform: PostChannel, date: string): Promise<boolean> {
   const { data } = await supabase
     .from('social_posts')
     .select('id')
@@ -76,7 +83,7 @@ export async function alreadyPosted(platform: Platform, date: string): Promise<b
 
 /** 게시 결과를 남긴다. 실패도 남겨야 "조용히 안 돌아간 날"을 나중에 알 수 있다. */
 export async function recordPost(
-  platform: Platform,
+  platform: PostChannel,
   date: string,
   status: 'success' | 'failed',
   postId?: string | null,

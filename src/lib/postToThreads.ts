@@ -196,3 +196,40 @@ export async function postToThreads(
 
   return { ok: true, postId: published.id, detail: `게시 완료${tagNote}` }
 }
+
+/**
+ * 주간 글 (2026-08-23 신설)
+ *
+ * 인스타는 카드 7장이 필요하지만 스레드는 글만 올리면 된다.
+ * 그래서 같은 재료로 **네 줄 요약 + 링크**만 만든다.
+ *
+ * ⚠️ 링크는 홈으로 보낸다. 일간은 그날 브리핑 상세(`/briefing/<날짜>`)로 보내지만
+ *    주간은 특정 하루의 글이 아니라서 가리킬 상세 페이지가 없다.
+ */
+export function buildWeeklyPostText(opts: {
+  rangeLabel: string
+  coverLines: string[]
+  sections: { badge: string; title: string }[]
+  coverStat: string
+}): string {
+  const link = withUtm('/', 'threads')
+  const summary = opts.sections.map(s => `${s.badge} ${s.title}`).join('\n')
+  const hook = opts.coverLines.join(' ')
+
+  let text =
+    `이번 주 경제, 4가지로 정리했어요 (${opts.rangeLabel})\n\n` +
+    `${hook}\n\n` +
+    `${summary}\n\n` +
+    (opts.coverStat ? `${opts.coverStat}\n\n` : '') +
+    link
+
+  // 500자를 넘으면 훅부터 덜어낸다. 요약 네 줄과 링크는 끝까지 살린다.
+  if (text.length > MAX_TEXT && hook) {
+    text = text.replace(`${hook}\n\n`, '')
+  }
+  if (text.length > MAX_TEXT) {
+    const over = text.length - MAX_TEXT + 1
+    text = text.slice(0, text.length - over - link.length - 2).trimEnd() + `…\n\n${link}`
+  }
+  return text
+}
