@@ -90,14 +90,29 @@ export function dateLabelOf(date: string): string {
 }
 
 /**
- * 그날의 첫 줄을 고른다. **인스타 캡션도 이 함수를 쓴다** — 두 채널의 목소리를
- * 하나로 두려는 것이고, 문장을 또 지어내지 않으려는 것이기도 하다.
+ * 그날 요일 문장 1개 + 요일 무관 7개 = 8개에서 날짜(일)%8로 고른다.
+ * 문구 세트를 받아서, 스레드와 인스타가 **고르는 방법만** 공유하게 한다.
  */
-export function pickOpener(date: string): string {
+export function pickOpenerFrom(
+  date: string,
+  weekdayOpeners: ((label: string) => string)[],
+  openers: ((label: string) => string)[]
+): string {
   const label = dateLabelOf(date)
   const day = Number(date.split('-')[2]) || 1
-  const candidates = [WEEKDAY_OPENERS[weekdayOf(date)], ...OPENERS]
+  const candidates = [weekdayOpeners[weekdayOf(date)], ...openers]
   return candidates[day % candidates.length](label)
+}
+
+/**
+ * 스레드의 첫 줄(반말·계정 목소리).
+ *
+ * ⚠️ **인스타는 이걸 쓰지 않는다.** 2026-08-25 사용자 결정 = 스레드는 반말, 인스타는 존댓말.
+ *    그전까지 인스타 캡션이 이 함수를 같이 써서 첫 줄만 반말로 나가고 있었다.
+ *    인스타 문구는 `postToInstagram.ts`의 `IG_OPENERS`에 따로 있다. 다시 합치지 말 것.
+ */
+export function pickOpener(date: string): string {
+  return pickOpenerFrom(date, WEEKDAY_OPENERS, OPENERS)
 }
 
 /**
