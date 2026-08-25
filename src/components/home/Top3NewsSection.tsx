@@ -4,11 +4,13 @@ import { Top3AnalysisItem } from '@/types'
 
 type StepKey = keyof Top3AnalysisItem['steps']
 
+// ⚠️ 라벨을 반말로 되돌리지 말 것. 라벨이 반말이면 AI 프롬프트도 그 말투를 따라가 본문이 반말로 나온다
+//    (6/5 리뉴얼 때 그렇게 돼서 8/25까지 TOP3 본문만 반말로 발행됐다).
 const stepDefinitions: { key: StepKey; label: string }[] = [
   { key: 'oneline',     label: '한 마디로' },
-  { key: 'whatHappened', label: '무슨 일?' },
-  { key: 'whyHappened', label: '왜?' },
-  { key: 'myImpact',   label: '나한테 영향' },
+  { key: 'whatHappened', label: '무슨 일인가요?' },
+  { key: 'whyHappened', label: '왜 그런가요?' },
+  { key: 'myImpact',   label: '나에게 미치는 영향' },
   { key: 'outlook',    label: '앞으로는' },
   { key: 'conclusion', label: '한 줄 결론' },
 ]

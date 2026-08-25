@@ -125,8 +125,17 @@ export function runFormatChecks(briefing: Record<string, unknown>): FormatCheck[
   const indicators = Array.isArray(briefing.indicators) ? briefing.indicators : []
   const fieldsOk = Boolean(headline.trim() && summary.trim() && dailyTermOk && indicators.length > 0)
   // 존댓말 일관성 (v2.4 — 옛 '톤' 점수 항목의 기계 검사 가능한 부분만 코드로 이동)
-  // ⚠️ TOP3 해설(steps)은 의도적으로 반말체라 검사 대상이 아니다. 존댓말 영역만 본다.
-  const politeTargets = [headline, summary, String(briefing.share_card ?? '')].join(' ')
+  // ⚠️ 2026-08-25: TOP3 해설(steps)을 검사 대상에 넣었다. 그전까지 "의도적 반말체"라며 빼놨는데
+  //    의도가 아니라 프롬프트 버그였다(질문 라벨이 반말이라 답도 반말로 나왔음, 6/5~8/25).
+  //    검사에서 뺀 탓에 매일 채점을 돌리면서도 3개월을 못 잡았다. 다시 빼지 말 것.
+  //    oneline·conclusion은 어미 없는 짧은 명사구라 제외한다(오탐 방지).
+  const stepText = top3
+    .flatMap((t: { steps?: Record<string, string> }) =>
+      ['whatHappened', 'whyHappened', 'myImpact', 'outlook'].map(k => t?.steps?.[k] ?? '')
+    )
+    .filter(Boolean)
+    .join(' ')
+  const politeTargets = [headline, summary, String(briefing.share_card ?? ''), stepText].join(' ')
   const sentences = politeTargets
     .split(/[.!?\n]+/)
     .map(t => t.trim())

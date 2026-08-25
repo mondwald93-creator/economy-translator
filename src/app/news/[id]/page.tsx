@@ -38,11 +38,12 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   }
 }
 
+// ⚠️ 라벨 반말 금지(사유는 Top3NewsSection.tsx 주석)
 const STEP_LABELS: Record<string, { label: string; icon: string }> = {
-  whatHappened: { label: '무슨 일이야?', icon: '📰' },
-  whyHappened: { label: '왜 이런 일이 생겼어?', icon: '🔍' },
-  myImpact: { label: '나한테 어떤 영향이 있어?', icon: '🙋' },
-  outlook: { label: '앞으로 어떻게 될까?', icon: '🔭' },
+  whatHappened: { label: '무슨 일인가요?', icon: '📰' },
+  whyHappened: { label: '왜 이런 일이 생겼나요?', icon: '🔍' },
+  myImpact: { label: '나에게 어떤 영향이 있나요?', icon: '🙋' },
+  outlook: { label: '앞으로 어떻게 될까요?', icon: '🔭' },
   conclusion: { label: '한 줄 결론', icon: '✅' },
 }
 
