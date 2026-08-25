@@ -12,12 +12,12 @@ interface Analysis {
   conclusion: string
 }
 
-// ⚠️ 라벨 반말 금지(사유는 Top3NewsSection.tsx 주석)
+// ⚠️ 라벨 반말 어미 금지 + 칸이 88px이라 짧게(사유는 Top3NewsSection.tsx 주석)
 const STEPS: { key: keyof Omit<Analysis, 'title' | 'oneline' | 'conclusion'>; label: string }[] = [
-  { key: 'whatHappened', label: '무슨 일인가요?' },
-  { key: 'whyHappened', label: '왜 이런 일이 생겼나요?' },
-  { key: 'myImpact', label: '나에게 미치는 영향' },
-  { key: 'outlook', label: '앞으로 어떻게 될까요?' },
+  { key: 'whatHappened', label: '무슨 일?' },
+  { key: 'whyHappened', label: '왜 이런 일이?' },
+  { key: 'myImpact', label: '나에게 영향' },
+  { key: 'outlook', label: '앞으로 어떻게?' },
 ]
 
 export default function AnalyzePage() {
