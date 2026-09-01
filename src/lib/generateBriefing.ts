@@ -1,6 +1,7 @@
 import { openai, SYSTEM_PROMPT } from './openai'
 import { KeyIndicator, Top3AnalysisItem, HealthCheckItem, ConnectionItem, ArticleFullAnalysis } from '@/types'
 import { titleTokenSet, isNearDuplicate } from './titleSimilarity'
+import { indicatorLine } from './marketData'
 
 // ── B안: AI가 고른 TOP3를 코드가 한 번 더 검문 ──────────────────────────────
 // 프롬프트(A안)만으로는 "같은 기업·통계를 다른 각도로 쓴 기사"나 "환율·지수 시황"을
@@ -111,7 +112,7 @@ export async function generateMainBriefing(
   recentTerms: string[] = []
 ): Promise<BriefingResult> {
   const indicatorList = indicators.length > 0
-    ? indicators.map(i => `- ${i.name}: ${i.value} (전일 대비 ${i.change})`).join('\n')
+    ? indicators.map(indicatorLine).join('\n')
     : '- 지표 데이터를 가져오지 못했습니다'
 
   // 한국 경제 관련 기사 우선 정렬 (외신·미국 뉴스는 뒤로)

@@ -3,6 +3,7 @@ import { openai } from './openai'
 import { notifyFailure } from './notifyAdmin'
 import { titleTokenSet, isNearDuplicate } from './titleSimilarity'
 import { fetchBriefingPool } from './briefingPool'
+import { indicatorLine } from './marketData'
 
 // ── 브리핑 자동 채점기 (P1+P2) ───────────────────────────────────────────────
 // 기준표 원본: docs/브리핑_채점기준표.md (v2.4)
@@ -202,7 +203,7 @@ async function gradeWithAI(
   // 모든 항목이 공유하는 대조 자료 + 채점 대상 (항목별 호출에 매번 붙인다)
   const context = `## 대조 자료 (ground truth)
 ### 실측 지표 (직전 거래일 마감, 코드가 시세 API에서 수집한 실제 값)
-${indicators.map(i => `- ${i.name}: ${i.value} (전일 대비 ${i.change})`).join('\n') || '- 없음'}
+${indicators.map(indicatorLine).join('\n') || '- 없음'}
 ${rateNote}
 
 ### 그날 후보 기사 제목 풀 (브리핑 생성에 쓰인 후보 ${candidates.length}건)
