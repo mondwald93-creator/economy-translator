@@ -9,12 +9,46 @@ import {
 import { resolveTop3Overlap } from './top3Dedup'
 import { filterCandidatePool } from './articleGate'
 import { fetchBriefingPool } from './briefingPool'
+import { buildBaseline } from './topicBurst'
 import { notifyIndexNow, briefingUrls } from './indexNow'
 import { slugifyTerm } from './terms'
 
 // 관문 신선도 기준(발행 후 이 일수 초과 시 후보 제외).
 // ⚠️ 잠정값 — published_at 실데이터가 며칠 쌓이면 실분포 보고 확정(2026-07-24).
 const GATE_STALE_DAYS = 3
+
+// 화제 급등 기준선을 며칠치로 잡을지 (2026-09-03).
+// 5일 = 시뮬레이션에서 쓴 값. 짧으면 기준선이 흔들리고, 길면 서서히 커지는 화제를 놓친다.
+const BASELINE_DAYS = 5
+
+// 직전 BASELINE_DAYS일의 하루 평균 단어빈도를 만든다. 오늘 기사는 넣지 않는다 — 오늘이 분자다.
+//
+// ⭐과거도 "그날 아침의 후보 풀"을 그대로 재현해서 센다(같은 24시간 창 + 같은 관문).
+//    분모와 분자를 같은 잣대로 재야 배율이 뜻을 갖는다.
+//    ⚠️ 2026-09-03 최초 구현은 date 컬럼 하루치 전체(관문 전)를 기준선으로 썼는데,
+//    기사 수가 훨씬 많아 기준선이 부풀고 배율 대비가 흐려졌다. 그 결과 14일 검증에서
+//    「신형 아반떼 타봤어요」·「GV90 가봤어요」 같은 시승기가 1위 화제로 올라왔다.
+//    같은 잣대로 맞추자 사라졌다. 잣대를 바꾸려면 이 검증부터 다시 돌릴 것.
+async function buildTopicBaseline(today: string): Promise<Map<string, number>> {
+  const dailyTitles: string[][] = []
+
+  for (let back = 1; back <= BASELINE_DAYS; back++) {
+    const d = new Date(new Date(today + 'T00:00:00Z').getTime() - back * 24 * 60 * 60 * 1000)
+    const date = d.toISOString().split('T')[0]
+    // 그날 발행 시각(09:07 KST = 00:07 UTC)을 컷오프로 써서 당시 풀을 그대로 되살린다.
+    const cutoff = new Date(date + 'T00:07:30Z')
+    const pool = await fetchBriefingPool({ date, cutoff })
+    const gated = filterCandidatePool(
+      pool.map(a => ({ id: a.id, title: a.title, published_at: a.published_at ?? null })),
+      { staleDays: GATE_STALE_DAYS, now: cutoff.getTime() }
+    )
+    if (gated.kept.length > 0) dailyTitles.push(gated.kept.map(a => a.title))
+  }
+
+  const baseline = buildBaseline(dailyTitles)
+  console.log(`[runBriefing] 화제 기준선: ${dailyTitles.length}일치 · 단어 ${baseline.size}개`)
+  return baseline
+}
 
 export async function runDailyBriefing({ regenerate = false }: { regenerate?: boolean } = {}) {
   const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -74,8 +108,16 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
     })
     .filter(Boolean) as string[]
 
+  // 화제 급등 정렬의 기준선 = 직전 5일 하루 평균 단어빈도 (2026-09-03 신설).
+  // 「코스피」처럼 매일 나오는 배경어와 「예산안」처럼 오늘만 터진 화제를 가르는 분모다.
+  // 실패해도 발행은 막지 않는다 — 빈 기준선이면 급등 정렬이 꺼지고 예전 최신순으로 돌아간다.
+  const topicBaseline = await buildTopicBaseline(today).catch(err => {
+    console.error('[runBriefing] 화제 기준선 계산 실패 → 급등 정렬 없이 진행:', (err as Error).message)
+    return new Map<string, number>()
+  })
+
   const indicators = await getMarketIndicators()
-  const briefingResult = await generateMainBriefing(articleInputs, indicators, recentTerms)
+  const briefingResult = await generateMainBriefing(articleInputs, indicators, recentTerms, topicBaseline)
 
   // 단어 겹침 검문(enforceTop3Rules)을 통과한 3개를 AI가 한 번 더 본다 — 표현이 달라도 같은 사안이면 교체.
   // 2026-08-23 "한은의 고심, 또 인상?" + "[금통위폴] 8월도 금리 인상?"이 나란히 실린 게 계기. 상세 = top3Dedup.ts
