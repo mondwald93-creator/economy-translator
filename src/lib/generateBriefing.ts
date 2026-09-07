@@ -1,12 +1,8 @@
 import { openai, SYSTEM_PROMPT } from './openai'
 import { KeyIndicator, Top3AnalysisItem, HealthCheckItem, ConnectionItem, ArticleFullAnalysis } from '@/types'
 import { titleTokenSet, isNearDuplicate } from './titleSimilarity'
-import { rankByBurst } from './topicBurst'
+import { selectCandidatePool } from './candidatePool'
 import { indicatorLine } from './marketData'
-
-// 화제 급등 정렬 손잡이 2개 (2026-09-03 시뮬레이션에서 정한 값. 근거 = topicBurst.ts 머리말)
-const TOPIC_MIN_ARTICLES = 5   // 이만큼 안 나온 단어는 화제로 안 침 (1~2건 잡음의 배율 폭주 방지)
-const TOPIC_MAX_PER_TOPIC = 4  // 한 화제가 30칸 중 최대 4칸 (9~12개 화제가 고르게 들어옴)
 
 // ── B안: AI가 고른 TOP3를 코드가 한 번 더 검문 ──────────────────────────────
 // 프롬프트(A안)만으로는 "같은 기업·통계를 다른 각도로 쓴 기사"나 "환율·지수 시황"을
@@ -123,36 +119,10 @@ export async function generateMainBriefing(
     ? indicators.map(indicatorLine).join('\n')
     : '- 지표 데이터를 가져오지 못했습니다'
 
-  // 한국 경제 관련 기사 우선 정렬 (외신·미국 뉴스는 뒤로)
-  const foreignKeywords = ['미국', '미 ', '美 ', '美국', '연준', 'Fed ', '중국', '中 ', '일본', '日 ', '유럽', '월가', '나스닥', '다우', 'S&P', '뉴욕증시']
-  const isForeign = (title: string) => foreignKeywords.some(k => title.includes(k)) ? 1 : 0
-
-  // ⭐후보 순서 = ①국내 먼저 ②그 안에서 화제 급등 순 (2026-09-03 신설, topicBurst.ts 참조).
-  // 예전엔 ②가 없어 created_at 최신순이었고, 밤새 쌓인 증시 시황이 30칸을 채워
-  // 9/2 예산안(137건)이 통째로 잘렸다. 급등 배율로 재면 예산안이 ×35.5로 1위가 된다.
-  const burstRanked = rankByBurst(articles, topicBaseline, { minArticles: TOPIC_MIN_ARTICLES })
-  const ordered = burstRanked
-    .map((r, i) => ({ ...r, tiebreak: i }))  // 동점이면 급등 정렬이 준 순서 유지
-    .sort((a, b) => isForeign(a.article.title) - isForeign(b.article.title) || a.tiebreak - b.tiebreak)
-
-  // 같은 사건을 제목만 바꿔 쓴 중복 기사를 후보 단계에서 제거 (TOP3에 같은 뉴스 3개 방지)
-  // + 한 화제가 30칸을 독식하지 못하게 상한을 건다 (TOP3는 서로 다른 주제여야 하므로).
-  const acceptedTokenSets: Set<string>[] = []
-  const topicCount = new Map<string, number>()
-  const picked: typeof ordered = []
-  for (const r of ordered) {
-    if (picked.length >= 30) break
-    const tokens = titleTokenSet(r.article.title)
-    if (isNearDuplicate(tokens, acceptedTokenSets)) continue
-    if (r.topic) {
-      const used = topicCount.get(r.topic) ?? 0
-      if (used >= TOPIC_MAX_PER_TOPIC) continue
-      topicCount.set(r.topic, used + 1)
-    }
-    acceptedTokenSets.push(tokens)
-    picked.push(r)
-  }
-  const candidateArticles = picked.map(r => r.article)
+  // 후보 30건 = 국내 우선 + 화제 급등 순 + 중복 제거 + 화제 상한.
+  // 로직은 candidatePool.ts에 있다 — 채점기(gradeBriefing)가 같은 함수를 써서 같은 30건을
+  // 재현한다. 예전엔 채점기가 이 블록을 복사해 갖고 있다가 9/3 수정을 놓쳐 어긋났다(2026-09-07).
+  const { candidates: candidateArticles, picked } = selectCandidatePool(articles, topicBaseline)
   const titleList = candidateArticles.map((a, i) => `${i}. ${a.title}`).join('\n')
 
   // 관측 장치(규칙 14-6): 무엇이 왜 앞자리에 왔는지 발행 로그에 남긴다.

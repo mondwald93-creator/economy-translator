@@ -1,8 +1,9 @@
 import { supabaseAdmin as supabase } from './supabaseAdmin'
 import { openai } from './openai'
 import { notifyFailure } from './notifyAdmin'
-import { titleTokenSet, isNearDuplicate } from './titleSimilarity'
+import { titleTokenSet } from './titleSimilarity'
 import { fetchBriefingPool } from './briefingPool'
+import { buildTopicBaseline, gateCandidates, selectCandidatePool } from './candidatePool'
 import { indicatorLine } from './marketData'
 
 // ── 브리핑 자동 채점기 (P1+P2) ───────────────────────────────────────────────
@@ -24,24 +25,9 @@ function todayKST(): string {
   return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
 }
 
-// generateMainBriefing의 후보 풀 구성 로직과 동일 (한국 우선 정렬 → 중복 제거 → 30개).
-// 발행 코드를 수정하지 않기 위해 복사해 둔 것 — generateBriefing.ts 쪽이 바뀌면 여기도 맞출 것.
-const FOREIGN_KEYWORDS = ['미국', '미 ', '美 ', '美국', '연준', 'Fed ', '중국', '中 ', '일본', '日 ', '유럽', '월가', '나스닥', '다우', 'S&P', '뉴욕증시']
-function buildCandidatePool(articles: { id: string; title: string }[]): { id: string; title: string }[] {
-  const koreanFirst = [...articles].sort((a, b) => {
-    const aForeign = FOREIGN_KEYWORDS.some(k => a.title.includes(k)) ? 1 : 0
-    const bForeign = FOREIGN_KEYWORDS.some(k => b.title.includes(k)) ? 1 : 0
-    return aForeign - bForeign
-  })
-  const acceptedTokenSets: Set<string>[] = []
-  const deduped = koreanFirst.filter(a => {
-    const tokens = titleTokenSet(a.title)
-    if (isNearDuplicate(tokens, acceptedTokenSets)) return false
-    acceptedTokenSets.push(tokens)
-    return true
-  })
-  return deduped.slice(0, 30)
-}
+// ⚠️ 후보 30건 만들기는 candidatePool.ts 한 곳에만 있다 (2026-09-07).
+//    여기 복사본을 두었다가 9/3 발행 수정(화제 급등 정렬)을 놓쳐, 채점기가 브리핑이 못 본
+//    30건으로 채점했다. 다시 복사하지 말 것 — 발행과 갈라지는 순간 채점이 거짓말을 한다.
 
 // ── 형식 검사 (기준표 3.①) — 개수·글자 세기는 AI가 아니라 코드로 ──────────────
 // 하드/소프트 2단계 (v2.2, 2026-07-12 첫 주 리뷰 결정):
@@ -520,8 +506,20 @@ export async function gradeDailyBriefing({
   //    바뀌어, 심사위원이 브리핑이 못 본 기사로 대조하게 됨 (2026-07-09 전항목 0점·실격 오판 사고).
   //    기준은 고정 시각이 아니라 그날 브리핑 행의 실제 생성 시각 → 보험 크론이 발행한 날도 안전.
   //    2026-08-17: `date = 그날` 필터를 24시간 창으로 바꿈. 발행 코드(runBriefing)와 반드시 같은 함수를 쓸 것.
-  const articles = await fetchBriefingPool({ date: targetDate, cutoff: new Date(String(briefing.created_at)) })
-  const candidates = buildCandidatePool(articles)
+  const publishedAt = new Date(String(briefing.created_at))
+  const articles = await fetchBriefingPool({ date: targetDate, cutoff: publishedAt })
+
+  // 발행이 밟은 3단계를 그대로 재현한다: 관문 → 화제 기준선 → 30건 선별 (candidatePool.ts 공용).
+  // ⚠️ 관문의 now는 반드시 '발행 시각'이어야 한다. 채점은 하루 뒤에 도는데 기본값(지금)으로
+  //    재면 발행 때 신선했던 기사가 오래된 것으로 잘려 풀이 또 달라진다.
+  const { inputs: gatedInputs } = gateCandidates(articles, { now: publishedAt.getTime(), tag: 'gradeBriefing' })
+  // 기준선은 날짜만 주면 언제 불러도 같은 값이 나온다(과거 컷오프 고정). 실패해도 채점은 계속한다
+  // — 빈 기준선이면 급등 정렬이 꺼져 발행과 어긋나므로, 그 사실을 로그에 남긴다.
+  const topicBaseline = await buildTopicBaseline(targetDate, 'gradeBriefing').catch(err => {
+    console.error('[gradeBriefing] 화제 기준선 계산 실패 → 발행과 다른 순서로 채점될 수 있음:', (err as Error).message)
+    return new Map<string, number>()
+  })
+  const { candidates } = selectCandidatePool(gatedInputs, topicBaseline)
 
   // 형식 검사 (코드) — v2.2: 탈락 여부는 하드 검사만으로, 소프트 실패는 경고로 기록
   const formatChecks = runFormatChecks(briefing)
