@@ -27,13 +27,19 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     ? `${article.summary.slice(0, 120)}...`
     : undefined
 
+  // ⚠️ canonical(대표 주소)을 반드시 자기 주소로 덮어쓴다.
+  //  layout.tsx의 기본값이 홈 주소라, 안 덮으면 뉴스 300장이 전부 "나는 홈페이지다"라고 신고한다.
+  //  2026-09-09 발견: 구글이 「중복 페이지, 사용자와 다른 표준을 선택함」으로 경고를 보냈다.
+  const url = `https://economytranslator.com/news/${params.id}`
+
   return {
     title: article.title,
     description,
+    alternates: { canonical: url },
     openGraph: {
       title: article.title,
       description,
-      url: `https://economytranslator.com/news/${params.id}`,
+      url,
     },
   }
 }
