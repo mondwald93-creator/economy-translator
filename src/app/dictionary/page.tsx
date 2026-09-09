@@ -3,8 +3,12 @@ import { createClient } from '@supabase/supabase-js'
 import DictionaryList from '@/components/dictionary/DictionaryList'
 import type { Term } from '@/lib/terms'
 
-// 하루 한 번 갱신. 새 용어가 추가되면 다음 갱신 때 목록에 들어온다.
-export const revalidate = 86400
+// ⚠️ Supabase 조회에 `cache: 'no-store'`를 반드시 붙인다 (CLAUDE.md 「page.tsx Supabase 클라이언트」와 같은 함정).
+//  용어 조회는 슬러그와 무관하게 늘 같은 조회문이라 캐시 열쇠가 하나로 고정된다.
+//  그 한 칸이 굳으면 새 용어가 영영 안 보인다. 브리핑은 날짜별로 조회문이 달라져 이 함정을 피해간다.
+//  2026-09-09 실측: revalidate=86400으로 뒀더니 8/17 시점 264개에서 22일간 멈췄고,
+//  8/18 이후 추가된 용어 12개가 사이트맵엔 있는데 상세 페이지는 404였다(서치 콘솔 색인 경고의 원인).
+export const dynamic = 'force-dynamic'
 
 const BASE = 'https://economytranslator.com'
 
@@ -22,7 +26,8 @@ export const metadata: Metadata = {
 async function getTerms(): Promise<Term[]> {
   const db = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { global: { fetch: (url, opts) => fetch(url, { ...opts, cache: 'no-store' }) } }
   )
   const { data } = await db
     .from('terms')

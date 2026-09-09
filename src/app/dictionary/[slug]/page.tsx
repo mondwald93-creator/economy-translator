@@ -4,16 +4,17 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import { CATEGORY_COLORS, slugifyTerm, type Term } from '@/lib/terms'
 
-// 하루 한 번 갱신. 새 용어가 추가돼도 다음 갱신 때 페이지가 생긴다.
-export const revalidate = 86400
-export const dynamicParams = true
+// ⚠️ 목록 페이지(../page.tsx)의 주석 참조. 같은 조회문이라 캐시 열쇠가 하나뿐이고,
+//  굳으면 새 용어가 전부 404가 된다. 2026-09-09에 실제로 12개가 404였다.
+export const dynamic = 'force-dynamic'
 
 const BASE = 'https://economytranslator.com'
 
 function getDb() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { global: { fetch: (url, opts) => fetch(url, { ...opts, cache: 'no-store' }) } }
   )
 }
 
