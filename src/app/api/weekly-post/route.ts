@@ -25,7 +25,44 @@ import { notifyFailure } from '@/lib/notifyAdmin'
 
 export const maxDuration = 300
 
-const CARD_COUNT = 7
+/**
+ * 카드 장 번호 → 주소. 카드 라우트의 번호 규칙(1 표지 · 2~5 분야 · 6 숫자 · 7 팔로우)을 따른다.
+ *
+ * ⚠️ 분야가 4개 미만이면 **있는 분야만큼만** 장을 만든다(2026-09-13 수정).
+ *    문장 필터(`keepIfNumbersOk`)가 분야를 버리면 4개 아래로 내려오는데, 그동안은 무조건
+ *    7장 주소를 만들어서 빈 분야 장이 404 "no section"으로 나갔다. Meta는 그림이 아닌
+ *    응답을 받으면 "Only photo or video can be accepted"로 캐러셀 전체를 거절한다.
+ *    (9/13 실측: 분야 2개 → 5번째 장 실패 → 주간 인스타 통째로 빠짐)
+ */
+function weeklyCardUrls(weekEnd: string, sectionCount: number): string[] {
+  const nums = [1, ...Array.from({ length: Math.min(sectionCount, 4) }, (_, i) => i + 2), 6, 7]
+  return nums.map(n => `${SITE_URL}/api/card/weekly/${weekEnd}/${n}`)
+}
+
+/**
+ * 게시 전에 카드 주소를 전부 받아 본다. 하나라도 그림이 아니면 게시하지 않는다.
+ * Meta가 가져가기 전에 우리가 먼저 보는 것이라, 9/6처럼 이유 없이 한 장이 안 나오는 날도
+ * 헛시도 대신 어느 장이 어떻게 안 나왔는지(상태코드·형식)가 기록에 남는다.
+ * 미리 받아 두면 CDN 캐시도 데워져서 Meta 쪽 받기도 빨라진다.
+ */
+async function precheckCards(urls: string[]): Promise<{ ok: true } | { ok: false; detail: string }> {
+  const results = await Promise.all(
+    urls.map(async (url, i) => {
+      try {
+        const res = await fetch(url, { cache: 'no-store' })
+        const type = res.headers.get('content-type') ?? ''
+        if (!res.ok || !type.startsWith('image/')) {
+          return `${i + 1}번째 장 사전확인 실패: http ${res.status} ${type || '(형식 없음)'}`
+        }
+        return null
+      } catch (e) {
+        return `${i + 1}번째 장 사전확인 오류: ${String(e).slice(0, 120)}`
+      }
+    })
+  )
+  const bad = results.filter((r): r is string => Boolean(r))
+  return bad.length ? { ok: false, detail: bad.join(' / ') } : { ok: true }
+}
 
 function todayKST(): string {
   return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -92,10 +129,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ skipped: '주간 재료 부족(그 주 브리핑이 없거나 지표 조회 실패)', baseDate })
     }
 
-    const imageUrls = Array.from(
-      { length: CARD_COUNT },
-      (_, i) => `${SITE_URL}/api/card/weekly/${w.weekEnd}/${i + 1}`
-    )
+    const imageUrls = weeklyCardUrls(w.weekEnd, w.sections.length)
     const caption = buildWeeklyCaption({
       rangeLabel: w.rangeLabel,
       coverLines: w.coverLines,
@@ -124,6 +158,8 @@ export async function GET(request: Request) {
         indicators: w.indicators,
         sections: w.sections,
         imageUrls,
+        cardCount: imageUrls.length,
+        sectionCount: w.sections.length,
         instagram: { willPost: !igDone && Boolean(ig.token), note: ig.note, captionLength: caption.length, caption },
         threads: { willPost: !thDone && Boolean(th.token), note: th.note, length: threadText.length, text: threadText },
       })
@@ -134,7 +170,11 @@ export async function GET(request: Request) {
     waitUntil(
       Promise.allSettled([
         !igDone && ig.token
-          ? run('instagram_weekly', w.weekEnd, () => postCarouselToInstagram(ig.token!, imageUrls, caption))
+          ? run('instagram_weekly', w.weekEnd, async () => {
+              const pre = await precheckCards(imageUrls)
+              if (!pre.ok) return { ok: false, detail: pre.detail }
+              return postCarouselToInstagram(ig.token!, imageUrls, caption)
+            })
           : Promise.resolve(),
         !thDone && th.token
           ? run('threads_weekly', w.weekEnd, () => postToThreads(th.token!, threadText))
