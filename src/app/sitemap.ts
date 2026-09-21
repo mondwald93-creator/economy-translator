@@ -1,10 +1,21 @@
 import { MetadataRoute } from 'next'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import { slugifyTerm } from '@/lib/terms'
+
+// ⚠️ 요청마다 새로 만든다 + Supabase 조회에 `cache: 'no-store'` (dictionary/page.tsx와 같은 패턴).
+//  2026-09-21 실측: 설정이 없어 빌드 때 한 번 만들어진 사이트맵이 그대로 굳었다.
+//  9/13 배포 뒤 8일간 브리핑 8장·새 용어 6개가 사이트맵에 안 올라갔다(페이지 자체는 200).
+//  그전엔 거의 매일 배포해서 티가 안 났다.
+export const dynamic = 'force-dynamic'
 
 const BASE = 'https://economytranslator.com'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { global: { fetch: (url, opts) => fetch(url, { ...opts, cache: 'no-store' }) } }
+  )
   const staticPages: MetadataRoute.Sitemap = [
     { url: BASE, changeFrequency: 'daily', priority: 1.0 },
     { url: `${BASE}/dictionary`, changeFrequency: 'weekly', priority: 0.8 },
