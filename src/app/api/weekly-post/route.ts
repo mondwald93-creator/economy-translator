@@ -16,7 +16,7 @@
 import { NextResponse } from 'next/server'
 import { waitUntil } from '@vercel/functions'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
-import { getAccessToken, alreadyPosted, recordPost, type PostChannel } from '@/lib/socialTokens'
+import { getAccessToken, alreadyPosted, recordPost, reportTokenAlert, type PostChannel } from '@/lib/socialTokens'
 import { buildWeeklyData, weekRange, indicatorSummaryLine, type WeeklyData } from '@/lib/weeklyBriefing'
 import { postCarouselToInstagram, buildWeeklyCaption } from '@/lib/postToInstagram'
 import { postToThreads, buildWeeklyPostText } from '@/lib/postToThreads'
@@ -100,11 +100,12 @@ async function ensureWeeklyData(baseDate: string): Promise<WeeklyData | null> {
 async function run(
   channel: PostChannel,
   date: string,
-  fn: () => Promise<{ ok: boolean; postId?: string; detail: string }>
+  fn: () => Promise<{ ok: boolean; postId?: string; detail: string }>,
+  tokenNote = ''
 ) {
   try {
     const r = await fn()
-    await recordPost(channel, date, r.ok ? 'success' : 'failed', r.postId ?? null, r.detail)
+    await recordPost(channel, date, r.ok ? 'success' : 'failed', r.postId ?? null, r.detail + tokenNote)
     if (!r.ok) await notifyFailure(`주간 게시 실패 (${channel})`, r.detail)
   } catch (e) {
     await recordPost(channel, date, 'failed', null, String(e).slice(0, 300))
@@ -167,17 +168,29 @@ export async function GET(request: Request) {
 
     // 게시는 백그라운드로 넘기고 응답을 먼저 준다. 캐러셀은 7장을 Meta가 받아가는
     // 시간이 있어서 동기로 기다리면 cron-job.org 30초 timeout에 걸린다(일간과 같은 이유).
+    // 토큰 이상은 게시 여부와 따로 알린다(2026-09-21, `reportTokenAlert` 참조). 이미 올린 주는 건너뛴다.
+    const flag = (t: { note: string; alert: boolean }) => (t.alert ? ` · ⚠️토큰 ${t.note}` : '')
+    const tokenAlerts = [
+      !igDone && ig.alert ? reportTokenAlert('instagram_weekly', w.weekEnd, ig.note, Boolean(ig.token)) : null,
+      !thDone && th.alert ? reportTokenAlert('threads_weekly', w.weekEnd, th.note, Boolean(th.token)) : null,
+    ].filter(Boolean)
     waitUntil(
       Promise.allSettled([
+        ...tokenAlerts,
         !igDone && ig.token
-          ? run('instagram_weekly', w.weekEnd, async () => {
-              const pre = await precheckCards(imageUrls)
-              if (!pre.ok) return { ok: false, detail: pre.detail }
-              return postCarouselToInstagram(ig.token!, imageUrls, caption)
-            })
+          ? run(
+              'instagram_weekly',
+              w.weekEnd,
+              async () => {
+                const pre = await precheckCards(imageUrls)
+                if (!pre.ok) return { ok: false, detail: pre.detail }
+                return postCarouselToInstagram(ig.token!, imageUrls, caption)
+              },
+              flag(ig)
+            )
           : Promise.resolve(),
         !thDone && th.token
-          ? run('threads_weekly', w.weekEnd, () => postToThreads(th.token!, threadText))
+          ? run('threads_weekly', w.weekEnd, () => postToThreads(th.token!, threadText), flag(th))
           : Promise.resolve(),
       ])
     )

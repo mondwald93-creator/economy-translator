@@ -14,7 +14,7 @@
 import { NextResponse } from 'next/server'
 import { waitUntil } from '@vercel/functions'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
-import { getAccessToken, alreadyPosted, recordPost, type Platform } from '@/lib/socialTokens'
+import { getAccessToken, alreadyPosted, recordPost, reportTokenAlert, type Platform } from '@/lib/socialTokens'
 import { buildPostText, postToThreads, currentTopicTag } from '@/lib/postToThreads'
 import { buildCaption, postToInstagram, postCarouselToInstagram } from '@/lib/postToInstagram'
 import { SITE_URL } from '@/lib/utm'
@@ -22,16 +22,16 @@ import { notifyFailure } from '@/lib/notifyAdmin'
 
 export const maxDuration = 120
 
-type Plan = { platform: Platform; ready: boolean; reason: string; token: string | null }
+type Plan = { platform: Platform; ready: boolean; reason: string; token: string | null; alert: boolean }
 
 /** 올릴 수 있는 상태인지 본다. 전부 DB·토큰 조회라 1초 안에 끝난다. */
 async function plan(platform: Platform): Promise<Plan> {
   if (await alreadyPosted(platform, todayKST())) {
-    return { platform, ready: false, reason: '오늘 이미 게시함', token: null }
+    return { platform, ready: false, reason: '오늘 이미 게시함', token: null, alert: false }
   }
-  const { token, note } = await getAccessToken(platform)
-  if (!token) return { platform, ready: false, reason: note, token: null }
-  return { platform, ready: true, reason: note, token }
+  const { token, note, alert } = await getAccessToken(platform)
+  if (!token) return { platform, ready: false, reason: note, token: null, alert }
+  return { platform, ready: true, reason: note, token, alert }
 }
 
 const DAILY_CARD_COUNT = 5
@@ -114,11 +114,21 @@ export async function GET(request: Request) {
     // (2026-06-12 실측. cron-briefing이 같은 이유로 같은 구조다).
     // 여기까지는 1~2초면 끝나고, 건너뛴 이유는 아래 응답에 그대로 담기므로
     // 크론 화면만 봐도 무슨 일이 있었는지 보인다.
+    // 토큰 이상(갱신 실패·만료 등)은 게시 여부와 따로 알린다(2026-09-21, `reportTokenAlert` 참조).
+    const tokenAlerts = [threads, instagram]
+      .filter(p => p.alert)
+      .map(p => reportTokenAlert(p.platform, today, p.reason, p.ready))
     waitUntil(
       Promise.allSettled([
-        threads.ready ? run('threads', () => postToThreads(threads.token!, text), text) : noop(),
+        ...tokenAlerts,
+        threads.ready ? run('threads', () => postToThreads(threads.token!, text), text, tokenFlag(threads)) : noop(),
         instagram.ready
-          ? run('instagram', () => postDailyInstagram(instagram.token!, carouselUrls, imageUrl, caption), caption)
+          ? run(
+              'instagram',
+              () => postDailyInstagram(instagram.token!, carouselUrls, imageUrl, caption),
+              caption,
+              tokenFlag(instagram)
+            )
           : noop(),
       ])
     )
@@ -144,6 +154,11 @@ function noop() {
   return Promise.resolve()
 }
 
+/** 게시 결과 detail 끝에 붙일 토큰 경고. 이상 없으면 빈 문자열 */
+function tokenFlag(p: Plan): string {
+  return p.alert ? ` · ⚠️토큰 ${p.reason}` : ''
+}
+
 /**
  * 한 채널을 올리고 결과를 남긴다.
  *
@@ -154,13 +169,14 @@ function noop() {
 async function run(
   platform: Platform,
   post: () => Promise<{ ok: boolean; postId?: string; detail: string }>,
-  body: string
+  body: string,
+  tokenNote = ''
 ): Promise<void> {
   const today = todayKST()
   const label = platform === 'threads' ? '스레드' : '인스타'
   try {
     const result = await post()
-    await recordPost(platform, today, result.ok ? 'success' : 'failed', result.postId, result.detail)
+    await recordPost(platform, today, result.ok ? 'success' : 'failed', result.postId, result.detail + tokenNote)
     if (!result.ok) {
       await notifyFailure(`${label} 자동 게시 실패`, `${result.detail}\n\n본문:\n${body}`)
     }
