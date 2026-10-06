@@ -17,6 +17,9 @@ const CAT_STYLE = {
   '무역': { badge: 'bg-orange-100 text-orange-700', dot: 'bg-orange-500' },
 }
 
+// 2026-10-06 공식 일정과 대조해 앞으로 올 날짜 4개 수정 + 12/31 물가(12월·연간) 추가.
+// 근거: 한국은행 통화정책방향 결정회의 목록·월간 통계 공표일정, 미국 노동통계국 CPI 일정.
+// 이미 지난 날짜(4/16 금통위 등)는 그대로 둠. 대조 기록 = 전직로드맵/_작업기록/자리비움점검_2026-10-06.md 5-1절
 const EVENTS: EconomicEvent[] = [
   // 한국은행 금통위 (연 8회)
   { date: '2026-01-15', title: '한국은행 금통위', category: '금리', description: '기준금리 인상·동결·인하 중 결정. 대출금리·예금금리에 직접 영향.', importance: 'high', country: '한국' },
@@ -25,7 +28,7 @@ const EVENTS: EconomicEvent[] = [
   { date: '2026-05-28', title: '한국은행 금통위', category: '금리', description: '기준금리 인상·동결·인하 중 결정. 대출금리·예금금리에 직접 영향.', importance: 'high', country: '한국' },
   { date: '2026-07-16', title: '한국은행 금통위', category: '금리', description: '기준금리 인상·동결·인하 중 결정. 대출금리·예금금리에 직접 영향.', importance: 'high', country: '한국' },
   { date: '2026-08-27', title: '한국은행 금통위', category: '금리', description: '기준금리 인상·동결·인하 중 결정. 대출금리·예금금리에 직접 영향.', importance: 'high', country: '한국' },
-  { date: '2026-10-15', title: '한국은행 금통위', category: '금리', description: '기준금리 인상·동결·인하 중 결정. 대출금리·예금금리에 직접 영향.', importance: 'high', country: '한국' },
+  { date: '2026-10-22', title: '한국은행 금통위', category: '금리', description: '기준금리 인상·동결·인하 중 결정. 대출금리·예금금리에 직접 영향.', importance: 'high', country: '한국' },
   { date: '2026-11-26', title: '한국은행 금통위', category: '금리', description: '기준금리 인상·동결·인하 중 결정. 대출금리·예금금리에 직접 영향.', importance: 'high', country: '한국' },
 
   // 미국 FOMC (연 8회)
@@ -42,7 +45,7 @@ const EVENTS: EconomicEvent[] = [
   { date: '2026-01-23', title: 'GDP 성장률 (4분기)', category: '지표', description: '2025년 4분기 경제성장률 발표. 경제가 얼마나 성장했는지 보여주는 핵심 지표.', importance: 'high', country: '한국' },
   { date: '2026-04-24', title: 'GDP 성장률 (1분기)', category: '지표', description: '2026년 1분기 경제성장률 발표. 경제가 얼마나 성장했는지 보여주는 핵심 지표.', importance: 'high', country: '한국' },
   { date: '2026-07-23', title: 'GDP 성장률 (2분기)', category: '지표', description: '2026년 2분기 경제성장률 발표. 경제가 얼마나 성장했는지 보여주는 핵심 지표.', importance: 'high', country: '한국' },
-  { date: '2026-10-22', title: 'GDP 성장률 (3분기)', category: '지표', description: '2026년 3분기 경제성장률 발표. 경제가 얼마나 성장했는지 보여주는 핵심 지표.', importance: 'high', country: '한국' },
+  { date: '2026-10-27', title: 'GDP 성장률 (3분기)', category: '지표', description: '2026년 3분기 경제성장률 발표. 경제가 얼마나 성장했는지 보여주는 핵심 지표.', importance: 'high', country: '한국' },
 
   // 한국 소비자물가지수 (매월)
   { date: '2026-01-02', title: '소비자물가지수', category: '지표', description: '지난달 물가 상승률 발표. 생활비 변화와 금리 방향 예측에 활용.', importance: 'medium', country: '한국' },
@@ -57,6 +60,7 @@ const EVENTS: EconomicEvent[] = [
   { date: '2026-10-02', title: '소비자물가지수', category: '지표', description: '지난달 물가 상승률 발표. 생활비 변화와 금리 방향 예측에 활용.', importance: 'medium', country: '한국' },
   { date: '2026-11-03', title: '소비자물가지수', category: '지표', description: '지난달 물가 상승률 발표. 생활비 변화와 금리 방향 예측에 활용.', importance: 'medium', country: '한국' },
   { date: '2026-12-02', title: '소비자물가지수', category: '지표', description: '지난달 물가 상승률 발표. 생활비 변화와 금리 방향 예측에 활용.', importance: 'medium', country: '한국' },
+  { date: '2026-12-31', title: '소비자물가지수 (12월·연간)', category: '지표', description: '12월 물가와 올해 1년 물가 상승률을 함께 발표. 한 해 생활비가 얼마나 올랐는지 보여줌.', importance: 'medium', country: '한국' },
 
   // 미국 소비자물가지수 (매월)
   { date: '2026-01-14', title: '미국 소비자물가지수', category: '지표', description: '미국 물가 발표. 높으면 달러 강세·원화 약세 가능성. 연준 금리 결정에도 영향.', importance: 'high', country: '미국' },
@@ -69,8 +73,8 @@ const EVENTS: EconomicEvent[] = [
   { date: '2026-08-12', title: '미국 소비자물가지수', category: '지표', description: '미국 물가 발표. 높으면 달러 강세·원화 약세 가능성. 연준 금리 결정에도 영향.', importance: 'high', country: '미국' },
   { date: '2026-09-09', title: '미국 소비자물가지수', category: '지표', description: '미국 물가 발표. 높으면 달러 강세·원화 약세 가능성. 연준 금리 결정에도 영향.', importance: 'high', country: '미국' },
   { date: '2026-10-14', title: '미국 소비자물가지수', category: '지표', description: '미국 물가 발표. 높으면 달러 강세·원화 약세 가능성. 연준 금리 결정에도 영향.', importance: 'high', country: '미국' },
-  { date: '2026-11-11', title: '미국 소비자물가지수', category: '지표', description: '미국 물가 발표. 높으면 달러 강세·원화 약세 가능성. 연준 금리 결정에도 영향.', importance: 'high', country: '미국' },
-  { date: '2026-12-09', title: '미국 소비자물가지수', category: '지표', description: '미국 물가 발표. 높으면 달러 강세·원화 약세 가능성. 연준 금리 결정에도 영향.', importance: 'high', country: '미국' },
+  { date: '2026-11-10', title: '미국 소비자물가지수', category: '지표', description: '미국 물가 발표. 높으면 달러 강세·원화 약세 가능성. 연준 금리 결정에도 영향.', importance: 'high', country: '미국' },
+  { date: '2026-12-10', title: '미국 소비자물가지수', category: '지표', description: '미국 물가 발표. 높으면 달러 강세·원화 약세 가능성. 연준 금리 결정에도 영향.', importance: 'high', country: '미국' },
 
   // 한국 무역수지 (매월)
   { date: '2026-01-15', title: '무역수지', category: '무역', description: '지난달 수출·수입 금액 발표. 흑자면 외화 유입, 적자면 외화 유출.', importance: 'medium', country: '한국' },
