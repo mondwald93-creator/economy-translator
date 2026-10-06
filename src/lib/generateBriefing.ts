@@ -3,6 +3,7 @@ import { KeyIndicator, Top3AnalysisItem, HealthCheckItem, ConnectionItem, Articl
 import { titleTokenSet, isNearDuplicate } from './titleSimilarity'
 import { selectCandidatePool } from './candidatePool'
 import { indicatorLine } from './marketData'
+import type { ArticleBody } from './articleBody'
 
 // ── B안: AI가 고른 TOP3를 코드가 한 번 더 검문 ──────────────────────────────
 // 프롬프트(A안)만으로는 "같은 기업·통계를 다른 각도로 쓴 기사"나 "환율·지수 시황"을
@@ -106,6 +107,22 @@ export interface BriefingResult extends BriefingAIResult {
   candidateArticles: { id: string; title: string }[]
 }
 
+// shareCard 40자 초과 방지(형식 채점 기준=40자 이내). 메인 브리핑·본문 대조 둘 다 쓴다.
+// '—'/',' 앞 절만으로 완결되면 그 절만 남기고(문장이 안 끊김), 아니면 40자 이내 단어 경계에서 자른다.
+export function trimShareCard(raw: string): string {
+  let sc = raw.trim()
+  if (sc.length > 40) {
+    const m = sc.match(/^(.{15,40}?)(?:\s—\s|,\s)/)
+    if (m) {
+      sc = m[1].trim()
+    } else {
+      const sp = sc.lastIndexOf(' ', 40)
+      sc = (sp > 20 ? sc.slice(0, sp) : sc.slice(0, 40)).trim()
+    }
+  }
+  return sc
+}
+
 // B1 + B3 + B4: 메인 브리핑 생성 (헤드라인, TOP3 선정, 건강진단, 연결관계 포함)
 export async function generateMainBriefing(
   articles: { id: string; title: string }[],
@@ -203,19 +220,7 @@ ${titleList}
   parsed.top3Indices = enforceTop3Rules(parsed.top3Indices ?? [], candidateArticles)
   // shareCard 40자 초과 방지(형식 채점 기준=40자 이내). 프롬프트로도 유도하되, 넘치면 코드가 마지막 안전망으로 자른다.
   // '—'/',' 앞 절만으로 완결되면 그 절만 남기고(문장이 안 끊김), 아니면 40자 이내 단어 경계에서 자른다.
-  if (parsed.shareCard) {
-    let sc = parsed.shareCard.trim()
-    if (sc.length > 40) {
-      const m = sc.match(/^(.{15,40}?)(?:\s—\s|,\s)/)
-      if (m) {
-        sc = m[1].trim()
-      } else {
-        const sp = sc.lastIndexOf(' ', 40)
-        sc = (sp > 20 ? sc.slice(0, sp) : sc.slice(0, 40)).trim()
-      }
-    }
-    parsed.shareCard = sc
-  }
+  if (parsed.shareCard) parsed.shareCard = trimShareCard(parsed.shareCard)
   return { ...parsed, candidateArticles }
 }
 
@@ -249,39 +254,82 @@ ${articleList}
   return (parsed.articles ?? []) as { id: string; summary: string }[]
 }
 
-// B2: TOP3 기사 6단계 과외 스타일 분석
-export async function generateTop3Analysis(
-  articles: { id: string; title: string }[]
-): Promise<(ArticleFullAnalysis & { id: string })[]> {
-  if (articles.length === 0) return []
+// ─────────────────────────────────────────────────────────────────────────
+// B2: 기사 6단계 해설 — 2026-10-06 개편: 제목만 → **본문을 함께 넣는다**
+//
+// 왜: 예전엔 AI에게 제목만 주고 「왜 생겼나·나에게 영향·전망」을 쓰게 했다. 본문이 없으니
+//     AI가 원인·주체·숫자를 지어냈다(9/25~10/6 해설 85건 중 32건 사실 오류. 샤인머스캣 → 「귀족새우」,
+//     한국서부발전 → 「사우디 기업」, 1~9월 누적 수출 → 「연간 1조 달러 돌파」 등).
+//     기록 = 전직로드맵/_작업기록/자리비움점검_2026-10-06.md 5-2절. 본문 받기 = articleBody.ts
+// 바뀐 점: ① 본문 2,500자까지 같이 넣음 ② 「본문에 있는 사실만」 규칙 ③ temperature 0.7 → 0.3
+//          ④ 분야별 대표 기사는 「고르기」와 「해설 쓰기」를 두 번으로 나눔(고른 뒤에야 본문을 받을 수 있어서)
+// ─────────────────────────────────────────────────────────────────────────
+// 본문 대조 해설·브리핑 글 고치기에 쓰는 모델. 시험용으로 환경변수로 바꿀 수 있게 둔다(기본값은 아래).
+// gpt-5·o 계열은 temperature를 받지 않으므로 그때는 빼고 보낸다.
+const GROUNDED_MODEL = process.env.GROUNDED_MODEL || 'gpt-5.4-mini'  // 2026-10-06 18건 비교: 4o-mini·4.1-mini보다 사실·문체 모두 우세
+function samplingFor(model: string, temperature: number): { temperature?: number } {
+  return /^(gpt-5|o\d)/.test(model) ? {} : { temperature }
+}
 
-  // ⚠️ AI에게 UUID를 되받아 쓰게 하면 가끔 글자를 빠뜨려 기사 매칭이 깨짐(2026-07-08 TOP3 빈 제목 사고)
-  // → TOP3 선정과 동일한 인덱스 번호 방식. id는 코드가 인덱스로 복원한다.
-  const articleList = articles.map((a, i) => `{"index":${i},"title":"${a.title}"}`).join('\n')
+export interface ArticleWithBody {
+  id: string
+  title: string
+  body?: ArticleBody
+}
 
-  const prompt = `다음 경제 뉴스 기사들을 경제 과외 선생님처럼 6단계로 깊이 설명해주세요.
+const GROUNDING_RULES = `⭐가장 중요한 규칙 — [본문]에 있는 사실만 씁니다. 이 서비스는 기사를 직접 읽고 옮겨 주는 서비스입니다.
+- whyHappened(원인)는 본문이 밝힌 원인만 쓰세요. 본문에 원인이 없으면 "기사에서 원인을 따로 밝히지는 않았어요."라고 쓰고, 그럴듯한 원인을 지어내지 마세요.
+- 누가 했는지(사람·기관·회사)는 본문에 나온 그대로 쓰세요. 주어를 바꾸지 마세요(예: A사가 B사와 손잡고 C를 지원하면, B사가 지원한다고 쓰지 말 것). 직함도 본문 표현을 따르세요.
+- 숫자는 본문에 있는 숫자만, 본문이 붙인 조건·기간·단위와 함께 쓰세요. 누적치·전망치·가정 계산을 확정된 결과처럼 쓰지 마세요(예: 1~9월 누적을 연간이라고 쓰지 말 것, 시뮬레이션 수치를 실제 상승률로 쓰지 말 것).
+- 전망·예정·관측·계획·가능성 기사는 아직 일어나지 않은 일로 쓰세요("~할 예정이에요", "~라는 전망이 나왔어요").
+- 오름·내림, 늘어남·줄어듦, 인상·인하의 방향을 본문과 다르게 쓰지 마세요. 「~할 가능성이 낮아졌다」를 「높아졌다」로 바꾸지 마세요.
+- myImpact·outlook도 본문에서 이어지는 범위에서만 쓰세요. 해외에서 일어나는 일(예: 미국 안에 짓는 발전소)을 국내 요금·가격에 바로 연결하지 마세요.
+- 원인을 「~때문인 것으로 보여요」, 「~것 같아요」처럼 추측으로 덧붙이지 마세요. 본문이 밝힌 것만 단정해서 쓰고, 나머지는 쓰지 않습니다.
+- outlook에 본문에 없는 의견·권고(예: "정부의 지원이 필요해요", "주의가 필요해요")를 덧붙이지 마세요. 본문에 전망이 없으면 "기사에서 따로 전망을 밝히지는 않았어요."라고 쓰세요.
+- 특정 투자를 권하는 말("투자해볼 수 있어요", "사볼 만해요")은 쓰지 마세요.
+- [본문]이 "(본문 없음)"이거나 아주 짧으면, 제목과 주어진 문장에 있는 사실만 쓰고 원인·영향·전망은 추측하지 말고 "기사에서 따로 밝히지는 않았어요."라고 쓰세요.`
 
-기사 목록:
-${articleList}
-
-【말투】 사이트 전체가 존댓말이라 여기도 존댓말로 씁니다. 말끝은 '~어요/~예요'로 쓰세요.
+const SPEECH_RULES = `【말투】 사이트 전체가 존댓말이라 여기도 존댓말로 씁니다. 말끝은 '~어요/~예요'로 쓰세요.
   ⚠️ '~야/~어/~지/~거야'처럼 반말로 끝내지 마세요.
   ⚠️ '~대요/~래요'처럼 전해 들은 말투도 쓰지 마세요. 직접 읽고 옮겨 주는 서비스라 목소리가 갈립니다.
-  (oneline·conclusion은 짧은 명사구라 어미가 없어도 됩니다. 단 '올랐다'처럼 반말 어미로 끝내지는 마세요)
+  ⚠️ '~습니다/~입니다' 같은 합쇼체도 섞지 마세요.
+  (oneline·conclusion은 짧은 명사구라 어미가 없어도 됩니다. 단 '올랐다'처럼 반말 어미로 끝내지는 마세요)`
+
+function bodyBlock(a: ArticleWithBody): string {
+  const b = a.body
+  if (!b || !b.text) return '(본문 없음)'
+  return b.ok ? b.text : `(본문을 다 받지 못해 리드 문단만 있음) ${b.text}`
+}
+
+/** 본문을 함께 넣어 6단계 해설을 만든다. 결과의 순서·id는 코드가 인덱스로 복원한다(AI가 쓴 식별자를 믿지 않음). */
+async function analyzeWithBody(articles: ArticleWithBody[]): Promise<(ArticleFullAnalysis & { id: string })[]> {
+  if (articles.length === 0) return []
+  // ⚠️ AI에게 UUID를 되받아 쓰게 하면 가끔 글자를 빠뜨려 기사 매칭이 깨짐(2026-07-08 TOP3 빈 제목 사고) → 인덱스 방식 유지
+  const articleList = articles
+    .map((a, i) => `### 기사 ${i}\n[제목] ${a.title}\n[본문] ${bodyBlock(a)}`)
+    .join('\n\n')
+
+  const prompt = `다음 경제 뉴스 기사들을 경제 과외 선생님처럼 6단계로 설명해주세요. 기사마다 [제목]과 [본문]이 있습니다.
+
+${articleList}
+
+${GROUNDING_RULES}
+
+${SPEECH_RULES}
 
 각 기사에 대해 아래 6단계로 설명하세요:
-- oneline: 이 기사를 한 마디로 (15자 이내, 예: "금리 또 올랐어요")
-- whatHappened: 무슨 일인가요? (초보자 언어로 2~3문장)
-- whyHappened: 왜 이런 일이 생겼나요? (원인 설명 2~3문장)
-- myImpact: 나에게 어떤 영향이 있나요? (실생활 연결 2~3문장)
-- outlook: 앞으로 어떻게 될까요? (전망 1~2문장)
+- oneline: 이 기사를 한 마디로 (15자 이내)
+- whatHappened: 무슨 일인가요? (초보자 언어로 2~3문장, 본문 사실만)
+- whyHappened: 왜 이런 일이 생겼나요? (본문이 밝힌 원인 2~3문장. 없으면 위 규칙대로)
+- myImpact: 나에게 어떤 영향이 있나요? (실생활 연결 2~3문장, 본문에서 이어지는 범위만)
+- outlook: 앞으로 어떻게 될까요? (본문에 나온 전망·예정 1~2문장)
 - conclusion: 한 줄 결론 (10자 이내 핵심 메시지)
 
 다음 JSON 형식으로만 응답하세요:
 {
   "articles": [
     {
-      "index": 위 목록의 기사 인덱스 숫자,
+      "index": 위 기사 번호(숫자),
       "oneline": "한 마디 요약",
       "whatHappened": "무슨 일 설명",
       "whyHappened": "원인 설명",
@@ -293,23 +341,23 @@ ${articleList}
 }`
 
   const res = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
+    model: GROUNDED_MODEL,
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: prompt },
     ],
     response_format: { type: 'json_object' },
-    temperature: 0.7,
-  })
+    ...samplingFor(GROUNDED_MODEL, 0.3),
+  }, { timeout: 100_000 }) // 본문이 들어가 입력이 길다 — 기본 60초로는 정상 응답도 끊길 수 있음
 
   const parsed = JSON.parse(res.choices[0].message.content ?? '{"articles":[]}')
   const rows = (parsed.articles ?? []) as Array<{ index: number } & ArticleFullAnalysis>
-
-  // 인덱스 → 실제 기사 id 복원 (AI가 쓴 식별자를 신뢰하지 않는다)
   const result: (ArticleFullAnalysis & { id: string })[] = []
+  const seen = new Set<string>()
   for (const r of rows) {
     const art = articles[r.index]
-    if (!art) continue
+    if (!art || seen.has(art.id)) continue
+    seen.add(art.id)
     result.push({
       id: art.id,
       oneline: r.oneline,
@@ -323,9 +371,17 @@ ${articleList}
   return result
 }
 
+// TOP3 하이라이트 해설 (본문 포함)
+export async function generateTop3Analysis(
+  articles: ArticleWithBody[]
+): Promise<(ArticleFullAnalysis & { id: string })[]> {
+  return analyzeWithBody(articles)
+}
+
 // B5: 분야별(6개) 대표 기사 1개씩 선정 + 6단계 분석 (홈 뉴스 목록용)
 // 기존 "오늘 기사 전부를 한 번에 요약"(generateArticleSummaries)이 기사 1,000건+에서
 // 출력 길이 한도에 막혀 ~80건만 처리되던 문제를 대체. 보여줄 기사만 선별·분석한다.
+// 2026-10-06: 「고르기」(pickCategoryNews, 제목만)와 「해설 쓰기」(generateCategoryAnalysis, 본문 포함)로 나눔.
 export const NEWS_CATEGORIES = ['물가', '소비', '수출', '고용', '부동산', '금융'] as const
 
 export interface CategoryNewsItem extends ArticleFullAnalysis {
@@ -333,9 +389,9 @@ export interface CategoryNewsItem extends ArticleFullAnalysis {
   category: string
 }
 
-export async function generateCategoryNews(
+export async function pickCategoryNews(
   articles: { id: string; title: string }[]
-): Promise<CategoryNewsItem[]> {
+): Promise<{ id: string; title: string; category: string }[]> {
   if (articles.length === 0) return []
 
   // 한국 경제 기사 우선 정렬 후 후보 50개로 압축 (분야 커버리지 확보 + 출력 길이 안전)
@@ -348,7 +404,7 @@ export async function generateCategoryNews(
   const candidates = koreanFirst.slice(0, 50)
   const titleList = candidates.map((a, i) => `${i}. ${a.title}`).join('\n')
 
-  const prompt = `다음은 오늘 수집된 한국 경제 뉴스입니다. 아래 6개 분야 각각에 대해 "오늘 가장 중요하거나 이슈가 된 대표 기사" 1개씩을 골라주세요.
+  const prompt = `다음은 오늘 수집된 한국 경제 뉴스입니다. 아래 6개 분야 각각에 대해 "오늘 가장 중요하거나 이슈가 된 대표 기사" 1개씩을 골라주세요. (해설은 따로 씁니다. 여기서는 고르기만 합니다)
 
 분야: 물가, 소비, 수출, 고용, 부동산, 금융
 
@@ -359,26 +415,11 @@ ${titleList}
 - 6개 분야를 가능한 한 모두 채우세요. 정말 어울리는 기사가 단 하나도 없는 분야만 생략하되, 어떤 경우에도 최소 4개 분야는 반드시 채워야 합니다. (특정 분야에 딱 맞는 기사가 없으면, 그 분야와 가장 관련 있는 한국 경제 기사를 골라 넣으세요. 단 아래 해외 단독 뉴스 제외 규칙은 지키세요.)
 - 같은 사건·주제를 여러 분야에 중복 선정하지 마세요. 한 사건(예: 특정 통계 발표·특정 기업 이슈·특정 정책)이 여러 분야에 걸쳐 보여도, 가장 잘 맞는 분야 1곳에만 싣고 나머지 분야는 그 분야의 다른 사건을 고르세요. 같은 통계·같은 기업·같은 정책을 다른 각도로 다룬 기사도 '같은 사건'으로 봅니다.
 - 미국·중국 등 해외 단독 뉴스는 고르지 마세요. 한국 경제 중심으로.
-- 고른 기사마다 경제 과외 선생님처럼 6단계로 설명하세요.
-
-【말투】 사이트 전체가 존댓말이라 여기도 존댓말로 씁니다. 말끝은 '~어요/~예요'로 쓰세요.
-  ⚠️ '~야/~어/~지/~거야'처럼 반말로 끝내지 마세요.
-  ⚠️ '~대요/~래요'처럼 전해 들은 말투도 쓰지 마세요. 직접 읽고 옮겨 주는 서비스라 목소리가 갈립니다.
-  (oneline·conclusion은 짧은 명사구라 어미가 없어도 됩니다. 단 '올랐다'처럼 반말 어미로 끝내지는 마세요)
 
 다음 JSON 형식으로만 응답하세요:
 {
   "categories": [
-    {
-      "category": "물가|소비|수출|고용|부동산|금융 중 하나",
-      "index": 위 목록의 기사 인덱스 숫자,
-      "oneline": "한 마디 요약 (15자 이내)",
-      "whatHappened": "무슨 일인가요? (초보자 언어로 2~3문장)",
-      "whyHappened": "왜 이런 일이 생겼나요? (원인 2~3문장)",
-      "myImpact": "나에게 어떤 영향이 있나요? (실생활 연결 2~3문장)",
-      "outlook": "앞으로 어떻게 될까요? (전망 1~2문장)",
-      "conclusion": "한 줄 결론 (10자 이내)"
-    }
+    { "category": "물가|소비|수출|고용|부동산|금융 중 하나", "index": 위 목록의 기사 인덱스 숫자 }
   ]
 }`
 
@@ -389,32 +430,103 @@ ${titleList}
       { role: 'user', content: prompt },
     ],
     response_format: { type: 'json_object' },
-    temperature: 0.7,
-  }, { timeout: 100_000 })
+    temperature: 0.3,
+  })
 
   const parsed = JSON.parse(res.choices[0].message.content ?? '{"categories":[]}')
-  const rows = (parsed.categories ?? []) as Array<{ category: string; index: number } & ArticleFullAnalysis>
-
+  const rows = (parsed.categories ?? []) as Array<{ category: string; index: number }>
   const seen = new Set<string>()
-  const result: CategoryNewsItem[] = []
+  const picked: { id: string; title: string; category: string }[] = []
   for (const r of rows) {
     const art = candidates[r.index]
-    if (!art) continue
-    if (seen.has(art.id)) continue
+    if (!art || seen.has(art.id)) continue
     if (!(NEWS_CATEGORIES as readonly string[]).includes(r.category)) continue
     seen.add(art.id)
-    result.push({
-      id: art.id,
-      category: r.category,
-      oneline: r.oneline,
-      whatHappened: r.whatHappened,
-      whyHappened: r.whyHappened,
-      myImpact: r.myImpact,
-      outlook: r.outlook,
-      conclusion: r.conclusion,
-    })
+    picked.push({ id: art.id, title: art.title, category: r.category })
   }
-  return result
+  return picked
+}
+
+export async function generateCategoryAnalysis(
+  picked: (ArticleWithBody & { category: string })[]
+): Promise<CategoryNewsItem[]> {
+  const analyses = await analyzeWithBody(picked)
+  return analyses.map(a => ({ ...a, category: picked.find(p => p.id === a.id)!.category }))
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// 브리핑 글(헤드라인·요약·공유카드·연결고리)을 TOP3 본문과 대조해 고친다 — 2026-10-06 신설
+//
+// 왜: 메인 브리핑은 후보 30건의 **제목만** 보고 쓴다(고르기와 쓰기를 한 번에 하는 구조라 본문을 넣을 수 없음).
+//     그래서 헤드라인·요약에도 지어낸 내용이 들어갔다(9/29 「대기업들이 하반기 채용 늘린대요」 = 원문은
+//     줄이는 기업이 더 많음, 10/6 「韓-사우디 협력 강화해요」 = 원문은 포럼에서 논의할 예정).
+//     TOP3가 정해진 뒤 그 본문으로 초안을 한 번 더 고친다. 실패하면 초안 그대로 둔다(발행을 막지 않음).
+// ─────────────────────────────────────────────────────────────────────────
+export async function groundBriefingText(
+  draft: { headline: string; summary: string; shareCard?: string; connections: ConnectionItem[] },
+  top3: ArticleWithBody[],
+  indicators: Omit<KeyIndicator, 'easyExplanation'>[]
+): Promise<{ headline: string; summary: string; shareCard?: string; connections: ConnectionItem[]; changed: boolean }> {
+  const usable = top3.filter(a => a.body?.text)
+  if (usable.length === 0) return { ...draft, changed: false }
+
+  const articleList = top3.map((a, i) => `### 기사 ${i + 1}\n[제목] ${a.title}\n[본문] ${bodyBlock(a)}`).join('\n\n')
+  const indicatorList = indicators.length > 0 ? indicators.map(indicatorLine).join('\n') : '- (지표 없음)'
+
+  const prompt = `아래는 오늘 경제 브리핑 초안입니다. 초안은 기사 제목만 보고 쓰여서 틀린 내용이 섞여 있을 수 있습니다.
+오늘 고른 핵심 기사 3건의 [본문]과 지표를 기준으로 초안을 검토하고, 본문·지표와 다르거나 본문에 없는 내용을 고쳐 주세요.
+
+## 핵심 기사 3건
+${articleList}
+
+## 주요 지표 (직전 거래일 마감 기준)
+${indicatorList}
+
+## 초안
+{
+  "headline": ${JSON.stringify(draft.headline)},
+  "summary": ${JSON.stringify(draft.summary)},
+  "shareCard": ${JSON.stringify(draft.shareCard ?? '')},
+  "connections": ${JSON.stringify(draft.connections ?? [])}
+}
+
+고치는 규칙:
+- 사실(누가·무엇을·숫자·방향·시제)은 위 본문과 지표에 맞추세요. 본문에 없는 원인·사건·사람·숫자는 빼세요.
+- 전망·예정·논의 단계인 일은 결정된 일처럼 쓰지 마세요(예: "협력하기로 했어요" ✗ → "협력을 논의할 예정이에요").
+- 비율이 늘어난 것을 규모가 늘어난 것처럼 쓰지 마세요(예: 「계획을 세운 기업 비율이 늘었다」 ≠ 「채용을 늘린다」).
+- 초안 내용이 위 기사 3건에도 지표에도 없는 이야기라면, 지어내지 말고 기사 3건과 지표 범위 안에서 다시 쓰세요.
+- 맞는 부분은 그대로 두세요. 문체·길이·형식은 초안을 따르세요:
+  · headline: 두 줄(\\n으로 구분), 첫 줄 18자 이내, 존댓말 '~어요/~예요', '~대요/~래요' 금지, 지수·환율 시황 금지
+  · summary: 3~5개 문단, 문단 사이 빈 줄(\\n\\n). 지표는 「지난 거래일 … 마감」 기준으로
+  · shareCard: 공백 포함 20~40자, headline과 다른 내용, '~어요/~예요', '~대요/~래요/~거든요' 금지
+  · connections: 3~5개, 짧은 키워드 {"from","to"}, 본문에 근거한 흐름만
+${SPEECH_RULES}
+
+다음 JSON 형식으로만 응답하세요:
+{ "headline": "...", "summary": "...", "shareCard": "...", "connections": [{"from":"...","to":"..."}] }`
+
+  try {
+    const res = await openai.chat.completions.create({
+      model: GROUNDED_MODEL,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: prompt },
+      ],
+      response_format: { type: 'json_object' },
+      ...samplingFor(GROUNDED_MODEL, 0.2),
+    }, { timeout: 100_000 })
+    const p = JSON.parse(res.choices[0].message.content ?? '{}') as Partial<typeof draft>
+    // 형식이 깨진 응답이면 그 칸만 초안 유지
+    const headline = typeof p.headline === 'string' && p.headline.includes('\n') ? p.headline : draft.headline
+    const summary = typeof p.summary === 'string' && p.summary.length > 100 ? p.summary : draft.summary
+    const shareCard = typeof p.shareCard === 'string' && p.shareCard.trim() ? trimShareCard(p.shareCard) : draft.shareCard
+    const connections = Array.isArray(p.connections) && p.connections.length >= 2 ? p.connections : draft.connections
+    const changed = headline !== draft.headline || summary !== draft.summary || shareCard !== draft.shareCard
+    return { headline, summary, shareCard, connections, changed }
+  } catch (e) {
+    console.error('[groundBriefingText] 본문 대조 실패 → 초안 그대로:', (e as Error).message)
+    return { ...draft, changed: false }
+  }
 }
 
 // Top3AnalysisItem 배열로 변환 (DB 저장용)

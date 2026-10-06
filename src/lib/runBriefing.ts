@@ -2,10 +2,13 @@ import { supabaseAdmin as supabase } from './supabaseAdmin'
 import { getMarketIndicators } from './marketData'
 import {
   generateMainBriefing,
-  generateCategoryNews,
+  pickCategoryNews,
+  generateCategoryAnalysis,
   generateTop3Analysis,
+  groundBriefingText,
   buildTop3AnalysisData,
 } from './generateBriefing'
+import { fetchArticleBodies } from './articleBody'
 import { resolveTop3Overlap } from './top3Dedup'
 import { fetchBriefingPool } from './briefingPool'
 import { buildTopicBaseline, gateCandidates } from './candidatePool'
@@ -88,11 +91,49 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
     .map(idx => briefingResult.candidateArticles[idx])
     .filter((a): a is { id: string; title: string } => !!a)
 
-  // 홈 목록용 = 분야별(6개) 대표 기사 1개씩 선정 + 분석 / TOP3 = 별도 하이라이트 분석
-  const [categoryNews, top3Analyses] = await Promise.all([
-    generateCategoryNews(articleInputs),
-    generateTop3Analysis(top3Articles),
+  // 홈 목록용 = 분야별(6개) 대표 기사 1개씩 선정 / TOP3 = 별도 하이라이트
+  // 2026-10-06: 해설·브리핑 글을 쓰기 전에 고른 기사의 **원문 본문**을 받는다(articleBody.ts).
+  //   예전엔 제목만 보고 써서 원인·주체·숫자를 지어냈다(9/25~10/6 해설 85건 중 32건 사실 오류).
+  //   본문 받기가 실패해도 발행은 계속한다 — 그 기사는 「본문 없음」으로 표시돼 AI가 추측하지 않게 한다.
+  const categoryPicks = await pickCategoryNews(articleInputs).catch(err => {
+    console.error('[runBriefing] 분야별 기사 고르기 실패 → 분야별 목록 없이 진행:', (err as Error).message)
+    return [] as { id: string; title: string; category: string }[]
+  })
+  const urlOf = new Map(articles.map(a => [a.id, a.original_url]))
+  const needBody = [...new Map([...top3Articles, ...categoryPicks].map(a => [a.id, a])).values()]
+  const bodies = await fetchArticleBodies(needBody.map(a => ({ id: a.id, url: urlOf.get(a.id) })))
+  const bodyFetch = {
+    ok: [...bodies.values()].filter(b => b.ok).length,
+    total: bodies.size,
+    failed: [...bodies.entries()].filter(([, b]) => !b.ok)
+      .map(([id, b]) => `${needBody.find(a => a.id === id)?.title.slice(0, 30) ?? id} (${b.reason})`),
+  }
+  console.log(`[runBriefing] 본문 받기 ${bodyFetch.ok}/${bodyFetch.total}` +
+    (bodyFetch.failed.length ? ` · 실패: ${bodyFetch.failed.join(' / ')}` : ''))
+
+  const top3WithBody = top3Articles.map(a => ({ ...a, body: bodies.get(a.id) }))
+  const [categoryNews, top3Analyses, grounded] = await Promise.all([
+    generateCategoryAnalysis(categoryPicks.map(a => ({ ...a, body: bodies.get(a.id) }))),
+    generateTop3Analysis(top3WithBody),
+    groundBriefingText(
+      {
+        headline: briefingResult.headline,
+        summary: briefingResult.summary,
+        shareCard: briefingResult.shareCard,
+        connections: briefingResult.connections,
+      },
+      top3WithBody,
+      indicators
+    ),
   ])
+  // 본문 대조로 고친 글을 그대로 저장한다(초안은 로그에만)
+  if (grounded.changed) {
+    console.log(`[runBriefing] 본문 대조로 브리핑 글 수정: "${briefingResult.headline.split('\n')[0]}" → "${grounded.headline.split('\n')[0]}"`)
+  }
+  briefingResult.headline = grounded.headline
+  briefingResult.summary = grounded.summary
+  briefingResult.shareCard = grounded.shareCard ?? briefingResult.shareCard
+  briefingResult.connections = grounded.connections
 
   const fullIndicators = indicators.map(ind => ({
     ...ind,
@@ -195,6 +236,8 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
     generated: true,
     articlesTotal: articles.length,
     categoryNewsCount: categoryNews.length,
+    bodyFetch,
+    groundedChanged: grounded.changed,
     indicatorsCollected: indicators.length,
     headline: briefingResult.headline,
     top3: top3Articles.map(a => a.title),
