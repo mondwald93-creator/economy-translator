@@ -1,4 +1,5 @@
 import { openai, SYSTEM_PROMPT } from './openai'
+import { anthropic } from './anthropic'
 import { KeyIndicator, Top3AnalysisItem, HealthCheckItem, ConnectionItem, ArticleFullAnalysis } from '@/types'
 import { titleTokenSet, isNearDuplicate } from './titleSimilarity'
 import { selectCandidatePool } from './candidatePool'
@@ -271,6 +272,16 @@ function samplingFor(model: string, temperature: number): { temperature?: number
   return /^(gpt-5|o\d)/.test(model) ? {} : { temperature }
 }
 
+// 기사 6단계 해설(analyzeWithBody)만 쓰는 모델 — 2026-10-13 Claude Opus로 교체
+// 왜: 감사 🔴 32건 블라인드 비교(채점자 = Claude·GPT 두 회사)에서 Opus가 「쉬움」 4.56·4.12점으로
+//     gpt-5.4-mini(3.06·3.00)보다 확실히 높았고, 사실 오류·옛 오류 재발·본문에 없는 추측도 가장 적었다.
+//     10/6 본문 기반 전환 뒤 「해설이 딱딱해짐」이 남은 문제였다. 기록 = 메모리 project_경제번역기 10/13 절
+// 4건에 40~58초 걸려서 3건씩 나눠 동시에 보낸다(분야별 6건을 한 번에 넣으면 100초 한도에 걸릴 수 있음).
+// Claude 키가 없거나 호출이 실패하면 그 묶음만 GROUNDED_MODEL(OpenAI)로 다시 쓴다 → 발행은 안 막힘.
+// 헤드라인·요약 고치기(groundBriefingText)와 고르기는 OpenAI 그대로(이번 비교 범위 밖).
+const EXPLAIN_MODEL = process.env.EXPLAIN_MODEL || 'claude-opus-5-5'
+const EXPLAIN_BATCH = 3
+
 export interface ArticleWithBody {
   id: string
   title: string
@@ -302,8 +313,50 @@ function bodyBlock(a: ArticleWithBody): string {
   return b.ok ? b.text : `(본문을 다 받지 못해 리드 문단만 있음) ${b.text}`
 }
 
-/** 본문을 함께 넣어 6단계 해설을 만든다. 결과의 순서·id는 코드가 인덱스로 복원한다(AI가 쓴 식별자를 믿지 않음). */
-async function analyzeWithBody(articles: ArticleWithBody[]): Promise<(ArticleFullAnalysis & { id: string })[]> {
+export type ExplainedArticle = ArticleFullAnalysis & { id: string; model: string }
+
+/** 본문을 함께 넣어 6단계 해설을 만든다. EXPLAIN_BATCH건씩 나눠 동시에 보낸다. */
+async function analyzeWithBody(articles: ArticleWithBody[]): Promise<ExplainedArticle[]> {
+  const batches: ArticleWithBody[][] = []
+  for (let i = 0; i < articles.length; i += EXPLAIN_BATCH) batches.push(articles.slice(i, i + EXPLAIN_BATCH))
+  return (await Promise.all(batches.map(analyzeBatch))).flat()
+}
+
+/** Claude(EXPLAIN_MODEL)로 쓰고, 키가 없거나 실패하면 OpenAI(GROUNDED_MODEL)로 쓴다. 쓴 모델 이름을 같이 돌려준다. */
+async function callExplainModel(prompt: string): Promise<{ content: string; model: string }> {
+  if (anthropic) {
+    try {
+      const res = await anthropic.messages.create({
+        model: EXPLAIN_MODEL,
+        max_tokens: 16000,
+        output_config: { effort: 'medium' },  // 10/13 비교 시험과 같은 설정
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: prompt }],
+      })
+      if (res.stop_reason !== 'end_turn') throw new Error(`stop_reason=${res.stop_reason}`)
+      const text = res.content.flatMap(b => (b.type === 'text' ? [b.text] : [])).join('')
+      // Claude는 JSON 앞뒤에 말을 붙이거나 코드 블록으로 감쌀 수 있어 첫 { ~ 마지막 }만 쓴다
+      const json = text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)
+      JSON.parse(json)
+      return { content: json, model: EXPLAIN_MODEL }
+    } catch (e) {
+      console.error(`[analyzeWithBody] ${EXPLAIN_MODEL} 실패 → ${GROUNDED_MODEL}로 대신 씀:`, (e as Error).message)
+    }
+  }
+  const res = await openai.chat.completions.create({
+    model: GROUNDED_MODEL,
+    messages: [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: prompt },
+    ],
+    response_format: { type: 'json_object' },
+    ...samplingFor(GROUNDED_MODEL, 0.3),
+  }, { timeout: 100_000 }) // 본문이 들어가 입력이 길다 — 기본 60초로는 정상 응답도 끊길 수 있음
+  return { content: res.choices[0].message.content ?? '{"articles":[]}', model: GROUNDED_MODEL }
+}
+
+/** 결과의 순서·id는 코드가 인덱스로 복원한다(AI가 쓴 식별자를 믿지 않음). */
+async function analyzeBatch(articles: ArticleWithBody[]): Promise<ExplainedArticle[]> {
   if (articles.length === 0) return []
   // ⚠️ AI에게 UUID를 되받아 쓰게 하면 가끔 글자를 빠뜨려 기사 매칭이 깨짐(2026-07-08 TOP3 빈 제목 사고) → 인덱스 방식 유지
   const articleList = articles
@@ -341,19 +394,10 @@ ${SPEECH_RULES}
   ]
 }`
 
-  const res = await openai.chat.completions.create({
-    model: GROUNDED_MODEL,
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: prompt },
-    ],
-    response_format: { type: 'json_object' },
-    ...samplingFor(GROUNDED_MODEL, 0.3),
-  }, { timeout: 100_000 }) // 본문이 들어가 입력이 길다 — 기본 60초로는 정상 응답도 끊길 수 있음
-
-  const parsed = JSON.parse(res.choices[0].message.content ?? '{"articles":[]}')
+  const { content, model } = await callExplainModel(prompt)
+  const parsed = JSON.parse(content)
   const rows = (parsed.articles ?? []) as Array<{ index: number } & ArticleFullAnalysis>
-  const result: (ArticleFullAnalysis & { id: string })[] = []
+  const result: ExplainedArticle[] = []
   const seen = new Set<string>()
   for (const r of rows) {
     const art = articles[r.index]
@@ -367,6 +411,7 @@ ${SPEECH_RULES}
       myImpact: r.myImpact,
       outlook: r.outlook,
       conclusion: r.conclusion,
+      model,
     })
   }
   return result
@@ -375,7 +420,7 @@ ${SPEECH_RULES}
 // TOP3 하이라이트 해설 (본문 포함)
 export async function generateTop3Analysis(
   articles: ArticleWithBody[]
-): Promise<(ArticleFullAnalysis & { id: string })[]> {
+): Promise<ExplainedArticle[]> {
   return analyzeWithBody(articles)
 }
 
@@ -388,6 +433,7 @@ export const NEWS_CATEGORIES = ['물가', '소비', '수출', '고용', '부동�
 export interface CategoryNewsItem extends ArticleFullAnalysis {
   id: string
   category: string
+  model: string
 }
 
 export async function pickCategoryNews(

@@ -238,6 +238,11 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
     categoryNewsCount: categoryNews.length,
     bodyFetch,
     groundedChanged: grounded.changed,
+    // 해설을 실제로 쓴 모델별 건수(2026-10-13). OpenAI 쪽 숫자가 보이면 Claude 호출이 실패해 대신 쓴 것
+    explainModel: [...top3Analyses, ...categoryNews].reduce<Record<string, number>>((acc, a) => {
+      acc[a.model] = (acc[a.model] ?? 0) + 1
+      return acc
+    }, {}),
     indicatorsCollected: indicators.length,
     headline: briefingResult.headline,
     top3: top3Articles.map(a => a.title),
