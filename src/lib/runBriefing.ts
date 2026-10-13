@@ -126,6 +126,13 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
       indicators
     ),
   ])
+  // 해설을 실제로 쓴 모델별 건수(2026-10-13). OpenAI 쪽 숫자가 보이면 Claude 호출이 실패해 대신 쓴 것
+  const explainModel = [...top3Analyses, ...categoryNews].reduce<Record<string, number>>((acc, a) => {
+    acc[a.model] = (acc[a.model] ?? 0) + 1
+    return acc
+  }, {})
+  console.log(`[runBriefing] 해설 모델 ${Object.entries(explainModel).map(([m, n]) => `${m} ${n}건`).join(' · ')}`)
+
   // 본문 대조로 고친 글을 그대로 저장한다(초안은 로그에만)
   if (grounded.changed) {
     console.log(`[runBriefing] 본문 대조로 브리핑 글 수정: "${briefingResult.headline.split('\n')[0]}" → "${grounded.headline.split('\n')[0]}"`)
@@ -238,11 +245,7 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
     categoryNewsCount: categoryNews.length,
     bodyFetch,
     groundedChanged: grounded.changed,
-    // 해설을 실제로 쓴 모델별 건수(2026-10-13). OpenAI 쪽 숫자가 보이면 Claude 호출이 실패해 대신 쓴 것
-    explainModel: [...top3Analyses, ...categoryNews].reduce<Record<string, number>>((acc, a) => {
-      acc[a.model] = (acc[a.model] ?? 0) + 1
-      return acc
-    }, {}),
+    explainModel,
     indicatorsCollected: indicators.length,
     headline: briefingResult.headline,
     top3: top3Articles.map(a => a.title),
