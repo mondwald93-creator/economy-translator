@@ -96,6 +96,10 @@ export async function resolveTop3Overlap(
 ): Promise<{ indices: number[]; log: Top3DedupLog }> {
   const log: Top3DedupLog = { model: JUDGE_MODEL, rounds: [], replaced: [] }
   let current = [...indices]
+  // 한 번 겹친다고 빠진 기사는 그날 다시 넣지 않는다(2026-10-15).
+  // 이게 없을 때 2차에서 후보를 앞에서부터 찾다 1차에 뺀 기사를 도로 넣었다(기록 52일 중 17일).
+  // 예: 10/15 「…낙관적으로 봤기 때문」을 빼고 「…초과수익」을 넣었다가 2차에서 다시 「낙관」으로 되돌림
+  const rejected = new Set<number>()
 
   // 첫 판정 + 교체 → 교체본으로 한 번만 재판정. 최대 2회 호출 (무한 교체 방지)
   for (let round = 0; round < 2; round++) {
@@ -122,12 +126,13 @@ export async function resolveTop3Overlap(
         .map(i => titleTokenSet(candidates[i]?.title ?? ''))
 
       const pick = candidates.findIndex((art, idx) =>
-        !!art && !used.has(idx) && !isUnfitForTop3(art.title) &&
+        !!art && !used.has(idx) && !rejected.has(idx) && !isUnfitForTop3(art.title) &&
         !isNearDuplicate(titleTokenSet(art.title), keptTokens, 0.35))
 
       if (pick === -1) continue // 쓸 만한 교체 후보가 없으면 그 자리는 그대로 둔다
       log.replaced.push({ out: candidates[current[slot]]?.title ?? '', in: candidates[pick].title })
       used.delete(current[slot])
+      rejected.add(current[slot])
       used.add(pick)
       current[slot] = pick
       replacedThisRound++
