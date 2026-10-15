@@ -160,6 +160,9 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
             myImpact: a.myImpact,
             outlook: a.outlook,
             conclusion: a.conclusion,
+            // 해설을 실제로 쓴 모델(2026-10-15). 로그는 Vercel 무료 플랜에서 30분만 남아 다음 날 확인할 수 없었다.
+            // 화면은 정해진 칸만 읽으므로(news/[id]/page.tsx) 이 칸은 보이지 않는다
+            model: a.model,
           },
         }).eq('id', a.id)
       )
@@ -184,6 +187,7 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
             myImpact: a.myImpact,
             outlook: a.outlook,
             conclusion: a.conclusion,
+            model: a.model,
           },
         }).eq('id', a.id)
       )
