@@ -58,6 +58,26 @@ function decode(buf: ArrayBuffer, contentType: string | null): string {
   }
 }
 
+// 뉴스1은 본문을 화면 칸에 두지 않고 __NEXT_DATA__(Next.js가 화면 재료를 담아 두는 script 칸)에만 넣는다.
+// 이걸 안 보면 'article' 칸의 부제목·키워드·관련 기사 제목(300자대)을 본문으로 잘못 받는다.
+// 10/7~10/15 뉴스1 해설 4건이 전부 그랬고, 해설에 「기사에서 따로 밝히지 않았어요」 빈칸이 생겼다(2026-10-15).
+function textFromNextData($: cheerio.CheerioAPI): string {
+  const raw = $('script#__NEXT_DATA__').html()
+  if (!raw) return ''
+  try {
+    const parts = JSON.parse(raw)?.props?.pageProps?.articleView?.contentArrange
+    if (!Array.isArray(parts)) return ''
+    return parts
+      .filter((p: { type?: string; content?: unknown }) => p?.type === 'text' && typeof p.content === 'string')
+      .map((p: { content: string }) => cheerio.load(p.content).text())
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  } catch {
+    return ''
+  }
+}
+
 export async function fetchArticleBody(url: string | null | undefined): Promise<ArticleBody> {
   if (!url || !/^https?:\/\//.test(url)) return { ok: false, text: '', reason: '주소 없음' }
   try {
@@ -76,11 +96,13 @@ export async function fetchArticleBody(url: string | null | undefined): Promise<
     const html = decode(await res.arrayBuffer(), res.headers.get('content-type'))
     const $ = cheerio.load(html)
     const lead = ($('meta[property="og:description"]').attr('content') || $('meta[name="description"]').attr('content') || '').trim()
+    // script 태그를 지우기 전에 읽어야 한다
+    const nextDataText = textFromNextData($)
 
     $('script, style, noscript, nav, header, footer, aside, iframe, figure figcaption, .ad, .advertisement, .related, .comment, .reporter_area, .byline').remove()
 
-    let text = ''
-    for (const sel of CONTENT_SELECTORS) {
+    let text = nextDataText.length >= MIN_BODY ? nextDataText : ''
+    for (const sel of text ? [] : CONTENT_SELECTORS) {
       const el = $(sel).first()
       if (el.length === 0) continue
       const t = el.text().replace(/\s+/g, ' ').trim()
