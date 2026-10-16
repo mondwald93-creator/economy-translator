@@ -101,8 +101,11 @@ export async function resolveTop3Overlap(
   // 예: 10/15 「…낙관적으로 봤기 때문」을 빼고 「…초과수익」을 넣었다가 2차에서 다시 「낙관」으로 되돌림
   const rejected = new Set<number>()
 
-  // 첫 판정 + 교체 → 교체본으로 한 번만 재판정. 최대 2회 호출 (무한 교체 방지)
-  for (let round = 0; round < 2; round++) {
+  // 첫 판정 + 교체 → 교체본 재판정 → 또 바뀌면 한 번 더 판정. 최대 3회 호출 (무한 교체 방지).
+  // 2회였을 때는 2차에 넣은 교체분이 판정 없이 그대로 실렸다(2026-10-16: 「4일간 1340조원 증발」과
+  // 「AI·반도체주 4일 동안 시총 1300조원 증발」이 나란히. 단어 겹침 0.29라 0.35 검사도 통과).
+  // 3차 교체분은 또 판정받지 않는다 — 어딘가에서는 끊어야 한다.
+  for (let round = 0; round < 3; round++) {
     const titles = current.map(i => candidates[i]?.title ?? '')
     if (titles.filter(Boolean).length < 2) break
 
