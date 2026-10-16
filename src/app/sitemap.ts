@@ -50,7 +50,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }))
 
-  // 최근 30일 뉴스 기사
+  // 최근 30일 뉴스 기사 — 해설(full_analysis)이 달린 기사만 올린다.
+  //  ⚠️ 2026-10-16 실측: 이 필터가 없어서 당일 수집분 300건(요약·해설 0건)이 통째로 올라갔다.
+  //  구글은 제목만 있는 뉴스 페이지를 빈 페이지(Soft 404·미색인)로 본다
+  //  (옛 속성 Soft 404 1건 · 새 속성 발견됨/크롤링됨-미색인 1,079건, 서치 콘솔 10/12 보고서).
+  //  하루 해설 9건이라 30일이면 약 250건. 300 상한은 그대로 둔다.
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
@@ -58,6 +62,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .from('news_articles')
     .select('id, created_at')
     .gte('created_at', thirtyDaysAgo.toISOString())
+    .not('full_analysis', 'is', null)
     .order('created_at', { ascending: false })
     .limit(300)
 

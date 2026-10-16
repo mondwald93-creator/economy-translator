@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import BookmarkButton from '@/components/BookmarkButton'
 
@@ -13,14 +14,22 @@ function getDb() {
   )
 }
 
+// 요약도 해설도 없는 기사 = 화면에 제목과 원본 링크만 뜨는 '빈 페이지'.
+//  ⚠️ 2026-10-16: 구글이 이런 페이지를 Soft 404(겉은 200인데 내용이 없는 페이지)로 잡았다.
+//  수집 기사 25만 건 중 해설 있는 건 1천 건뿐이라, 빈 페이지는 검색에서 뺀다(noindex). 페이지 자체는 그대로 열린다.
+function isThinArticle(article: { summary?: string | null; full_analysis?: unknown }) {
+  return !(article.summary ?? '').trim() && !article.full_analysis
+}
+
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const db = getDb()
   const { data: article } = await db
     .from('news_articles')
-    .select('title, summary')
+    .select('title, summary, full_analysis')
     .eq('id', params.id)
     .single()
 
+  // 없는 기사는 아래 페이지에서 notFound()로 진짜 404를 돌려준다. 메타데이터는 비워 둔다.
   if (!article) return {}
 
   const description = article.summary
@@ -36,6 +45,8 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     title: article.title,
     description,
     alternates: { canonical: url },
+    // 빈 기사는 검색 색인에서 뺀다. 링크는 따라가게 둔다(원본 기사 링크).
+    ...(isThinArticle(article) ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       title: article.title,
       description,
@@ -61,18 +72,9 @@ export default async function NewsDetailPage({ params }: { params: { id: string 
     .eq('id', params.id)
     .single()
 
-  if (!article) {
-    return (
-      <div className="space-y-4">
-        <Link href="/" className="text-sm text-brand-green-dark hover:underline">
-          ← 홈으로
-        </Link>
-        <div className="editorial-card">
-          <p className="text-ink-muted">기사를 찾을 수 없어요.</p>
-        </div>
-      </div>
-    )
-  }
+  // ⚠️ 없는 id(지워졌거나 잘못된 주소)는 진짜 404를 돌려준다. (dictionary/[slug]와 같은 방식)
+  //  2026-10-16까지는 200으로 「기사를 찾을 수 없어요」를 그렸고, 구글은 이걸 Soft 404로 본다.
+  if (!article) notFound()
 
   const fullAnalysis = article.full_analysis as Record<string, string> | null
 
