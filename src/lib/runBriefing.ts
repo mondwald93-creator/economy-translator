@@ -8,7 +8,7 @@ import {
   groundBriefingText,
   buildTop3AnalysisData,
 } from './generateBriefing'
-import { fetchArticleBodies } from './articleBody'
+import { fetchArticleBodies, type ArticleBody } from './articleBody'
 import { resolveTop3Overlap } from './top3Dedup'
 import { fetchBriefingPool } from './briefingPool'
 import { buildTopicBaseline, gateCandidates } from './candidatePool'
@@ -110,6 +110,11 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
   }
   console.log(`[runBriefing] 본문 받기 ${bodyFetch.ok}/${bodyFetch.total}` +
     (bodyFetch.failed.length ? ` · 실패: ${bodyFetch.failed.join(' / ')}` : ''))
+  // 기사마다 본문 받기 결과를 full_analysis.body에도 남긴다(2026-10-16).
+  // 팜인사이트 기사 해설이 「본문이 없어서」로 나왔는데 실패 이유는 위 console.log에만 있어 30분 뒤 사라졌다.
+  // 같은 주소를 로컬·라이브 서버에서 다시 받으면 둘 다 성공 → 그 순간만의 오류인데 종류(시간 초과/접속 오류)를 모른다.
+  const bodyRecord = (b: ArticleBody | undefined) =>
+    b ? { ok: b.ok, chars: b.text.length, reason: b.reason ?? null } : null
 
   const top3WithBody = top3Articles.map(a => ({ ...a, body: bodies.get(a.id) }))
   const [categoryNews, top3Analyses, grounded] = await Promise.all([
@@ -163,6 +168,7 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
             // 해설을 실제로 쓴 모델(2026-10-15). 로그는 Vercel 무료 플랜에서 30분만 남아 다음 날 확인할 수 없었다.
             // 화면은 정해진 칸만 읽으므로(news/[id]/page.tsx) 이 칸은 보이지 않는다
             model: a.model,
+            body: bodyRecord(bodies.get(a.id)),
           },
         }).eq('id', a.id)
       )
@@ -188,6 +194,7 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
             outlook: a.outlook,
             conclusion: a.conclusion,
             model: a.model,
+            body: bodyRecord(bodies.get(a.id)),
           },
         }).eq('id', a.id)
       )
