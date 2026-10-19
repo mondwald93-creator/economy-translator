@@ -120,6 +120,19 @@ export function titleOverlap(title: string, text: string): { found: number; tota
   return { found: keys.filter(k => body.includes(k)).length, total: keys.length }
 }
 
+// 제목 목록 검사(2026-10-19 밤). 원문 주소가 기사 대신 「[투데이 Pick] … [N2 포커스] …」처럼 다른 기사 제목만
+// 늘어놓은 목록이면, 첫 제목이 기사 제목과 같아 일치 검사를 통과하고 해설이 옆 기사 제목을 이 기사 내용처럼 쓴다
+// (6/15 「첫 워시 FOMC」 기사에 「4월 FOMC 동결 확실」을 전망으로 씀 = 옛 해설 다시 쓰기 표본 검증 🔴).
+// 기준 = 대괄호 머리말 3개 이상 + 「~다./~요.」 문장 2개 이하. 단 「①[마켓]②[원자재]」 요약 모음은 빼고
+// (해설이 첫 소식을 잘 골라 씀, 10/16 1분 브리프 ✅), 「[452260]」 같은 종목 코드는 머리말로 안 센다(주요공시 목록).
+// 본문 1,051건 시험 = 걸린 6건이 전부 제목 목록, 정상 기사 0건.
+export function looksLikeHeadlineList(text: string): boolean {
+  if (/[①②③]\[/.test(text)) return false
+  const tags = [...text.matchAll(/\[([^\]]{1,20})\]/g)].filter(m => !/^[\d\s]+$/.test(m[1]))
+  const sentences = text.match(/(?:다|요)[.。]/g)?.length ?? 0
+  return tags.length >= 3 && sentences <= 2
+}
+
 // 조선일보는 본문을 화면 칸에 두지 않고 Fusion.globalContent(화면 재료를 담은 script)에만 넣는다.
 // 이걸 안 보면 리드 124~136자만 넘어간다(10/9 금융지주 · 10/16 청년 고용).
 function textFromFusion($: cheerio.CheerioAPI): string {
@@ -189,6 +202,9 @@ export async function fetchArticleBody(url: string | null | undefined, title?: s
       const overlap = title ? titleOverlap(title, text) : null
       if (overlap && overlap.found === 0) {
         return { ok: false, text: lead.slice(0, 600), reason: `본문-제목 불일치(제목 단어 0/${overlap.total})` }
+      }
+      if (looksLikeHeadlineList(text)) {
+        return { ok: false, text: lead.slice(0, 600), reason: '본문이 기사 제목 목록' }
       }
       return { ok: true, text: text.slice(0, MAX_CHARS) }
     }
