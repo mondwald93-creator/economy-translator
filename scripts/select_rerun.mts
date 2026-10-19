@@ -58,7 +58,7 @@ for (const date of dates) {
   const urlOf = new Map(pool.map(a => [a.id, a.original_url]))
 
   const t0 = Date.now()
-  const bodies = await fetchArticleBodies([...candidates, ...extra].map(a => ({ id: a.id, url: urlOf.get(a.id) })))
+  const bodies = await fetchArticleBodies([...candidates, ...extra].map(a => ({ id: a.id, url: urlOf.get(a.id), title: a.title })))
   const bodyMs = Date.now() - t0
   const withBody = (a: { id: string; title: string }) => ({ id: a.id, title: a.title, body: bodies.get(a.id), categoryOk: publishedToday.has(a.id) })
   const sel = await selectStoriesWithBody(candidates.map(withBody), extra.map(withBody))

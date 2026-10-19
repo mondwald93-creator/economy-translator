@@ -94,7 +94,7 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
   categoryExtra.push(...categoryKeywordExtras(koreanFirst, new Set([...inTop3Pool, ...categoryExtra.map(a => a.id)])))
   const urlOf = new Map(articles.map(a => [a.id, a.original_url]))
   const bodies = await fetchArticleBodies(
-    [...candidateArticles, ...categoryExtra].map(a => ({ id: a.id, url: urlOf.get(a.id) }))
+    [...candidateArticles, ...categoryExtra].map(a => ({ id: a.id, url: urlOf.get(a.id), title: a.title }))
   )
   const withBody = (a: { id: string; title: string }) => ({ ...a, body: bodies.get(a.id), categoryOk: publishedToday.has(a.id) })
   const selection = await selectStoriesWithBody(candidateArticles.map(withBody), categoryExtra.map(withBody))
@@ -144,7 +144,7 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
   // 본문은 위에서 50건을 이미 받았다. 옛 경로가 그 밖의 기사를 골랐을 때만 더 받는다.
   const missingBody = needBody.filter(a => !bodies.has(a.id))
   if (missingBody.length > 0) {
-    for (const [id, b] of await fetchArticleBodies(missingBody.map(a => ({ id: a.id, url: urlOf.get(a.id) })))) bodies.set(id, b)
+    for (const [id, b] of await fetchArticleBodies(missingBody.map(a => ({ id: a.id, url: urlOf.get(a.id), title: a.title })))) bodies.set(id, b)
   }
   const bodyFetch = {
     ok: needBody.filter(a => bodies.get(a.id)?.ok).length,
