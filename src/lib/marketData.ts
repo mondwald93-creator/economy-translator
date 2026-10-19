@@ -2,32 +2,120 @@ import { KeyIndicator } from '@/types'
 
 interface YahooMeta {
   regularMarketPrice: number
+  regularMarketTime?: number
   previousClose?: number
   chartPreviousClose?: number
 }
 
-async function fetchQuote(symbol: string): Promise<YahooMeta | null> {
+// 등락률의 기준값(직전 종가)을 어디서 가져왔는지까지 들고 다닌다(2026-10-19).
+interface Quote {
+  price: number
+  prev: number
+  basis: string // 예: '10/16 종가 794.78' · '24시간 전 10/18 06:00 1,334.2'. DB에 남겨 나중에 검산한다
+}
+
+type Bar = { t: number; close: number } // t = 봉 시작 시각(초, UTC)
+
+const DAY = 24 * 60 * 60
+// 초(UTC) → KST 날짜 'YYYY-MM-DD'. +9h 한 번만 쓴다(timeZone 옵션과 같이 쓰지 말 것 — CLAUDE.md 날짜 규칙)
+const kstDate = (sec: number) => new Date((sec + 9 * 60 * 60) * 1000).toISOString().slice(0, 10)
+const md = (ymd: string) => `${Number(ymd.slice(5, 7))}/${Number(ymd.slice(8, 10))}`
+
+async function fetchChart(symbol: string, interval: string, range: string): Promise<{ meta: YahooMeta; bars: Bar[] } | null> {
   try {
     const res = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`,
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}`,
       { next: { revalidate: 0 }, signal: AbortSignal.timeout(10_000) }
     )
     if (!res.ok) return null
     const json = await res.json()
-    const meta = json?.chart?.result?.[0]?.meta as YahooMeta | undefined
-    return meta ?? null
+    const r = json?.chart?.result?.[0]
+    const meta = r?.meta as YahooMeta | undefined
+    if (!meta || typeof meta.regularMarketPrice !== 'number') return null
+    const ts: number[] = r?.timestamp ?? []
+    const closes: (number | null)[] = r?.indicators?.quote?.[0]?.close ?? []
+    const bars = ts
+      .map((t, i) => ({ t, close: closes[i] as number }))
+      .filter(b => typeof b.close === 'number' && !isNaN(b.close))
+    return { meta, bars }
   } catch {
     return null
   }
 }
 
+/**
+ * 지수(코스피·코스닥)의 직전 거래일 종가를 **날짜로** 찾는다.
+ *
+ * ⚠️ 야후 chartPreviousClose를 쓰지 말 것 — 2026-10-19 실측.
+ *    9:07 발행 때 야후 코스닥 일봉에 전날 봉이 아직 안 올라온 날이 많다. 그때 chartPreviousClose는
+ *    「마지막으로 올라온 봉의 전날」 = 이틀 전 종가가 되고, 값(regularMarketPrice)은 전날 종가라서
+ *    등락률이 이틀치로 찍혔다. 8/15~10/19 66일 중 33일(방향까지 반대인 날 포함: 10/3 실제 −0.11% → +4.37%).
+ *    코스피는 66일 모두 맞았다(봉이 제때 올라옴). 9/25 감사 R2 · 10/6 점검에서 같은 증상을 봤다.
+ *    기준금리 ECOS 사고(아래 fetchBaseRate ⚠️)와 같은 병이다 — 자리는 날짜를 대신하지 못한다.
+ * 방법: 값이 찍힌 시각(regularMarketTime)의 KST 날짜보다 앞선 봉 중 마지막 봉의 종가.
+ *       전날 봉이 늦게 올라와도, 주말·휴장이 끼어도 「값의 날짜 바로 앞 거래일」이 된다.
+ */
+export function prevCloseByDate(bars: Bar[], anchorSec: number): { close: number; date: string } | null {
+  const anchor = kstDate(anchorSec)
+  let found: Bar | null = null
+  for (const b of bars) if (kstDate(b.t) < anchor) found = b
+  return found ? { close: found.close, date: kstDate(found.t) } : null
+}
+
+/**
+ * 환율의 「하루 전 같은 시각」 값을 시간봉에서 찾는다.
+ *
+ * ⚠️ 환율에 일봉 기준(chartPreviousClose)을 쓰지 말 것 — 2026-10-19 실측.
+ *    야후 외환의 하루 경계는 KST 08:00(런던 자정)이라, 9:07 발행 때 「직전 종가」는 1시간 전 값이다.
+ *    그래서 저장된 환율 등락률이 +0.01% · −0.02% · 0.00%처럼 사실상 최근 1시간 변동이었다
+ *    (9/22 저장 −0.37% ↔ 24시간 기준 −1.75%). 9/25 감사 「환율 ▲▼가 사이트 전날 값과 반대」의 원인.
+ * 방법: 값이 찍힌 시각(regularMarketTime)에서 24시간 전 이전에 끝난 마지막 시간봉의 종가.
+ *       주말엔 금요일 마감값으로 떨어지므로 토·일은 금요일 하루 변동, 월요일은 금요일 마감 대비가 된다.
+ */
+export function priceHoursAgo(bars: Bar[], anchorSec: number, hours: number, barSec = 60 * 60): { close: number; t: number } | null {
+  const target = anchorSec - hours * 60 * 60
+  let found: Bar | null = null
+  for (const b of bars) if (b.t + barSec <= target) found = b
+  return found ? { close: found.close, t: found.t + barSec } : null
+}
+
+async function fetchIndexQuote(symbol: string, digits: number): Promise<Quote | null> {
+  const chart = await fetchChart(symbol, '1d', '10d')
+  if (!chart) return null
+  const { meta, bars } = chart
+  const anchor = meta.regularMarketTime ?? Math.floor(Date.now() / 1000)
+  const prev = prevCloseByDate(bars, anchor)
+  if (prev) return { price: meta.regularMarketPrice, prev: prev.close, basis: `${md(prev.date)} 종가 ${prev.close.toFixed(digits)}` }
+  // 봉을 못 받으면 예전 방식으로라도 낸다(지표가 통째로 빠지는 것보다 낫다). 기준이 다르다는 걸 basis에 남긴다
+  const fallback = meta.previousClose ?? meta.chartPreviousClose
+  if (typeof fallback !== 'number') return null
+  console.warn(`[marketData] ${symbol} 일봉에서 직전 종가를 못 찾음 → 야후 previousClose로 대신`)
+  return { price: meta.regularMarketPrice, prev: fallback, basis: `야후 직전 종가(대체) ${fallback.toFixed(digits)}` }
+}
+
+async function fetchFxQuote(symbol: string): Promise<Quote | null> {
+  const chart = await fetchChart(symbol, '1h', '5d')
+  if (!chart) return null
+  const { meta, bars } = chart
+  const anchor = meta.regularMarketTime ?? Math.floor(Date.now() / 1000)
+  const ago = priceHoursAgo(bars, anchor, 24)
+  if (ago) {
+    const hm = new Date((ago.t + 9 * 60 * 60) * 1000).toISOString().slice(11, 16)
+    return { price: meta.regularMarketPrice, prev: ago.close, basis: `24시간 전 ${md(kstDate(ago.t))} ${hm} ${ago.close.toFixed(1)}` }
+  }
+  const fallback = meta.previousClose ?? meta.chartPreviousClose
+  if (typeof fallback !== 'number') return null
+  console.warn(`[marketData] ${symbol} 시간봉에서 24시간 전 값을 못 찾음 → 야후 previousClose로 대신`)
+  return { price: meta.regularMarketPrice, prev: fallback, basis: `야후 직전 종가(대체) ${fallback.toFixed(1)}` }
+}
+
 function buildIndicator(
   name: string,
-  meta: YahooMeta,
+  q: Quote,
   formatter: (v: number) => string
 ): Omit<KeyIndicator, 'easyExplanation'> {
-  const prev = meta.previousClose ?? meta.chartPreviousClose ?? meta.regularMarketPrice
-  const change = meta.regularMarketPrice - prev
+  const prev = q.prev
+  const change = q.price - prev
   const pct = prev !== 0 ? (change / prev) * 100 : 0
   // 표시 소수 2자리 기준으로 판정 → 변동이 0.00%로 떨어지면(거의 무변동) '보합'으로 통일
   const pctRounded = Math.round(pct * 100) / 100
@@ -37,9 +125,10 @@ function buildIndicator(
     : `${arrow} ${pctRounded > 0 ? '+' : ''}${pctRounded.toFixed(2)}%`
   return {
     name,
-    value: formatter(meta.regularMarketPrice),
+    value: formatter(q.price),
     change: changeStr,
     direction: pctRounded > 0 ? 'up' : pctRounded < 0 ? 'down' : 'flat',
+    basis: q.basis,
   }
 }
 
@@ -136,9 +225,9 @@ export function indicatorLine(i: { name?: string; value?: string; change?: strin
 
 export async function getMarketIndicators(): Promise<Omit<KeyIndicator, 'easyExplanation'>[]> {
   const [kospi, usdKrw, kosdaq, baseRate] = await Promise.all([
-    fetchQuote('^KS11'),
-    fetchQuote('KRW=X'),
-    fetchQuote('^KQ11'),
+    fetchIndexQuote('^KS11', 2),
+    fetchFxQuote('KRW=X'),
+    fetchIndexQuote('^KQ11', 2),
     fetchBaseRate(),
   ])
 

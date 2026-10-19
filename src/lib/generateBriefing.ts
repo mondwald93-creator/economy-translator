@@ -205,12 +205,12 @@ ${fixedTop3Block}
   ],
   "top3Indices": [0, 1, 2],
   "healthCheck": [
-    { "category": "물가", "status": "warning", "summary": "밥값·전기료 등 생활물가가 계속 오르고 있어요" },
-    { "category": "소비", "status": "normal", "summary": "..." },
-    { "category": "수출", "status": "good", "summary": "..." },
-    { "category": "고용", "status": "normal", "summary": "..." },
-    { "category": "부동산", "status": "normal", "summary": "..." },
-    { "category": "금융", "status": "warning", "summary": "..." }
+    { "category": "물가", "evidence": [위 뉴스 목록에서 이 분야 근거가 된 기사 번호들. 없으면 []], "status": "good|normal|warning 중 오늘 판단", "summary": "그 근거를 담은 한 문장" },
+    { "category": "소비", "evidence": [], "status": "…", "summary": "…" },
+    { "category": "수출", "evidence": [], "status": "…", "summary": "…" },
+    { "category": "고용", "evidence": [], "status": "…", "summary": "…" },
+    { "category": "부동산", "evidence": [], "status": "…", "summary": "…" },
+    { "category": "금융", "evidence": [], "status": "…", "summary": "…" }
   ],
   "connections": [
     { "from": "원인 키워드", "to": "결과 키워드" },
@@ -224,6 +224,7 @@ ${fixedTop3Block}
 - 미국·중국 등 해외 뉴스는 한국 경제에 직접 영향을 줄 때만 언급하고, 단독 TOP3로 선정하지 마세요
 - status는 반드시 "good", "normal", "warning" 중 하나
 - healthCheck는 반드시 6개 (물가·소비·수출·고용·부동산·금융 순서)
+- ⭐healthCheck는 매일 새로 판단하는 오늘의 진단입니다. 어제와 같은 답을 기본값으로 쓰지 마세요. 순서: ① 분야마다 위 뉴스 목록 30건을 훑어 그 분야 기사 번호를 evidence에 모읍니다(분야 단어 예 — 물가: 물가·가격·값·요금·기름값·장바구니 / 소비: 소비·유통·내수·매출·민생 / 수출: 수출·무역·관세·통상 / 고용: 고용·일자리·채용·임금·정년·노동 / 부동산: 집값·아파트·전세·월세·청약·주택 / 금융: 금리·대출·은행·증시·코스피·코스닥·환율·외국인 자금) ② 그 기사 내용으로 status를 정하고 summary 한 문장에 근거(어떤 뉴스·어떤 수치)를 담습니다. 숫자·사건은 위 목록·지표에 있는 것만 쓰세요. ③ evidence가 정말 비었을 때만 status "normal", summary "오늘 뉴스에선 뚜렷한 변화가 안 보여요"로 씁니다. 금융은 지표도 근거이며, 코스피·코스닥이 올랐다/내렸다고 쓸 때는 위 지표의 ▲▼와 같은 방향이어야 합니다
 - top3Indices는 위 뉴스 목록의 앞 숫자(인덱스)를 3개 선정. 예: 0번 기사 선택 시 0. 미국·중국·일본·유럽 등 해외 경제 뉴스는 절대 TOP3에 넣지 마세요. 한국 기업·증시·부동산·정책·소비·고용 관련 기사를 우선하세요
 - ⭐TOP3 세 기사는 반드시 서로 다른 사건이어야 합니다. 같은 사건을 여러 언론사가 제목만 바꿔 쓴 기사(내용이 사실상 같은 것)를 2개 이상 넣지 마세요. 같은 사건이면 그중 하나만 고르고, 남는 자리는 다른 주제·다른 분야의 뉴스로 채우세요. ⭐'같은 사건'은 제목 표현이 같은 것뿐 아니라, 같은 통계·같은 기업·같은 정책을 서로 다른 각도(통계 수치 vs 현장 반응 등)로 다룬 기사까지 포함합니다. TOP3 3개는 서로 다른 '주제'여야 합니다 — 예: 하나가 한계기업이면 나머지 둘은 부동산·고용·생활물가 등 다른 주제에서 고르세요. ⭐단, 빈자리를 다른 주제로 채울 때도 해외 단독 뉴스·단순 지수 시황·시세 전망 기사는 넣지 마세요. 적합한 한국 단독 이슈가 부족하면 억지로 시황·해외로 채우지 말고 생활물가·정책·기업·고용·부동산 쪽 한국 기사에서 고르세요
 - ⭐헤드라인과 TOP3는 아래 "이슈 범위" 안에서 그날 가장 큰 이슈를 고르세요. 판단 질문: "오늘 한국에서 보통 사람이 가장 알아야 하고 체감할 경제 뉴스 한 가지는?" 이 질문에 답할 때 다음을 함께 저울질하되 어느 하나가 항상 이기지 않게 종합 판단하세요 — 파급(영향받는 사람 수)·체감(내 지갑·일상에 닿는 정도)·사건성(오늘 새로 터진 일인가)·규모(변화의 크기). 큰 사건이 터진 날은 사건성이, 잔잔한 날은 생활 밀접 뉴스가 1위가 되는 게 정상입니다. 특정 분야를 편애하지 말고 분야 불문 그날 가장 중요한 것을 선택하세요.
@@ -248,6 +249,21 @@ ${fixedTop3Block}
   // shareCard 40자 초과 방지(형식 채점 기준=40자 이내). 프롬프트로도 유도하되, 넘치면 코드가 마지막 안전망으로 자른다.
   // '—'/',' 앞 절만으로 완결되면 그 절만 남기고(문장이 안 끊김), 아니면 40자 이내 단어 경계에서 자른다.
   if (parsed.shareCard) parsed.shareCard = trimShareCard(parsed.shareCard)
+  // 건강진단(2026-10-19): 예전 출력 예시에 「물가 warning · 밥값·전기료 등 생활물가가 계속 오르고 있어요」가
+  // 실제 값처럼 들어 있어 모델이 113일 넘게 6칸을 그대로 베꼈다(9/25 감사 R1, 9/20~10/19 30일 실측 = 30일 모두 같은 6칸·같은 물가 문장).
+  // 지금은 분야마다 근거 기사 번호(evidence)를 먼저 모으게 하고, 번호는 제목으로 바꿔 저장한다 = 그날 진단의 근거가 DB에 남는다.
+  // 상태값을 예시 그대로 옮겨 적는 경우(「good|normal|…」)는 normal로 막는다.
+  const VALID_STATUS = new Set(['good', 'normal', 'warning'])
+  parsed.healthCheck = (parsed.healthCheck ?? []).map(h => {
+    const raw = (h as { evidence?: unknown }).evidence
+    const idx = Array.isArray(raw) ? raw.filter((i): i is number => Number.isInteger(i) && i >= 0 && i < candidateArticles.length) : []
+    return {
+      category: h.category,
+      status: VALID_STATUS.has(h.status) ? h.status : 'normal',
+      summary: h.summary,
+      evidence: [...new Set(idx)].slice(0, 3).map(i => candidateArticles[i].title.slice(0, 60)),
+    }
+  })
   return { ...parsed, candidateArticles }
 }
 

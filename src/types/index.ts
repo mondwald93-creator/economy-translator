@@ -14,6 +14,7 @@ export interface KeyIndicator {
   change: string         // 변화량 (+/-...)
   direction: 'up' | 'down' | 'flat'
   easyExplanation: string  // 초보자용 설명
+  basis?: string           // 등락률 기준값(2026-10-19). 예: '10/16 종가 794.78' · '24시간 전 10/18 06:00 1334.2'. 화면엔 안 씀, 검산용
 }
 
 export interface DailyBriefing {
@@ -47,6 +48,7 @@ export interface HealthCheckItem {
   category: '물가' | '소비' | '수출' | '고용' | '부동산' | '금융'
   status: 'good' | 'normal' | 'warning'
   summary: string
+  evidence?: string[]  // 그날 진단의 근거 기사 제목(최대 3, 2026-10-19). 화면엔 안 씀, 검산용
 }
 
 export interface ConnectionItem {

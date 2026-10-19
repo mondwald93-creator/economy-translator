@@ -276,15 +276,20 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
     console.warn('[runBriefing] TOP3 겹침 검문 기록 저장 건너뜀:', dedupLogError.message)
   }
 
+  // 사전에는 새 용어만 넣는다. 이미 있는 용어는 건드리지 않는다(2026-10-19).
+  // 예전엔 upsert가 같은 용어를 그날 AI 문장으로 덮어써서, 사전 정의가 검수 없이 마지막으로 나온 날의
+  // 문장으로 계속 바뀌었다(9/25 감사 원인 ③: 기준금리 정의만 8가지 넘게 · 10/6 수동 재생성 때 「투자」 분류가
+  // 기업→무역으로 바뀜). 사전 문장을 고치는 건 사람이 정해서 따로 한다.
   if (briefingResult.dailyTerm?.term) {
-    await supabase.from('terms').upsert(
+    const { error: termError } = await supabase.from('terms').upsert(
       {
         term: briefingResult.dailyTerm.term,
         category: briefingResult.dailyTerm.category ?? '기타',
         explanation: briefingResult.dailyTerm.explanation,
       },
-      { onConflict: 'term' }
+      { onConflict: 'term', ignoreDuplicates: true }
     )
+    if (termError) console.warn('[runBriefing] 오늘의 단어 사전 저장 건너뜀:', termError.message)
   }
 
   // 검색엔진(네이버·빙 등)에 "새 페이지 생겼다" 알림. 발행이 끝난 뒤에만 부른다.
