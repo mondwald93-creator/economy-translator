@@ -3,6 +3,7 @@ import { getMarketIndicators } from './marketData'
 import {
   generateMainBriefing,
   pickCategoryNews,
+  rankKoreanFirst,
   generateCategoryAnalysis,
   generateTop3Analysis,
   groundBriefingText,
@@ -10,8 +11,9 @@ import {
 } from './generateBriefing'
 import { fetchArticleBodies, type ArticleBody } from './articleBody'
 import { resolveTop3Overlap } from './top3Dedup'
+import { selectStoriesWithBody, categoryKeywordExtras } from './selectStories'
 import { fetchBriefingPool } from './briefingPool'
-import { buildTopicBaseline, gateCandidates } from './candidatePool'
+import { buildTopicBaseline, gateCandidates, selectCandidatePool } from './candidatePool'
 import { notifyIndexNow, briefingUrls } from './indexNow'
 import { slugifyTerm } from './terms'
 
@@ -71,14 +73,50 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
   })
 
   const indicators = await getMarketIndicators()
-  const briefingResult = await generateMainBriefing(articleInputs, indicators, recentTerms, topicBaseline)
+
+  // ── 고르기 (2026-10-19 개편) ──────────────────────────────────────────────────
+  // 예전: gpt-4o-mini가 제목 30건만 보고 TOP3를 고르고, 분야 대표도 제목만 보고 골랐다.
+  //       → 본문 못 받은 기사가 TOP3에 올라 빈칸 해설(10/13~19 TOP3 20건 중 8건), 낚시·인물 발언·분야 불일치.
+  // 지금: 후보 30건(+분야용 20건)의 본문을 먼저 받고, 본문 없는 기사는 후보에서 뺀 뒤
+  //       Opus가 제목+본문 앞부분을 보고 TOP3·분야 대표를 한 번에 고른다(selectStories.ts).
+  //       실패하면 옛 경로 그대로 — 발행은 안 막힌다.
+  // 후보 30건을 뽑는 함수(candidatePool.ts)는 그대로다. 채점기가 같은 30건을 재현해야 하므로 여기는 안 건드린다.
+  const { candidates: candidateArticles, picked } = selectCandidatePool(articleInputs, topicBaseline)
+  const inTop3Pool = new Set(candidateArticles.map(a => a.id))
+  // 분야 대표 후보 = 30건 + 국내 우선 20건(옛 pickCategoryNews가 보던 50건과 같은 범위)
+  //                 + 분야 단어가 제목에 있는 기사 분야당 4건(조용한 분야가 비지 않게, selectStories.ts 참조)
+  // 분야 대표는 오늘 발행분(date = 오늘)에서만 — 홈 분야 카드가 그 기사만 보여준다(page.tsx). 발행 시각 모르면 수집일 = 오늘
+  const publishedToday = new Set(
+    articles.filter(a => !a.published_at || new Date(new Date(a.published_at).getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10) === today).map(a => a.id)
+  )
+  const koreanFirst = rankKoreanFirst(articleInputs).filter(a => !inTop3Pool.has(a.id) && publishedToday.has(a.id))
+  const categoryExtra = koreanFirst.slice(0, 20)
+  categoryExtra.push(...categoryKeywordExtras(koreanFirst, new Set([...inTop3Pool, ...categoryExtra.map(a => a.id)])))
+  const urlOf = new Map(articles.map(a => [a.id, a.original_url]))
+  const bodies = await fetchArticleBodies(
+    [...candidateArticles, ...categoryExtra].map(a => ({ id: a.id, url: urlOf.get(a.id) }))
+  )
+  const withBody = (a: { id: string; title: string }) => ({ ...a, body: bodies.get(a.id), categoryOk: publishedToday.has(a.id) })
+  const selection = await selectStoriesWithBody(candidateArticles.map(withBody), categoryExtra.map(withBody))
+  if (selection.ok) {
+    console.log(`[runBriefing] 본문 기반 고르기 ${selection.log.model} ${selection.log.ms}ms · ` +
+      `TOP3 적격 ${selection.log.eligible.top3}/${selection.log.pool.top3} · 제외 ${selection.log.excluded.length}건 · 분야 ${selection.categories.length}/6`)
+  } else {
+    console.warn(`[runBriefing] 본문 기반 고르기 실패(${selection.log.note}) → 옛 경로(gpt-4o-mini 제목 고르기)`)
+  }
+
+  const briefingResult = await generateMainBriefing(articleInputs, indicators, recentTerms, topicBaseline,
+    { candidates: candidateArticles, picked, fixedTop3: selection.ok ? selection.top3Indices : undefined })
 
   // 단어 겹침 검문(enforceTop3Rules)을 통과한 3개를 AI가 한 번 더 본다 — 표현이 달라도 같은 사안이면 교체.
   // 2026-08-23 "한은의 고심, 또 인상?" + "[금통위폴] 8월도 금리 인상?"이 나란히 실린 게 계기. 상세 = top3Dedup.ts
+  // 교체분도 본문 받은 기사만 쓴다(2026-10-19). 옛 경로로 왔을 땐 예전처럼 제목 규칙만.
   const { indices: top3Indices, log: top3DedupLog } = await resolveTop3Overlap(
     (briefingResult.top3Indices ?? []).slice(0, 3),
-    briefingResult.candidateArticles
+    briefingResult.candidateArticles,
+    selection.ok ? { isEligible: idx => !!bodies.get(briefingResult.candidateArticles[idx]?.id ?? '')?.ok } : {}
   )
+  top3DedupLog.selection = selection.log
   if (top3DedupLog.replaced.length > 0) {
     console.log(`[runBriefing] TOP3 겹침 교체 ${top3DedupLog.replaced.length}건:`,
       top3DedupLog.replaced.map(r => `"${r.out}" → "${r.in}"`).join(' / '),
@@ -95,18 +133,24 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
   // 2026-10-06: 해설·브리핑 글을 쓰기 전에 고른 기사의 **원문 본문**을 받는다(articleBody.ts).
   //   예전엔 제목만 보고 써서 원인·주체·숫자를 지어냈다(9/25~10/6 해설 85건 중 32건 사실 오류).
   //   본문 받기가 실패해도 발행은 계속한다 — 그 기사는 「본문 없음」으로 표시돼 AI가 추측하지 않게 한다.
-  const categoryPicks = await pickCategoryNews(articleInputs).catch(err => {
-    console.error('[runBriefing] 분야별 기사 고르기 실패 → 분야별 목록 없이 진행:', (err as Error).message)
-    return [] as { id: string; title: string; category: string }[]
-  })
-  const urlOf = new Map(articles.map(a => [a.id, a.original_url]))
+  // 분야 대표: 본문 기반 고르기가 됐으면 그 결과, 아니면 옛 경로(제목만, gpt-4o-mini)
+  const categoryPicks = selection.ok
+    ? selection.categories
+    : await pickCategoryNews(articleInputs).catch(err => {
+        console.error('[runBriefing] 분야별 기사 고르기 실패 → 분야별 목록 없이 진행:', (err as Error).message)
+        return [] as { id: string; title: string; category: string }[]
+      })
   const needBody = [...new Map([...top3Articles, ...categoryPicks].map(a => [a.id, a])).values()]
-  const bodies = await fetchArticleBodies(needBody.map(a => ({ id: a.id, url: urlOf.get(a.id) })))
+  // 본문은 위에서 50건을 이미 받았다. 옛 경로가 그 밖의 기사를 골랐을 때만 더 받는다.
+  const missingBody = needBody.filter(a => !bodies.has(a.id))
+  if (missingBody.length > 0) {
+    for (const [id, b] of await fetchArticleBodies(missingBody.map(a => ({ id: a.id, url: urlOf.get(a.id) })))) bodies.set(id, b)
+  }
   const bodyFetch = {
-    ok: [...bodies.values()].filter(b => b.ok).length,
-    total: bodies.size,
-    failed: [...bodies.entries()].filter(([, b]) => !b.ok)
-      .map(([id, b]) => `${needBody.find(a => a.id === id)?.title.slice(0, 30) ?? id} (${b.reason})`),
+    ok: needBody.filter(a => bodies.get(a.id)?.ok).length,
+    total: needBody.length,
+    failed: needBody.filter(a => !bodies.get(a.id)?.ok)
+      .map(a => `${a.title.slice(0, 30)} (${bodies.get(a.id)?.reason ?? '안 받음'})`),
   }
   console.log(`[runBriefing] 본문 받기 ${bodyFetch.ok}/${bodyFetch.total}` +
     (bodyFetch.failed.length ? ` · 실패: ${bodyFetch.failed.join(' / ')}` : ''))

@@ -86,13 +86,17 @@ export interface Top3DedupLog {
   rounds: { titles: string[]; duplicates: [number, number][]; reason: string }[]
   replaced: { out: string; in: string }[]
   note?: string
+  // 본문 기반 고르기(selectStories.ts) 기록. 같은 jsonb 칸에 같이 넣는다(컬럼 추가 없이 관측, 2026-10-19)
+  selection?: import('./selectStories').SelectionLog
 }
 
 // TOP3 인덱스를 받아 겹치는 자리를 다른 후보로 바꿔 돌려준다.
 // 판정이 실패하거나 바꿀 후보가 없으면 받은 그대로 돌려준다 — 빈 브리핑·미발행이 더 나쁜 결과다.
+// isEligible: 교체 후보에 추가 조건(2026-10-19: 본문 받은 기사만). 없으면 제목 규칙만 본다.
 export async function resolveTop3Overlap(
   indices: number[],
-  candidates: { id: string; title: string }[]
+  candidates: { id: string; title: string }[],
+  opts: { isEligible?: (idx: number) => boolean } = {}
 ): Promise<{ indices: number[]; log: Top3DedupLog }> {
   const log: Top3DedupLog = { model: JUDGE_MODEL, rounds: [], replaced: [] }
   let current = [...indices]
@@ -130,6 +134,7 @@ export async function resolveTop3Overlap(
 
       const pick = candidates.findIndex((art, idx) =>
         !!art && !used.has(idx) && !rejected.has(idx) && !isUnfitForTop3(art.title) &&
+        (opts.isEligible?.(idx) ?? true) &&
         !isNearDuplicate(titleTokenSet(art.title), keptTokens, 0.35))
 
       if (pick === -1) continue // 쓸 만한 교체 후보가 없으면 그 자리는 그대로 둔다

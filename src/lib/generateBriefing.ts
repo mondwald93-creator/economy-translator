@@ -28,8 +28,9 @@ const FOREIGN_KEYWORDS_TOP3 = ['미국', '美', '연준', 'Fed', '중국', '中 
 //      그래서 가운뎃점으로 이어진 '코스피·코스닥' 형태만 잡는다
 //    · '모닝' 단독 → [굿모닝경제]·[코인 모닝콜]이 걸려 '모닝 리포트'로 좁혔다
 //    새 코너명이 나오면 또 뚫린다. 매주 회고에서 TOP3를 훑어 여기에 더한다.
+//    · '이번주'·'주간 증시'(2026-10-19 추가): [이번주 환율]·[주간증시전망] 같은 주간 시황 코너가 10/12·10/21 후보에서 TOP3로 올라왔다
 const TOP3_TAG_WORDS =
-  /\[[^\]]*(마켓|증시|시황|머니플로우|글로벌|브리핑|오늘의|코스피·코스닥|환시|외환|모닝 리포트|어제장|순매수|톱뉴스|공시|ETF워치|[Ww]ho\s+[Ii]s)/
+  /\[[^\]]*(마켓|증시|시황|머니플로우|글로벌|브리핑|오늘의|코스피·코스닥|환시|외환|모닝 리포트|어제장|순매수|톱뉴스|공시|ETF워치|이번\s?주|주간\s?증시|[Ww]ho\s+[Ii]s)/
 
 // 단순 지수·환율 시황 / 시세 전망 / 시황 모음 태그 / 사설·칼럼 = TOP3 부적합
 function isSituationNews(title: string): boolean {
@@ -48,9 +49,25 @@ function isForeignOnly(title: string): boolean {
   return !/한국|국내|한은|한국은행|코스피|코스닥|정부|기재부|우리|국채/.test(title)
 }
 
-// export 이유: 교체 후보를 고르는 top3Dedup.ts가 같은 잣대를 써야 한다(시황·해외 기사가 교체분으로 들어오면 안 됨)
+// 낚시·종목 추천 제목 = TOP3 부적합 (2026-10-19 신설. 전부 10/13~10/19 실제 TOP3·교체 후보에서 뽑은 모양이다)
+//   · 「"AI 슈퍼사이클 벌써 끝났나"…'이것' 모르면 수억 날린다」 「'이 기업' 저가매수 기회」 「'이 주식'은 살아남았다」 「'이 동네'」
+//     → 따옴표 안 「이 ○○」로 답을 숨기는 제목
+//   · 「…저가매수 기회」 「…사볼까」 「…살까 말까」 → 특정 종목·업종을 사라고 권하는 글(서비스 규칙상 투자 권유 금지)
+//   · 「…모르면 수억 날린다」 「…하는 법」 → 공포·비법형
+// ⚠️ 단어를 넓게 잡지 말 것. '이 기업'은 따옴표가 붙은 꼴만 잡는다(「이 기업이 수주한…」 같은 보통 문장은 안 걸림).
+const CLICKBAIT_PATTERNS: RegExp[] = [
+  /['‘"“]이\s?(기업|주식|종목|동네|회사|제품|곳|것|방법|은행|보험|카드|상품|아파트)['’"”]/,
+  /저가\s?매수|매수\s?기회|사볼까|살까\s?말까|팔까\s?말까|담아볼까/,
+  /모르면\s?(수억|수천|손해|큰일|낭패)|하는\s?법$|비법/,
+]
+export function isClickbait(title: string): boolean {
+  return CLICKBAIT_PATTERNS.some(re => re.test(title))
+}
+
+// export 이유: 교체 후보를 고르는 top3Dedup.ts·본문 기반 고르기(selectStories.ts)가 같은 잣대를 써야 한다
+// (시황·해외·낚시 기사가 교체분으로 들어오면 안 됨)
 export function isUnfitForTop3(title: string): boolean {
-  return isSituationNews(title) || isForeignOnly(title)
+  return isSituationNews(title) || isForeignOnly(title) || isClickbait(title)
 }
 
 // AI가 준 top3 인덱스를 검문·교정해 항상 3개(중복·시황 없는) 인덱스를 돌려준다.
@@ -131,7 +148,10 @@ export async function generateMainBriefing(
   recentTerms: string[] = [],
   // 직전 며칠간의 하루 평균 단어빈도. 「평소보다 몇 배 튀었나」의 분모다.
   // 비어 있으면(과거 조회 실패 등) 급등 정렬이 저절로 꺼지고 예전 최신순 동작으로 돌아간다.
-  topicBaseline: Map<string, number> = new Map()
+  topicBaseline: Map<string, number> = new Map(),
+  // 2026-10-19: 본문 기반 고르기(selectStories.ts)가 먼저 돌면 후보 30건과 TOP3가 이미 정해져 들어온다.
+  // 그때 이 함수는 헤드라인·요약·용어·건강진단만 쓰고, TOP3는 받은 것을 그대로 쓴다.
+  preset?: { candidates: { id: string; title: string }[]; picked: { topic: string | null; score: number }[]; fixedTop3?: number[] }
 ): Promise<BriefingResult> {
   const indicatorList = indicators.length > 0
     ? indicators.map(indicatorLine).join('\n')
@@ -140,7 +160,8 @@ export async function generateMainBriefing(
   // 후보 30건 = 국내 우선 + 화제 급등 순 + 중복 제거 + 화제 상한.
   // 로직은 candidatePool.ts에 있다 — 채점기(gradeBriefing)가 같은 함수를 써서 같은 30건을
   // 재현한다. 예전엔 채점기가 이 블록을 복사해 갖고 있다가 9/3 수정을 놓쳐 어긋났다(2026-09-07).
-  const { candidates: candidateArticles, picked } = selectCandidatePool(articles, topicBaseline)
+  const { candidates: candidateArticles, picked } = preset ?? selectCandidatePool(articles, topicBaseline)
+  const fixedTop3 = preset?.fixedTop3?.length === 3 ? preset.fixedTop3 : undefined
   const titleList = candidateArticles.map((a, i) => `${i}. ${a.title}`).join('\n')
 
   // 관측 장치(규칙 14-6): 무엇이 왜 앞자리에 왔는지 발행 로그에 남긴다.
@@ -154,6 +175,10 @@ export async function generateMainBriefing(
   const avoidTerms = recentTerms.length > 0
     ? ` (최근 7일간 이미 다룬 용어는 피하세요: ${recentTerms.join(', ')})`
     : ''
+  // TOP3가 이미 정해졌으면 고르게 하지 않고, 헤드라인·요약이 그 세 기사(특히 1번)를 따르게 한다
+  const fixedTop3Block = fixedTop3
+    ? `\n## ⭐오늘의 TOP3는 이미 정해졌습니다 (본문을 읽고 고른 결과)\n${fixedTop3.map((i, k) => `${k + 1}위 = ${i}번. ${candidateArticles[i]?.title ?? ''}`).join('\n')}\n- top3Indices에는 이 세 번호를 이 순서대로 넣으세요: [${fixedTop3.join(', ')}]\n- headline은 1위 기사의 사안으로 쓰고, summary는 이 세 기사를 중심으로 쓰세요. 다른 기사를 TOP3로 바꾸지 마세요.\n`
+    : ''
 
   const prompt = `당신은 한국 경제 전문 브리핑 서비스입니다. 오늘의 한국 경제 뉴스를 바탕으로 다음 내용을 JSON으로 생성해주세요.
 
@@ -162,7 +187,7 @@ ${indicatorList}
 
 ## 오늘의 주요 뉴스 (인덱스. 제목)
 ${titleList}
-
+${fixedTop3Block}
 다음 JSON 형식으로만 응답하세요 (다른 텍스트 없이):
 {
   "headline": "오늘 가장 큰 구체적 경제 이슈 한 줄\\n그 영향 한 줄 (두 줄을 \\n으로 구분, 구어체 ~했어요 형식. 첫 줄은 반드시 18자 이내 짧게. 아래 '이슈 범위'에서 그날 가장 큰 것을 고르고 단순 지수·환율 시황은 쓰지 마세요. 형식 예시일 뿐 내용은 따라하지 말 것: '정부, 전기요금 동결했어요\\n물가 부담을 덜어주려는 거예요' / '주요 기업들이 하반기 채용 늘려요\\n일자리에 숨통이 트일 전망이에요')",
@@ -218,7 +243,8 @@ ${titleList}
 
   const parsed = JSON.parse(res.choices[0].message.content ?? '{}') as BriefingAIResult
   // B안: AI가 고른 TOP3를 코드가 재검문 — 같은 사건·시황·해외면 다른 후보로 자동 교체
-  parsed.top3Indices = enforceTop3Rules(parsed.top3Indices ?? [], candidateArticles)
+  // 본문 기반 고르기가 정한 TOP3(fixedTop3)가 있으면 gpt의 답 대신 그것을 검문에 넣는다(통과하면 그대로)
+  parsed.top3Indices = enforceTop3Rules(fixedTop3 ?? parsed.top3Indices ?? [], candidateArticles)
   // shareCard 40자 초과 방지(형식 채점 기준=40자 이내). 프롬프트로도 유도하되, 넘치면 코드가 마지막 안전망으로 자른다.
   // '—'/',' 앞 절만으로 완결되면 그 절만 남기고(문장이 안 끊김), 아니면 40자 이내 단어 경계에서 자른다.
   if (parsed.shareCard) parsed.shareCard = trimShareCard(parsed.shareCard)
@@ -436,19 +462,24 @@ export interface CategoryNewsItem extends ArticleFullAnalysis {
   model: string
 }
 
+// 한국 경제 기사 우선 정렬(외신은 뒤로). 분야 대표 후보를 만들 때 쓴다 — 옛 경로(pickCategoryNews)와
+// 본문 기반 고르기(runBriefing → selectStories)가 같은 순서를 보게 밖으로 뺐다(2026-10-19).
+const CATEGORY_FOREIGN_KEYWORDS = ['미국', '미 ', '美 ', '美국', '연준', 'Fed ', '중국', '中 ', '일본', '日 ', '유럽', '월가', '나스닥', '다우', 'S&P', '뉴욕증시']
+export function rankKoreanFirst<T extends { title: string }>(articles: T[]): T[] {
+  return [...articles].sort((a, b) => {
+    const aForeign = CATEGORY_FOREIGN_KEYWORDS.some(k => a.title.includes(k)) ? 1 : 0
+    const bForeign = CATEGORY_FOREIGN_KEYWORDS.some(k => b.title.includes(k)) ? 1 : 0
+    return aForeign - bForeign
+  })
+}
+
 export async function pickCategoryNews(
   articles: { id: string; title: string }[]
 ): Promise<{ id: string; title: string; category: string }[]> {
   if (articles.length === 0) return []
 
   // 한국 경제 기사 우선 정렬 후 후보 50개로 압축 (분야 커버리지 확보 + 출력 길이 안전)
-  const foreignKeywords = ['미국', '미 ', '美 ', '美국', '연준', 'Fed ', '중국', '中 ', '일본', '日 ', '유럽', '월가', '나스닥', '다우', 'S&P', '뉴욕증시']
-  const koreanFirst = [...articles].sort((a, b) => {
-    const aForeign = foreignKeywords.some(k => a.title.includes(k)) ? 1 : 0
-    const bForeign = foreignKeywords.some(k => b.title.includes(k)) ? 1 : 0
-    return aForeign - bForeign
-  })
-  const candidates = koreanFirst.slice(0, 50)
+  const candidates = rankKoreanFirst(articles).slice(0, 50)
   const titleList = candidates.map((a, i) => `${i}. ${a.title}`).join('\n')
 
   const prompt = `다음은 오늘 수집된 한국 경제 뉴스입니다. 아래 6개 분야 각각에 대해 "오늘 가장 중요하거나 이슈가 된 대표 기사" 1개씩을 골라주세요. (해설은 따로 씁니다. 여기서는 고르기만 합니다)
