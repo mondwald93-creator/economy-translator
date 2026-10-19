@@ -72,7 +72,12 @@ const ids: string[] = JSON.parse(fs.readFileSync(idPath, 'utf8'))
 const rows = await readRows(ids)
 console.log(`기사 ${rows.length}/${ids.length}건 읽음`)
 
-const bodies = await fetchArticleBodies(rows.map(r => ({ id: r.id, url: r.original_url, title: r.title })))
+// 본문은 10건씩 받는다. 한 번에 다 받으면 수백 건이 동시에 나가 8초 한도에 걸린다
+// (2026-10-19 830쪽을 세 묶음 동시에 돌렸을 때 369건이 시간 초과. 표본 50건은 49건 성공)
+const bodies = new Map<string, Awaited<ReturnType<typeof fetchArticleBodies>> extends Map<string, infer B> ? B : never>()
+for (let i = 0; i < rows.length; i += 10) {
+  for (const [id, b] of await fetchArticleBodies(rows.slice(i, i + 10).map(r => ({ id: r.id, url: r.original_url, title: r.title })))) bodies.set(id, b)
+}
 const withBody = rows.filter(r => bodies.get(r.id)?.ok)
 console.log(`본문 받음 ${withBody.length}/${rows.length}`)
 
