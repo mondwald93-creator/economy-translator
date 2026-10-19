@@ -33,6 +33,9 @@ const CONTENT_SELECTORS = [
   '.content-article',
   '.paragraph',                   // YTN (첫 article 태그가 관련기사 칸이라 그보다 먼저)
   '#viewPrint',                   // 일부 지역·전문지 CMS
+  // 아래 둘은 2026-10-19 추가. full_analysis.body 기록(10/16 신설)이 처음 잡아낸 추출기 구멍 2건.
+  '.news_view',                   // 동아일보: 'article'이 관련기사 카드(40자)를 먼저 잡아 본문(section.news_view 2,535자)을 놓쳤다(10/17 수출)
+  '#article-body-content',        // 비즈니스포스트: 본문 칸이 목록에 없어 리드 39자만 넘어갔다(10/17 TOP3 1번)
   'article',
 ]
 
