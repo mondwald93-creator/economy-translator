@@ -12,6 +12,7 @@ import {
 import { fetchArticleBodies, type ArticleBody } from './articleBody'
 import { resolveTop3Overlap } from './top3Dedup'
 import { selectStoriesWithBody, categoryKeywordExtras } from './selectStories'
+import { judgeHealthCheck } from './healthCheck'
 import { fetchBriefingPool } from './briefingPool'
 import { buildTopicBaseline, gateCandidates, selectCandidatePool } from './candidatePool'
 import { notifyIndexNow, briefingUrls } from './indexNow'
@@ -105,8 +106,25 @@ export async function runDailyBriefing({ regenerate = false }: { regenerate?: bo
     console.warn(`[runBriefing] 본문 기반 고르기 실패(${selection.log.note}) → 옛 경로(gpt-4o-mini 제목 고르기)`)
   }
 
-  const briefingResult = await generateMainBriefing(articleInputs, indicators, recentTerms, topicBaseline,
-    { candidates: candidateArticles, picked, fixedTop3: selection.ok ? selection.top3Indices : undefined })
+  // 건강진단은 고르기가 된 날엔 따로 판단한다(healthCheck.ts, 2026-10-20): 분야 대표 + TOP3 본문과 지표만 보고 6칸.
+  // generateMainBriefing의 건강진단은 후보 30건 제목만 봐서 그날 큰 화제 밖의 분야가 「변화 없음」으로 비었다. 실패하면 그것을 그대로 쓴다.
+  // TOP3는 겹침 검문 전의 셋이다(교체돼도 근거 기사는 실제 오늘 기사라 그대로 둔다).
+  const healthArticles = selection.ok
+    ? [
+        ...selection.categories.map(c => ({ title: c.title, body: bodies.get(c.id), category: c.category })),
+        ...selection.top3Indices.map(i => candidateArticles[i]).filter(a => !!a).map(a => ({ title: a.title, body: bodies.get(a.id) })),
+      ]
+    : []
+  const [briefingResult, health] = await Promise.all([
+    generateMainBriefing(articleInputs, indicators, recentTerms, topicBaseline,
+      { candidates: candidateArticles, picked, fixedTop3: selection.ok ? selection.top3Indices : undefined }),
+    selection.ok ? judgeHealthCheck(healthArticles, indicators) : Promise.resolve(null),
+  ])
+  if (health?.ok) briefingResult.healthCheck = health.items
+  if (health) {
+    selection.log.health = health.log
+    console.log(`[runBriefing] 건강진단 ${health.ok ? `${health.log.model} ${health.log.ms}ms · 「변화 없음」 ${health.items.filter(h => h.evidence?.length === 0).length}칸` : `실패(${health.log.note}) → gpt 건강진단 그대로`}`)
+  }
 
   // 단어 겹침 검문(enforceTop3Rules)을 통과한 3개를 AI가 한 번 더 본다 — 표현이 달라도 같은 사안이면 교체.
   // 2026-08-23 "한은의 고심, 또 인상?" + "[금통위폴] 8월도 금리 인상?"이 나란히 실린 게 계기. 상세 = top3Dedup.ts

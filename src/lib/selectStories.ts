@@ -41,6 +41,7 @@ export interface SelectionLog {
   top3: { title: string; why: string }[]
   categories: { category: string; title: string | null; why: string }[]
   note?: string
+  health?: { model: string; ms: number; note?: string }   // 건강진단 전용 호출 기록(healthCheck.ts, 2026-10-20). runBriefing이 채운다
 }
 
 export type SelectionResult =
