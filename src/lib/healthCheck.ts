@@ -33,8 +33,17 @@ export type HealthResult =
   | { ok: true; items: HealthCheckItem[]; log: { model: string; ms: number } }
   | { ok: false; log: { model: string; ms: number; note: string } }
 
+// 기준금리 표시(「▲ 8/27 인상」)는 마지막으로 바뀐 날이다. 그대로 주면 오늘 오른 걸로 읽는다(2026-10-24 실측:
+// 10/22 동결 뒤인 10/24에 「기준금리는 3.00%로 올랐어요」 · 같은 재료 재실행 6번 중 2번). 건강진단에서만 풀어 쓴다
+// (indicatorLine은 요약·채점과 공용이라 안 바꿈)
+function healthIndicatorLine(i: Omit<KeyIndicator, 'easyExplanation'>): string {
+  if (i.name !== '기준금리') return indicatorLine(i)
+  const m = i.change.match(/(\d+\/\d+)\s*(인상|인하)/)
+  return m ? `- 기준금리: ${i.value} (${m[1]} ${m[2]} 뒤 그대로)` : `- 기준금리: ${i.value} (최근 바뀐 적 없음)`
+}
+
 function buildPrompt(articles: HealthArticle[], indicators: Omit<KeyIndicator, 'easyExplanation'>[]): string {
-  const indicatorList = indicators.length > 0 ? indicators.map(indicatorLine).join('\n') : '- (지표 없음)'
+  const indicatorList = indicators.length > 0 ? indicators.map(healthIndicatorLine).join('\n') : '- (지표 없음)'
   const list = articles.map((a, n) => {
     const excerpt = a.body?.ok ? a.body.text.replace(/\s+/g, ' ').slice(0, EXCERPT_CHARS) : '(본문 없음)'
     return `${n}. [${a.category ? `분야 대표: ${a.category}` : 'TOP3'}] ${a.title}\n   본문: ${excerpt}`
@@ -55,6 +64,7 @@ ${list}
 - 분야 대표도 없고 TOP3에도 그 분야 기사가 없으면 evidence는 []로 둡니다(그 칸은 코드가 채웁니다).
 - 숫자·사건은 위 본문과 지표에 있는 것만 씁니다. 지어내지 마세요.
 - 금융은 지표도 근거입니다. 코스피·코스닥이 올랐다/내렸다고 쓸 때는 위 지표의 ▲▼ 방향과 같아야 합니다.
+- 기준금리는 괄호 속 날짜 뒤로 그대로입니다. 금리가 올랐다·내렸다·동결됐다고 쓰려면 위 기사 본문에 그 결정이 있어야 합니다. 「금리 0.5%p 오르면」 같은 가정·전망은 결정이 아닙니다.
 - summary는 "~해요/~예요" 말투의 한 문장, 50자 안팎으로 씁니다. 「기사에 따르면」「본문」 같은 말은 쓰지 마세요.
 
 JSON만 답하세요(다른 글 없이). 6개를 물가·소비·수출·고용·부동산·금융 순서로:
