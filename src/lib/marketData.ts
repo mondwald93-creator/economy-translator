@@ -10,7 +10,7 @@ interface YahooMeta {
 // 등락률의 기준값(직전 종가)을 어디서 가져왔는지까지 들고 다닌다(2026-10-19).
 interface Quote {
   price: number
-  prev: number
+  prev: number | null // null = 기준을 믿을 수 없어 등락률을 안 낸다(2026-10-24, 「확인 불가」)
   basis: string // 예: '10/16 종가 794.78' · '24시간 전 10/18 06:00 1,334.2'. DB에 남겨 나중에 검산한다
 }
 
@@ -62,6 +62,71 @@ export function prevCloseByDate(bars: Bar[], anchorSec: number): { close: number
   return found ? { close: found.close, date: kstDate(found.t) } : null
 }
 
+// 'YYYY-MM-DD' 두 날짜 사이(양끝 제외)의 평일 수
+export function weekdaysBetween(a: string, b: string): number {
+  let n = 0
+  for (let t = Date.parse(`${a}T00:00:00Z`) + DAY * 1000; t < Date.parse(`${b}T00:00:00Z`); t += DAY * 1000) {
+    const w = new Date(t).getUTCDay()
+    if (w !== 0 && w !== 6) n++
+  }
+  return n
+}
+
+/**
+ * 야후 일봉으로 찾은 직전 종가가 의심스러우면 이유를, 멀쩡하면 null.
+ *
+ * ⚠️ 마지막 봉만 늦는 게 아니다 — 2026-10-24 실측.
+ *    10/23 9:07 발행 때 코스피·코스닥 둘 다 기준이 「10/20 종가」로 잡혀 10/22 하루 −3.52%·−3.62%가
+ *    −0.34%·−2.29%로 나갔다(10/21을 건너뜀). 지금 야후엔 10/21 봉이 있다 = 그 순간만 중간 봉이 비었거나
+ *    (종가 null인 봉은 fetchChart가 버린다) 값 시각(regularMarketTime)이 하루 늦었다. 둘 다 같은 결과라 기록 없이 못 가린다.
+ *    채점기는 같은 지표를 정답으로 대조해 「사실」 만점을 줬다. 그날 건강진단 금융 칸에도 틀린 숫자가 들어갔다.
+ * 의심 = ① 기준일과 값 날짜 사이에 평일이 낀다(봉 누락 또는 휴장) ② 값 날짜의 봉 종가가 값과 다르다
+ *        ③ 값 날짜보다 뒤 봉이 있다(②·③ = 값 시각이 늦게 갱신됨). 판정은 네이버 거래일로 한다(아래 resolve).
+ */
+export function suspectIndexBasis(bars: Bar[], anchorSec: number, price: number, prevDate: string): string | null {
+  const anchor = kstDate(anchorSec)
+  if (weekdaysBetween(prevDate, anchor) > 0) return `야후 기준 ${md(prevDate)} · 값 ${md(anchor)} 사이 평일 빔`
+  const anchorBar = bars.find(b => kstDate(b.t) === anchor)
+  if (anchorBar && Math.abs(anchorBar.close / price - 1) > 0.001) return `야후 ${md(anchor)} 봉 ${anchorBar.close.toFixed(2)} ≠ 값`
+  if (bars.some(b => kstDate(b.t) > anchor)) return `야후 값 시각 ${md(anchor)} 뒤 봉 있음`
+  return null
+}
+
+type DailyClose = { date: string; close: number } // date = 거래일 'YYYY-MM-DD'
+
+/**
+ * 거래일 종가 목록(오름차순)에서 값의 직전 거래일 종가를 찾는다.
+ * 값과 같은 종가가 있으면 그날을 값의 날짜로 본다(값 시각이 늦게 갱신돼도 흔들리지 않게). 장중이면 값 시각의 날짜.
+ */
+export function prevCloseFromDaily(rows: DailyClose[], price: number, anchorDate: string): DailyClose | null {
+  const same = [...rows].reverse().find(r => Math.abs(r.close - price) < 0.005)
+  const valueDate = same?.date ?? anchorDate
+  let found: DailyClose | null = null
+  for (const r of rows) if (r.date < valueDate) found = r
+  return found
+}
+
+// 네이버 증권 지수 일별 시세. 한국거래소 거래일 그대로라 휴장일이 빠져 있다. 야후가 의심스러울 때만 부른다(2026-10-24)
+async function fetchNaverDaily(code: 'KOSPI' | 'KOSDAQ'): Promise<DailyClose[] | null> {
+  try {
+    const res = await fetch(`https://m.stock.naver.com/api/index/${code}/price?pageSize=10&page=1`, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      next: { revalidate: 0 },
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    if (!Array.isArray(json)) return null
+    const rows = (json as { localTradedAt?: string; closePrice?: string }[])
+      .map(r => ({ date: String(r?.localTradedAt ?? ''), close: parseFloat(String(r?.closePrice ?? '').replace(/,/g, '')) }))
+      .filter(r => /^\d{4}-\d{2}-\d{2}$/.test(r.date) && !isNaN(r.close))
+      .sort((a, b) => (a.date < b.date ? -1 : 1))
+    return rows.length > 0 ? rows : null
+  } catch {
+    return null
+  }
+}
+
 /**
  * 환율의 「하루 전 같은 시각」 값을 시간봉에서 찾는다.
  *
@@ -79,13 +144,26 @@ export function priceHoursAgo(bars: Bar[], anchorSec: number, hours: number, bar
   return found ? { close: found.close, t: found.t + barSec } : null
 }
 
-async function fetchIndexQuote(symbol: string, digits: number): Promise<Quote | null> {
+async function fetchIndexQuote(symbol: string, naverCode: 'KOSPI' | 'KOSDAQ', digits: number): Promise<Quote | null> {
   const chart = await fetchChart(symbol, '1d', '10d')
   if (!chart) return null
   const { meta, bars } = chart
   const anchor = meta.regularMarketTime ?? Math.floor(Date.now() / 1000)
   const prev = prevCloseByDate(bars, anchor)
-  if (prev) return { price: meta.regularMarketPrice, prev: prev.close, basis: `${md(prev.date)} 종가 ${prev.close.toFixed(digits)}` }
+  if (prev) {
+    const price = meta.regularMarketPrice
+    const yahooBasis = `${md(prev.date)} 종가 ${prev.close.toFixed(digits)}`
+    const why = suspectIndexBasis(bars, anchor, price, prev.date)
+    if (!why) return { price, prev: prev.close, basis: yahooBasis }
+    // 의심 → 네이버 거래일로 판정. 같은 날이면(휴장 등) 야후 그대로, 봉이 빠졌으면 네이버 종가, 네이버도 못 받으면 등락률을 안 낸다.
+    // 판정 이유는 basis(DB)에 남긴다 — Vercel 로그는 금방 사라진다
+    const rows = await fetchNaverDaily(naverCode)
+    const n = rows ? prevCloseFromDaily(rows, price, kstDate(anchor)) : null
+    console.warn(`[marketData] ${symbol} 기준 의심(${why}) → 네이버 ${n ? `${n.date} ${n.close}` : '실패'} · 야후 봉 ${bars.map(b => kstDate(b.t).slice(5)).join(',')} · 값 시각 ${new Date((anchor + 9 * 60 * 60) * 1000).toISOString().slice(0, 16)}`)
+    if (!n) return { price, prev: null, basis: `확인 불가(${why} · 네이버 실패)` }
+    if (n.date === prev.date) return { price, prev: prev.close, basis: `${yahooBasis}(네이버 일치 · ${why})` }
+    return { price, prev: n.close, basis: `${md(n.date)} 종가 ${n.close.toFixed(digits)}(네이버 · ${why})` }
+  }
   // 봉을 못 받으면 예전 방식으로라도 낸다(지표가 통째로 빠지는 것보다 낫다). 기준이 다르다는 걸 basis에 남긴다
   const fallback = meta.previousClose ?? meta.chartPreviousClose
   if (typeof fallback !== 'number') return null
@@ -115,6 +193,8 @@ function buildIndicator(
   formatter: (v: number) => string
 ): Omit<KeyIndicator, 'easyExplanation'> {
   const prev = q.prev
+  // 기준을 믿을 수 없으면 틀린 등락률을 내느니 비워 둔다. ▲▼가 없으니 AI도 방향을 쓰지 않는다
+  if (prev === null) return { name, value: formatter(q.price), change: '— 확인 불가', direction: 'flat', basis: q.basis }
   const change = q.price - prev
   const pct = prev !== 0 ? (change / prev) * 100 : 0
   // 표시 소수 2자리 기준으로 판정 → 변동이 0.00%로 떨어지면(거의 무변동) '보합'으로 통일
@@ -225,9 +305,9 @@ export function indicatorLine(i: { name?: string; value?: string; change?: strin
 
 export async function getMarketIndicators(): Promise<Omit<KeyIndicator, 'easyExplanation'>[]> {
   const [kospi, usdKrw, kosdaq, baseRate] = await Promise.all([
-    fetchIndexQuote('^KS11', 2),
+    fetchIndexQuote('^KS11', 'KOSPI', 2),
     fetchFxQuote('KRW=X'),
-    fetchIndexQuote('^KQ11', 2),
+    fetchIndexQuote('^KQ11', 'KOSDAQ', 2),
     fetchBaseRate(),
   ])
 
