@@ -6,6 +6,9 @@
 // id목록.json = ["uuid", …]. 결과.json = 기사마다 제목·본문 상태·옛 해설·새 해설.
 // ②는 다시 생성하지 않는다 = 사람이 검토한 결과가 그대로 들어간다(다시 부르면 글이 달라진다).
 // ②는 news_articles.full_analysis의 6칸만 바꾸고 다른 칸(category 등)은 그대로 둔다. body·model 기록을 붙인다.
+// ②는 브리핑 복사본(briefings.top3_analysis[].steps)의 같은 6칸도 같이 고친다. /briefing/[date]는 본체가 아니라 복사본을 보여 준다.
+//   (2026-11-05: 10/19~20 다시 쓰기가 본체만 고쳐 지난 브리핑 358칸에 옛 해설이 남았었다.) 복사본 백업 = <백업.json>.브리핑.json
+//   EXPLAIN_DRY=1 이면 무엇을 바꿀지만 출력하고 아무것도 안 쓴다.
 // 본문을 못 받은 기사는 새 해설이 없어 옛 해설을 그대로 둔다(제목만 보고 다시 쓰면 같은 문제가 난다).
 // 쓴 날: 2026-10-19(뉴스 해설 재감사 뒤 프롬프트 시험 · 옛 제목 기반 해설 다시 쓰기).
 import fs from 'node:fs'
@@ -51,17 +54,56 @@ if (APPLY) {
   const [, resultPath, backupPath] = args
   type Out = { id: string; body: { ok: boolean; chars: number; reason: string | null } | null; new: Record<string, string> | null }
   const results = (JSON.parse(fs.readFileSync(resultPath, 'utf8')) as Out[]).filter(r => r.new)
+  const DRY = process.env.EXPLAIN_DRY === '1'
   const current = new Map((await readRows(results.map(r => r.id))).map(r => [r.id, r]))
-  fs.writeFileSync(backupPath, JSON.stringify(results.map(r => ({ id: r.id, full_analysis: current.get(r.id)?.full_analysis ?? null })), null, 1))
-  console.log(`백업 ${results.length}건 → ${backupPath}`)
+  if (!DRY) {
+    fs.writeFileSync(backupPath, JSON.stringify(results.map(r => ({ id: r.id, full_analysis: current.get(r.id)?.full_analysis ?? null })), null, 1))
+    console.log(`백업 ${results.length}건 → ${backupPath}`)
+  }
   let ok = 0
+  const written: Out[] = []
   for (const r of results) {
     const next = { ...(current.get(r.id)?.full_analysis ?? {}), ...Object.fromEntries(FIELDS.map(f => [f, r.new![f]])), model: r.new!.model, body: r.body, rewritten: '2026-10-19' }
+    if (DRY) { written.push(r); continue }
     const res = await fetch(`${URL}/rest/v1/news_articles?id=eq.${r.id}`, { method: 'PATCH', headers: { ...headers, Prefer: 'return=minimal' }, body: JSON.stringify({ full_analysis: next }) })
-    if (res.ok) ok++
+    if (res.ok) { ok++; written.push(r) }
     else console.error('  쓰기 실패', r.id, res.status, await res.text())
   }
-  console.log(`DB에 씀 ${ok}/${results.length}`)
+  console.log(DRY ? `시험 실행: 본체 쓰기 안 함 ${results.length}건` : `DB에 씀 ${ok}/${results.length}`)
+
+  // 브리핑 복사본: 본체에 쓴 기사만 따라간다. 한 브리핑에 여러 기사가 있을 수 있어 날짜별로 모아 한 번에 쓴다.
+  type Top3Item = { articleId?: string; steps?: Record<string, unknown> }
+  const byDate = new Map<string, { before: Top3Item[]; after: Top3Item[]; changed: number }>()
+  for (const r of written) {
+    const q = encodeURIComponent(JSON.stringify([{ articleId: r.id }]))
+    const res = await fetch(`${URL}/rest/v1/briefings?select=date,top3_analysis&top3_analysis=cs.${q}`, { headers })
+    if (!res.ok) { console.error('  복사본 조회 실패', r.id, res.status, await res.text()); continue }
+    for (const b of (await res.json()) as { date: string; top3_analysis: Top3Item[] }[]) {
+      const entry = byDate.get(b.date) ?? { before: b.top3_analysis, after: JSON.parse(JSON.stringify(b.top3_analysis)) as Top3Item[], changed: 0 }
+      for (const it of entry.after) {
+        if (it.articleId !== r.id) continue
+        const steps = it.steps ?? {}
+        if (FIELDS.some(f => steps[f] !== r.new![f])) entry.changed++
+        for (const f of FIELDS) steps[f] = r.new![f]
+        it.steps = steps
+      }
+      byDate.set(b.date, entry)
+    }
+  }
+  const targets = [...byDate.entries()].filter(([, e]) => e.changed > 0)
+  console.log(`브리핑 복사본: 바꿀 칸 ${targets.reduce((n, [, e]) => n + e.changed, 0)} · 날짜 ${targets.map(([d]) => d).join(' ') || '없음'}`)
+  if (!DRY && targets.length) {
+    const copyBackup = `${backupPath}.브리핑.json`
+    fs.writeFileSync(copyBackup, JSON.stringify(Object.fromEntries(targets.map(([d, e]) => [d, e.before])), null, 1))
+    console.log(`복사본 백업 → ${copyBackup}`)
+    let copied = 0
+    for (const [d, e] of targets) {
+      const res = await fetch(`${URL}/rest/v1/briefings?date=eq.${d}`, { method: 'PATCH', headers: { ...headers, Prefer: 'return=minimal' }, body: JSON.stringify({ top3_analysis: e.after }) })
+      if (res.ok) copied++
+      else console.error('  복사본 쓰기 실패', d, res.status, await res.text())
+    }
+    console.log(`복사본에 씀 ${copied}/${targets.length}일 · /briefing/[date]는 캐시로 최대 1시간 뒤 바뀐다`)
+  }
   process.exit(0)
 }
 
