@@ -14,7 +14,7 @@ interface Quote {
   basis: string // 예: '10/16 종가 794.78' · '24시간 전 10/18 06:00 1,334.2'. DB에 남겨 나중에 검산한다
 }
 
-type Bar = { t: number; close: number } // t = 봉 시작 시각(초, UTC)
+type Bar = { t: number; close: number; open?: number } // t = 봉 시작 시각(초, UTC). open = 봉 시작값(환율 공백 뒤 첫 봉에만 씀)
 
 const DAY = 24 * 60 * 60
 // 초(UTC) → KST 날짜 'YYYY-MM-DD'. +9h 한 번만 쓴다(timeZone 옵션과 같이 쓰지 말 것 — CLAUDE.md 날짜 규칙)
@@ -34,8 +34,9 @@ async function fetchChart(symbol: string, interval: string, range: string): Prom
     if (!meta || typeof meta.regularMarketPrice !== 'number') return null
     const ts: number[] = r?.timestamp ?? []
     const closes: (number | null)[] = r?.indicators?.quote?.[0]?.close ?? []
+    const opens: (number | null)[] = r?.indicators?.quote?.[0]?.open ?? []
     const bars = ts
-      .map((t, i) => ({ t, close: closes[i] as number }))
+      .map((t, i) => ({ t, close: closes[i] as number, open: typeof opens[i] === 'number' && !isNaN(opens[i] as number) ? (opens[i] as number) : undefined }))
       .filter(b => typeof b.close === 'number' && !isNaN(b.close))
     return { meta, bars }
   } catch {
@@ -136,11 +137,28 @@ async function fetchNaverDaily(code: 'KOSPI' | 'KOSDAQ'): Promise<DailyClose[] |
  *    (9/22 저장 −0.37% ↔ 24시간 기준 −1.75%). 9/25 감사 「환율 ▲▼가 사이트 전날 값과 반대」의 원인.
  * 방법: 값이 찍힌 시각(regularMarketTime)에서 24시간 전 이전에 끝난 마지막 시간봉의 종가.
  *       주말엔 금요일 마감값으로 떨어지므로 토·일은 금요일 하루 변동, 월요일은 금요일 마감 대비가 된다.
+ *
+ * ⚠️ 공백 바로 뒤 첫 봉(2026-11-18 실측). 영국 서머타임이 끝나면(10월 마지막 일요일 ~ 3월 말) 야후 환율의
+ *    월요일 첫 봉이 KST 08:00이 아니라 09:00에 시작한다. 화요일 9:07의 24시간 전(월 9:07)엔 「끝난 봉」이 월요일에
+ *    하나도 없어서 토요일 아침 마감값이 기준이 됐다(10/27 · 11/3 · 11/10 · 11/17 네 번, basis는 「24시간 전」인데 73~74시간 전.
+ *    11/10 저장 −1.38% ↔ 월요일 09:00 대비 −1.23% · 11/17 저장 ▲ +0.04% ↔ −0.01%. 그날 봉으로 재현한 값).
+ *    그래서 24시간 전 시각이 걸친 봉(또는 그 뒤 1시간 안에 시작한 봉)의 시작 시각이 앞 봉의 끝보다 24시간 전에 더 가까우면
+ *    그 봉의 시작값을 쓴다. 평일처럼 봉이 이어져 있으면 두 시각이 같아 예전 그대로(앞 봉 종가)다.
+ *    월요일 아침은 24시간 전이 공백 한가운데라(다음 봉이 1시간 넘게 뒤) 금요일 마감 그대로다.
+ *    검증 = 야후 한 달치 시간봉 10분 간격 4,228개 시각에서 옛 방식과 비교: 달라진 곳은 화요일 08:00~09:50 네 번 +
+ *    토요일 봉 하나가 빠진 자리 8개 시각(값 같음)뿐. 단위 검사 = scripts/indicator_check.mts 2-2 · 관측 = 같은 스크립트 `db N`의 「환율 기준 간격」.
  */
 export function priceHoursAgo(bars: Bar[], anchorSec: number, hours: number, barSec = 60 * 60): { close: number; t: number } | null {
   const target = anchorSec - hours * 60 * 60
-  let found: Bar | null = null
-  for (const b of bars) if (b.t + barSec <= target) found = b
+  let found: Bar | null = null // target 이전에 끝난 마지막 봉
+  let next: Bar | null = null // target까지 아직 안 끝난 첫 봉
+  for (const b of bars) {
+    if (b.t + barSec <= target) found = b
+    else if (!next) next = b
+  }
+  const foundEnd = found ? found.t + barSec : -Infinity
+  const nextIsNearer = next !== null && next.t <= target + barSec && Math.abs(next.t - target) < target - foundEnd
+  if (next && nextIsNearer && typeof next.open === 'number') return { close: next.open, t: next.t }
   return found ? { close: found.close, t: found.t + barSec } : null
 }
 

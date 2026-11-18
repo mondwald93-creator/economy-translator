@@ -82,6 +82,21 @@ for (let h = 0; h < 30; h++) fri.push({ t: kst('2026-10-16', '00:00') + h * 3600
 const satAnchor = kst('2026-10-17', '06:00')
 const w = priceHoursAgo(fri, satAnchor, 24)
 ok('주말(값 시각 = 토 06:00) → 금 06:00 무렵 값', w !== null && new Date((w.t + 9 * 3600) * 1000).toISOString().slice(0, 13) === '2026-10-16T06', w)
+// 2-2) 공백 바로 뒤 첫 봉(2026-11-18). 겨울(영국 서머타임 끝)엔 월요일 첫 봉이 09:00 시작 → 화요일 9:07의 24시간 전(월 9:07)에 끝난 월요일 봉이 없다
+const kstHm = (sec: number) => new Date((sec + 9 * 3600) * 1000).toISOString().slice(0, 16)
+const week = [] as { t: number; close: number; open?: number }[]
+for (let h = 0; h < 32; h++) week.push({ t: kst('2026-11-13', '00:00') + h * 3600, open: 1335, close: 1335.1 }) // 금 00:00 ~ 토 07:00 봉(토 08:00 마감)
+for (let h = 0; h < 39; h++) week.push({ t: kst('2026-11-16', '09:00') + h * 3600, open: 1335.9 + h * 0.01, close: 1336 + h * 0.01 }) // 월 09:00 ~ 화 23:00
+const tue = priceHoursAgo(week, kst('2026-11-17', '09:07'), 24)
+ok('겨울 화요일 9:07 → 월요일 09:00 봉 시작값(토요일 마감 아님)', tue !== null && kstHm(tue.t) === '2026-11-16T09:00' && tue.close === 1335.9, tue && { ...tue, kst: kstHm(tue.t) })
+const tueEarly = priceHoursAgo(week, kst('2026-11-17', '08:59'), 24)
+ok('겨울 화요일 값 시각이 8:59여도 → 월요일 09:00 봉 시작값', tueEarly !== null && kstHm(tueEarly.t) === '2026-11-16T09:00', tueEarly && { ...tueEarly, kst: kstHm(tueEarly.t) })
+const mon = priceHoursAgo(week, kst('2026-11-16', '09:07'), 24)
+ok('월요일 9:07 → 예전 그대로 토요일 08:00 마감값', mon !== null && kstHm(mon.t) === '2026-11-14T08:00' && mon.close === 1335.1, mon && { ...mon, kst: kstHm(mon.t) })
+const wed = priceHoursAgo(week, kst('2026-11-18', '09:07'), 24)
+ok('수요일 9:07(봉 이어짐) → 예전 그대로 화 09:00에 끝난 봉 종가', wed !== null && kstHm(wed.t) === '2026-11-17T09:00' && Math.abs(wed.close - (1336 + 23 * 0.01)) < 1e-9, wed && { ...wed, kst: kstHm(wed.t) })
+const noOpen = priceHoursAgo(week.map(({ t, close }) => ({ t, close })), kst('2026-11-17', '09:07'), 24)
+ok('시작값이 없으면 → 예전 방식(앞 봉 종가)으로 떨어짐', noOpen !== null && kstHm(noOpen.t) === '2026-11-14T08:00', noOpen && { ...noOpen, kst: kstHm(noOpen.t) })
 
 // 3) 지금 시세로 한 번
 const live = await getMarketIndicators()
@@ -93,7 +108,20 @@ ok('지표 4개', live.length === 4, live.map(i => i.name))
 if (process.argv[2] === 'db') {
   const n = Number(process.argv[3] ?? 20)
   const headers = { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!, Authorization: 'Bearer ' + process.env.SUPABASE_SERVICE_ROLE_KEY }
-  const rows = (await (await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/briefings?select=date,indicators&order=date.desc&limit=${n}`, { headers })).json()).reverse()
+  const rows = (await (await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/briefings?select=date,created_at,indicators&order=date.desc&limit=${n}`, { headers })).json()).reverse()
+  // 환율: 「24시간 전」 기준이 실제로 몇 시간 전인지(2026-11-18). 화~금은 30시간을 넘으면 기준이 주말 마감값으로 떨어진 것
+  console.log('\n저장된 환율 기준 간격(화~금 발행분은 24시간 안팎이어야 함. 토·일·월은 주말이 끼어 길다):')
+  for (const row of rows) {
+    const k = (row.indicators ?? []).find((i: { name: string }) => String(i.name).includes('환율'))
+    const m = String(k?.basis ?? '').match(/(\d+)\/(\d+) (\d+):(\d+)/)
+    if (!k || !m) { console.log(`  ${row.date} ${k?.value ?? '-'} → 기준 시각 없음 [${k?.basis ?? '-'}]`); continue }
+    const made = new Date(row.created_at).getTime()
+    let basisAt = new Date(`${row.date.slice(0, 4)}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}T${m[3]}:${m[4]}:00+09:00`).getTime()
+    if (basisAt > made) basisAt = new Date(`${Number(row.date.slice(0, 4)) - 1}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}T${m[3]}:${m[4]}:00+09:00`).getTime() // 1월 초 발행분의 12월 기준
+    const gap = Math.round((made - basisAt) / 3600e3)
+    const dow = new Date(row.date + 'T00:00:00Z').getUTCDay()
+    console.log(`  ${row.date} ${'일월화수목금토'[dow]} ${k.value} ${k.change} · ${gap}시간 전 ${dow >= 2 && dow <= 5 && gap > 30 ? '🔴' : '✅'} [${k.basis}]`)
+  }
   for (const [name, symbol] of [['코스닥', '%5EKQ11'], ['코스피', '%5EKS11']]) {
     const y = await (await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=3mo`, { headers: { 'User-Agent': 'Mozilla/5.0' } })).json()
     const r = y.chart.result[0]
